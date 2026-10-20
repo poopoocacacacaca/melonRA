@@ -32,11 +32,22 @@ AboutDialog::AboutDialog(QWidget *parent) :
 
     ui->lblVersionInfo->setText("Version " MELONDS_VERSION);
 #ifdef MELONDS_EMBED_BUILD_INFO
-    ui->lblBuildInfo->setText(
-        "Branch: " MELONDS_GIT_BRANCH "\n"
-        "Commit: " MELONDS_GIT_HASH "\n"
-        "Built by: " MELONDS_BUILD_PROVIDER
-    );
+    {
+        // build info refers to the melonRA repository this binary was built from
+        const QString repo = MELONDS_GIT_REPO;
+        const QString branch = MELONDS_GIT_BRANCH;
+        const QString hash = MELONDS_GIT_HASH;
+        const QString base = "https://github.com/" + repo;
+        ui->lblBuildInfo->setTextFormat(Qt::RichText);
+        ui->lblBuildInfo->setOpenExternalLinks(true);
+        ui->lblBuildInfo->setText(QString(
+            "Repository: <a href=\"%1\">%2</a><br>"
+            "Branch: <a href=\"%1/tree/%3\">%3</a><br>"
+            "Commit: <a href=\"%1/commit/%4\">%5</a><br>"
+            "Built by: %6")
+            .arg(base, repo.toHtmlEscaped(), branch.toHtmlEscaped(), hash,
+                 hash.left(10), QString(MELONDS_BUILD_PROVIDER).toHtmlEscaped()));
+    }
 #else
     ui->lblBuildInfo->hide();
 #endif

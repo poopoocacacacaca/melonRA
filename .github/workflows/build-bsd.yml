@@ -10,7 +10,8 @@ on:
       - master
 
 env:
-  MELONDS_GIT_BRANCH: ${{ github.ref }}
+  MELONDS_GIT_BRANCH: ${{ github.ref_name }}
+  MELONDS_GIT_REPO: ${{ github.repository }}
   MELONDS_GIT_HASH: ${{ github.sha }}
   MELONDS_BUILD_PROVIDER: GitHub Actions
 
@@ -79,7 +80,7 @@ jobs:
         with: >
           {
             "arch": ${{ matrix.arch }},
-            "envs": "MELONDS_GIT_BRANCH MELONDS_GIT_HASH
+            "envs": "MELONDS_GIT_BRANCH MELONDS_GIT_HASH MELONDS_GIT_REPO
                      MELONDS_BUILD_PROVIDER",
             "prepare": ${{ toJSON(matrix.prepare_vm) }},
             "sync": "nfs",
