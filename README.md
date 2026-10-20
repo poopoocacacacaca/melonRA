@@ -21,7 +21,7 @@ regular melonDS desktop app.
 - **Log in** with your RetroAchievements account. Only a login token is saved, never your password.
 - **Automatic game detection.** Games are recognized from the `.nds` ROM itself.
 - **Multi-set support.** Bonus sets (subsets) load alongside the main set, each with its own progress and mastery notification.
-- **Hardcore mode**, on by default, for full-credit unlocks.
+- (WIP) **Hardcore mode**, on by default, for full-credit unlocks.
 - **Offline-safe unlocks.** If the connection drops, unlocks and leaderboard entries are saved and submitted later, even after restarting melonRA.
 - **On-screen notifications:**
   - game start with your progress
