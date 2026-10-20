@@ -77,12 +77,11 @@ public:
         TopLeft,
         TopCenter,
         TopRight,
-        Center,
         BottomLeft,
         BottomCenter,
         BottomRight,
     };
-    static constexpr int kNumAnchors = 7;
+    static constexpr int kNumAnchors = 6;
 
     struct ElementStyle
     {

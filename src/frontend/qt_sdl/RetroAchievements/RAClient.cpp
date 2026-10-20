@@ -497,7 +497,7 @@ void Manager::reloadDisplayOptions()
 }
 
 static const char* const kAnchorNames[Overlay::kNumAnchors] = {
-    "top-left", "top-center", "top-right", "center", "bottom-left", "bottom-center", "bottom-right",
+    "top-left", "top-center", "top-right", "bottom-left", "bottom-center", "bottom-right",
 };
 
 const char* Manager::overlayElementKey(Overlay::Element element)
@@ -526,6 +526,8 @@ Overlay::Style Manager::loadOverlayStyle()
         std::string pos = cfg.GetString(key + "Position");
         for (int a = 0; a < Overlay::kNumAnchors; a++)
             if (pos == kAnchorNames[a]) es.anchor = (Overlay::Anchor)a;
+        // the middle of the screen was an option once; it covered too much of the game
+        if (pos == "center") es.anchor = Overlay::Anchor::BottomCenter;
 
         es.rounded = !cfg.GetBool(key + "Square");
         es.bold = cfg.GetBool(key + "Bold");

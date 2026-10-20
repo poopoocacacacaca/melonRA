@@ -527,7 +527,6 @@ void Overlay::placeItems(QPainter& p, std::vector<Item> (&items)[kNumElements], 
 
         // everything placed here, in element order
         std::vector<std::pair<Item*, float>> list; // item, space before it
-        float total = 0;
         for (int e = 0; e < kNumElements; e++)
         {
             if (style.elements[e].anchor != anchor) continue;
@@ -535,7 +534,6 @@ void Overlay::placeItems(QPainter& p, std::vector<Item> (&items)[kNumElements], 
             {
                 float before = list.empty() ? 0.f : (i == 0 ? groupGap : gap);
                 list.push_back({&items[e][i], before});
-                total += before + items[e][i].size.height();
             }
         }
         if (list.empty()) continue;
@@ -546,10 +544,8 @@ void Overlay::placeItems(QPainter& p, std::vector<Item> (&items)[kNumElements], 
                             anchor == Anchor::BottomRight;
 
         // top positions stack downwards, bottom ones upwards (the first box
-        // nearest the edge), the center one is centered as a whole
-        float y = bottom ? height - margin
-                : anchor == Anchor::Center ? (height - total) / 2
-                : margin;
+        // nearest the edge)
+        float y = bottom ? height - margin : margin;
 
         for (auto& [item, before] : list)
         {
@@ -561,7 +557,7 @@ void Overlay::placeItems(QPainter& p, std::vector<Item> (&items)[kNumElements], 
             float boxY = y;
             float alpha = item->alpha;
 
-            // entrance: slide in from the nearest side edge, or fade in for centered boxes
+            // entrance: slide in from the nearest side edge, or fade in for centered ones
             const float t = 1.f - item->enter;
             if (left)       x -= t * (w + margin);
             else if (right) x += t * (w + margin);

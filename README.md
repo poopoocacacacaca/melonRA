@@ -30,9 +30,9 @@ regular melonDS desktop app.
   - leaderboard attempts and your new rank
 - **Challenge and progress indicators**, so you know when an achievement is "armed" or how close you are.
 - **Leaderboard trackers**, which show the live timer or score while an attempt is running.
-- **Customizable overlay.** Put each kind of notification in any corner, along an edge or in the
-  center, with rounded or square corners, bold text and borders, at four sizes, with a live preview and
-  a test button.
+- **Customizable overlay.** Put each kind of notification in any corner or at the top or bottom center,
+  with rounded or square corners, bold text and borders, at four sizes, with a live preview and a test
+  button.
 - **Achievements and leaderboards browser** with badges, unlock dates, rarity and the rankings around you.
 - **Rich Presence.** Your RetroAchievements profile shows what you're doing in the game.
 - **Extras:**

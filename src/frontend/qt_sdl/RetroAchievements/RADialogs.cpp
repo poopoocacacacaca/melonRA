@@ -408,7 +408,7 @@ QWidget* SettingsDialog::createAppearanceTab()
         "Progress indicators",
         "Leaderboard trackers",
     };
-    const QStringList positions = {"Top Left", "Top Center", "Top Right", "Center",
+    const QStringList positions = {"Top Left", "Top Center", "Top Right",
                                    "Bottom Left", "Bottom Center", "Bottom Right"};
 
     for (int e = 0; e < Overlay::kNumElements; e++)
