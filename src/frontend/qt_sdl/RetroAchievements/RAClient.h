@@ -20,6 +20,7 @@
 #define RA_CLIENT_H
 
 #include <atomic>
+#include <functional>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -97,6 +98,13 @@ public:
     void setRAIntegrationEnabled(bool enabled); // takes effect on restart
     bool isRAIntegrationLoaded() const { return raIntegrationLoaded; }
     void initRAIntegration(QWidget* mainWindow);
+    // Windows x86/x64 only: the toolkit DLL has no ARM64 build
+    static bool raIntegrationSupported();
+    // path the DLL is loaded from (next to the executable)
+    static QString raIntegrationDllPath();
+    // Downloads the latest RA_Integration DLL from retroachievements.org next
+    // to the executable. done(ok, message) runs on the GUI thread.
+    void downloadRAIntegration(std::function<void(bool, QString)> done);
     struct ToolkitMenuItem
     {
         uint32_t id;      // 0 = separator
@@ -218,6 +226,8 @@ private:
     std::atomic<bool> loginPending{false};
     bool raIntegrationLoaded = false;
     bool raIntegrationLoading = false;
+    QWidget* raIntegrationWindow = nullptr;
+    void offerRAIntegrationDownload(const QString& reason);
 
     // hash of the ROM most recently passed to identifyROM, and of the game
     // currently loaded into rc_client

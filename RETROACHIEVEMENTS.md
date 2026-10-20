@@ -41,10 +41,14 @@ This fork of [melonDS](https://github.com/melonDS-emu/melonDS) adds native
 - **Encore**, **unofficial (unpromoted)** and **spectator** modes.
 - **Sound effects** for unlocks, mastery and leaderboard submissions. These are
   original synthesized sounds bundled with the build.
-- **Optional RAIntegration** (Windows): the RetroAchievements developer
-  toolkit. Enable it in the settings and put `RA_Integration-x64.dll` next to
-  `melonDS.exe`. Its tools then appear under *RetroAchievements → Developer
-  toolkit*.
+- **RAIntegration toolkit support** (Windows x86/x64): the RetroAchievements
+  developer toolkit.
+  - It is loaded through rcheevos' `rc_client_begin_load_raintegration`.
+  - The settings can download or update `RA_Integration-x64.dll`, using the
+    same `latestintegration` lookup as the official RAInterface.
+  - At startup melonRA offers the download if the DLL is missing or outdated.
+  - Its tools appear under *RetroAchievements → Developer toolkit*.
+  - The toolkit's memory inspector can write to emulated RAM.
 
 ## Using it
 
@@ -113,6 +117,27 @@ and contact [RAdmin](https://retroachievements.org/messages/create?to=RAdmin).
 The emulator, or its parent emulator, must have been public for at least six
 months; melonDS qualifies. Disclose that this is a fork of melonDS when
 applying.
+
+## Compliance checklist
+
+| Requirement | Status |
+|---|---|
+| A. Achievement list accessible in-emulator | ✅ RetroAchievements → Achievements… |
+| A. Triggers, measured progress, challenge indicators | ✅ |
+| A. Rich Presence and leaderboards | ✅ |
+| A. Offline queueing | ⚠️ rcheevos retries failed unlocks for the rest of the session. Unlocks still pending when melonRA is closed are lost; there is no on-disk queue yet. |
+| A. Hit counts in savestates | ✅ |
+| A. Toolkit (RAIntegration) support | ✅ Windows x86/x64; includes downloader/updater |
+| A. Standard save file formats | ✅ unchanged melonDS `.sav` |
+| B. Cheats, rewind, slow motion, frame advance blocked | ✅ (melonDS has no rewind) |
+| B. Loading states always blocked; saving allowed | ✅ |
+| B. Rich Presence and leaderboards can't be disabled in hardcore | ✅ (trackers forced visible) |
+| B. Casual → hardcore resets the game | ✅ |
+| B. Memory editors, debuggers, input playback blocked | ✅ RAM search and GDB stub blocked; melonDS has no input playback |
+| C. Unique, numeric User-Agent | ✅ `melonDS-RA/x.y.z`; never used another client's UA |
+| D. 6 months public | ✅ via upstream melonDS |
+| E. Hardcore on by default, mode shown at game start | ✅ |
+| F. No monetization; licenses list; privacy policy | ✅ [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md), [PRIVACY.md](PRIVACY.md) |
 
 ## Building
 

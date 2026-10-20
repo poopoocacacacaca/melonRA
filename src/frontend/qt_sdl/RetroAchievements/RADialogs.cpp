@@ -26,6 +26,7 @@
 #include <QCheckBox>
 #include <QDateTime>
 #include <QDialogButtonBox>
+#include <QFileInfo>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
@@ -245,11 +246,21 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent)
     general->addWidget(cbEncore);
     general->addWidget(cbUnpromoted);
     general->addWidget(cbSpectator);
-    cbToolkit = new QCheckBox("Load the RAIntegration developer toolkit at startup (needs RA_Integration-x64.dll, restart required)");
+    cbToolkit = new QCheckBox("Load the RAIntegration developer toolkit at startup (restart required)");
     general->addWidget(cbToolkit);
-#ifndef _WIN32
-    cbToolkit->hide();
-#endif
+    auto* toolkitRow = new QHBoxLayout();
+    toolkitDownload = new QPushButton("Download / update RAIntegration");
+    toolkitStatus = new QLabel();
+    toolkitStatus->setWordWrap(true);
+    toolkitRow->addWidget(toolkitDownload);
+    toolkitRow->addWidget(toolkitStatus, 1);
+    general->addLayout(toolkitRow);
+    if (!Manager::raIntegrationSupported())
+    {
+        cbToolkit->hide();
+        toolkitDownload->hide();
+        toolkitStatus->hide();
+    }
     layout->addWidget(generalBox);
 
     // notifications
@@ -293,6 +304,18 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent)
     connect(cbUnpromoted, &QCheckBox::toggled, this, [this, m](bool on) { if (!updating) m->setUnpromotedEnabled(on); });
     connect(cbSpectator, &QCheckBox::toggled, this, [this, m](bool on) { if (!updating) m->setSpectatorEnabled(on); });
     connect(cbToolkit, &QCheckBox::toggled, this, [this, m](bool on) { if (!updating) m->setRAIntegrationEnabled(on); });
+    connect(toolkitDownload, &QPushButton::clicked, this, [this, m]()
+    {
+        toolkitDownload->setEnabled(false);
+        toolkitStatus->setText("Downloading...");
+        QPointer<SettingsDialog> self(this);
+        m->downloadRAIntegration([self](bool ok, QString msg)
+        {
+            if (!self) return;
+            self->toolkitDownload->setEnabled(true);
+            self->toolkitStatus->setText(ok ? msg + ". Restart melonDS to load it." : msg);
+        });
+    });
 
     auto bindDisplay = [this, m](QCheckBox* cb, const char* key)
     {
@@ -353,6 +376,14 @@ void SettingsDialog::refresh()
     cbUnpromoted->setChecked(m->isUnpromotedEnabled());
     cbSpectator->setChecked(m->isSpectatorEnabled());
     cbToolkit->setChecked(cfg.GetBool("UseRAIntegration"));
+    if (toolkitStatus->text().isEmpty() || toolkitStatus->text().startsWith("Installed") ||
+        toolkitStatus->text().startsWith("Not installed"))
+    {
+        if (m->isRAIntegrationLoaded())
+            toolkitStatus->setText("Installed and loaded.");
+        else
+            toolkitStatus->setText(QFileInfo::exists(Manager::raIntegrationDllPath()) ? "Installed." : "Not installed.");
+    }
     cbNotifications->setChecked(cfg.GetBool("Notifications"));
     cbLeaderboardNotifications->setChecked(cfg.GetBool("LeaderboardNotifications"));
     cbChallenges->setChecked(cfg.GetBool("ChallengeIndicators"));

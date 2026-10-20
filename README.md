@@ -100,9 +100,13 @@ For other platforms, Nix and static builds, see [BUILD.md](./BUILD.md).
 
 For achievement developers:
 
-1. Put `RA_Integration-x64.dll` (from RetroAchievements) next to `melonDS.exe`.
-2. Enable *Load the RAIntegration developer toolkit* in **RetroAchievements → Settings…**.
+1. Enable *Load the RAIntegration developer toolkit* in **RetroAchievements → Settings…**.
+2. Click **Download / update RAIntegration**. melonRA fetches the latest `RA_Integration-x64.dll` from
+   retroachievements.org and puts it next to `melonDS.exe`. You can also place the DLL there yourself.
 3. Restart melonRA. The toolkit appears under **RetroAchievements → Developer toolkit**.
+
+melonRA also offers to download the DLL at startup if it is missing or older than the minimum version
+RetroAchievements requires. The toolkit is available on x64 (and x86) Windows only; it has no ARM64 build.
 
 ## For developers
 
@@ -113,6 +117,11 @@ is in `src/rcheevos/`. [RETROACHIEVEMENTS.md](./RETROACHIEVEMENTS.md) covers:
 - the DS memory map
 - the savestate format
 - the hardcore compliance details
+
+## Privacy and licenses
+
+melonRA has no telemetry. The only data it sends goes to RetroAchievements.org, and only when you're logged in. See
+[PRIVACY.md](./PRIVACY.md). Bundled and linked components are listed in [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md).
 
 ## Credits
 

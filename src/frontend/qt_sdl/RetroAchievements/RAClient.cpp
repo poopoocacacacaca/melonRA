@@ -23,6 +23,12 @@
 
 #include <cstring>
 
+#include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMessageBox>
 #include <QMetaObject>
 #include <QSysInfo>
@@ -39,12 +45,7 @@
 #include "Platform.h"
 #include "version.h"
 
-#ifdef _WIN32
-#include <QCoreApplication>
-#include <QDir>
-#include <QFileInfo>
 #include <QWidget>
-#endif
 
 using namespace melonDS;
 
@@ -310,8 +311,11 @@ struct ClientCallbacks
             }
             else
             {
-                m->osd(kColorError, QString("RetroAchievements: could not load RAIntegration: %1")
-                                        .arg(QString::fromStdString(err.empty() ? rc_error_str(result) : err)));
+                QString msg = QString::fromStdString(err.empty() ? rc_error_str(result) : err);
+                m->osd(kColorError, QString("RetroAchievements: could not load RAIntegration: %1").arg(msg));
+                // most likely an outdated DLL: offer to fetch the current one
+                if (msg.contains("minimum version"))
+                    m->offerRAIntegrationDownload(QString("Your RA_Integration DLL is out of date (%1).").arg(msg));
             }
 
             // continue with the normal startup login either way
@@ -498,14 +502,22 @@ void Manager::initRAIntegration(QWidget* mainWindow)
         return;
     }
 
-    QString dir = QDir::toNativeSeparators(QCoreApplication::applicationDirPath());
-    bool found = QFileInfo::exists(dir + "/RA_Integration-x64.dll") ||
-                 QFileInfo::exists(dir + "/RA_Integration-arm64.dll") ||
-                 QFileInfo::exists(dir + "/RA_Integration.dll");
-    if (!found)
+    raIntegrationWindow = mainWindow;
+
+    if (!raIntegrationSupported())
     {
-        osd(kColorWarn, "RetroAchievements: RA_Integration DLL not found next to melonDS.exe");
+        osd(kColorWarn, "RetroAchievements: the RAIntegration toolkit is not available for this CPU architecture");
         if (isEnabled()) loginWithStoredToken();
+        return;
+    }
+
+    QString dir = QDir::toNativeSeparators(QCoreApplication::applicationDirPath());
+    if (!QFileInfo::exists(raIntegrationDllPath()))
+    {
+        // log in normally now; the toolkit can be loaded after downloading
+        if (isEnabled()) loginWithStoredToken();
+        offerRAIntegrationDownload("The RAIntegration developer toolkit is enabled, but "
+                                   "RA_Integration DLL was not found next to melonDS.");
         return;
     }
 
@@ -517,6 +529,125 @@ void Manager::initRAIntegration(QWidget* mainWindow)
 #else
     (void)mainWindow;
 #endif
+}
+
+bool Manager::raIntegrationSupported()
+{
+#if defined(RC_CLIENT_SUPPORTS_RAINTEGRATION) && (defined(_M_X64) || defined(__x86_64__) || defined(_M_IX86) || defined(__i386__))
+    return true;
+#else
+    return false;
+#endif
+}
+
+QString Manager::raIntegrationDllPath()
+{
+#if defined(_M_X64) || defined(__x86_64__)
+    const char* name = "RA_Integration-x64.dll";
+#else
+    const char* name = "RA_Integration.dll";
+#endif
+    return QDir(QCoreApplication::applicationDirPath()).filePath(name);
+}
+
+void Manager::offerRAIntegrationDownload(const QString& reason)
+{
+    QWidget* parent = raIntegrationWindow;
+    QMetaObject::invokeMethod(this, [this, parent, reason]()
+    {
+        auto res = QMessageBox::question(parent, "RAIntegration",
+            reason + "\n\nDownload the latest version from retroachievements.org now?",
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+        if (res != QMessageBox::Yes) return;
+
+        osd(kColorInfo, "RetroAchievements: downloading RAIntegration...");
+        downloadRAIntegration([this](bool ok, QString msg)
+        {
+            osd(ok ? kColorInfo : kColorError, QString("RetroAchievements: %1").arg(msg));
+            if (ok && !raIntegrationLoaded && raIntegrationWindow)
+            {
+                // load it right away; the session already logged in normally,
+                // so log out first and let the toolkit take over
+                if (isLoggedIn()) rc_client_logout(rcClient);
+                initRAIntegration(raIntegrationWindow);
+            }
+        });
+    }, Qt::QueuedConnection);
+}
+
+void Manager::downloadRAIntegration(std::function<void(bool, QString)> done)
+{
+    auto finish = [this, done](bool ok, QString msg)
+    {
+        QMetaObject::invokeMethod(this, [done, ok, msg]() { if (done) done(ok, msg); }, Qt::QueuedConnection);
+    };
+
+    if (!raIntegrationSupported())
+    {
+        finish(false, "RAIntegration is only available for x86/x64 Windows builds");
+        return;
+    }
+
+    // same lookup the official RAInterface performs
+    http->request("https://retroachievements.org/dorequest.php", "r=latestintegration",
+                  "application/x-www-form-urlencoded", [this, finish](const HttpResponse& resp)
+    {
+        if (resp.status != 200)
+        {
+            finish(false, QString("could not check the latest RAIntegration version (%1)")
+                              .arg(resp.status ? QString("HTTP %1").arg(resp.status)
+                                               : QString::fromStdString(resp.error)));
+            return;
+        }
+
+        QJsonObject obj = QJsonDocument::fromJson(QByteArray::fromStdString(resp.body)).object();
+#if defined(_M_X64) || defined(__x86_64__)
+        QString url = obj.value("LatestVersionUrlX64").toString();
+#else
+        QString url = obj.value("LatestVersionUrl").toString();
+#endif
+        QString version = obj.value("LatestVersion").toString();
+        if (url.isEmpty())
+        {
+            finish(false, "the server did not return a download link for RAIntegration");
+            return;
+        }
+
+        http->request(url.toStdString(), "", "", [finish, version](const HttpResponse& dl)
+        {
+            // a PE file starts with "MZ"
+            if (dl.status != 200 || dl.body.size() < 4096 || dl.body[0] != 'M' || dl.body[1] != 'Z')
+            {
+                finish(false, QString("RAIntegration download failed (%1)")
+                                  .arg(dl.status ? QString("HTTP %1").arg(dl.status)
+                                                 : QString::fromStdString(dl.error)));
+                return;
+            }
+
+            QString path = raIntegrationDllPath();
+            QString tmp = path + ".download";
+            QFile file(tmp);
+            if (!file.open(QIODevice::WriteOnly) ||
+                file.write(dl.body.data(), (qint64)dl.body.size()) != (qint64)dl.body.size())
+            {
+                file.remove();
+                finish(false, QString("could not write %1 (is the melonDS folder writable?)").arg(path));
+                return;
+            }
+            file.close();
+
+            QFile::remove(path);
+            if (!QFile::rename(tmp, path))
+            {
+                QFile::remove(tmp);
+                finish(false, QString("could not replace %1 (is it in use?)").arg(path));
+                return;
+            }
+
+            finish(true, version.isEmpty() ? QString("RAIntegration downloaded")
+                                           : QString("RAIntegration %1 downloaded").arg(version));
+        });
+    });
 }
 
 std::vector<Manager::ToolkitMenuItem> Manager::toolkitMenu() const

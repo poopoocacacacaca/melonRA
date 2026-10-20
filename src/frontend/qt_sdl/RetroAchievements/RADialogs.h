@@ -101,6 +101,8 @@ private:
     QCheckBox* cbUnpromoted;
     QCheckBox* cbSpectator;
     QCheckBox* cbToolkit;
+    QPushButton* toolkitDownload;
+    QLabel* toolkitStatus;
 
     QCheckBox* cbNotifications;
     QCheckBox* cbLeaderboardNotifications;
