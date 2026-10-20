@@ -615,6 +615,8 @@ Widget::Widget(QWidget* parent) : QWidget(parent)
     view->header()->setContextMenuPolicy(Qt::CustomContextMenu);
     view->header()->setSectionsMovable(true);
     view->header()->setFirstSectionMovable(true);
+    // centered column titles; the cells keep their own alignment
+    view->header()->setDefaultAlignment(Qt::AlignCenter);
     model->setShowRegionNames(showRegionNames());
     view->header()->setStretchLastSection(false);
     view->header()->setSectionResizeMode(Model::Col_Title, QHeaderView::Stretch);
