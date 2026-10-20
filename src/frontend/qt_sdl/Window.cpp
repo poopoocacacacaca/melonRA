@@ -41,6 +41,9 @@
 #include <QVector>
 #include <QCommandLineParser>
 #include <QDesktopServices>
+#include <QProxyStyle>
+#include <QStyleFactory>
+#include <QStyleOption>
 
 #include "main.h"
 #include "CheatsDialog.h"
@@ -78,6 +81,75 @@
 #include "RetroAchievements/RADialogs.h"
 
 using namespace melonDS;
+
+namespace
+{
+
+// The "windows11" theme pads each menu bar item by 17 px per side, so the menus don't fit in the
+// window at 1x screen sizing. This trims the padding. A style sheet can't be used for this: the
+// theme keeps its own insets when it paints, so with a narrower item the hover highlight came out
+// shorter than the text.
+class CompactMenuBarStyle : public QProxyStyle
+{
+public:
+    explicit CompactMenuBarStyle(QStyle* base) : QProxyStyle(base) {}
+
+    // what windows11 does when painting an item (Qt 6.7+): the highlight is inset 5 px from the
+    // item's edges and the text 11 px, and the text is drawn at 10 pt
+    static constexpr int kThemeHighlightInset = 5;
+    static constexpr int kThemeTextInset = 11;
+    static constexpr int kThemeFontSize = 10;
+
+    // what we want instead
+    static constexpr int kHighlightInset = 2;
+    static constexpr int kTextPadding = 8; // between the highlight's edge and the text
+
+    QSize sizeFromContents(ContentsType type, const QStyleOption* option,
+                           const QSize& size, const QWidget* widget) const override
+    {
+        QSize sz = QProxyStyle::sizeFromContents(type, option, size, widget);
+        if (type != CT_MenuBarItem || size.isEmpty())
+            return sz;
+
+        auto* item = qstyleoption_cast<const QStyleOptionMenuItem*>(option);
+        if (!item || item->text.isEmpty())
+            return sz;
+
+        // measure at the size the theme paints at, which can be bigger than the menu bar's font
+        QFont font = item->font;
+        font.setPointSize(kThemeFontSize);
+        QString text = item->text;
+        text.replace("&&", QChar(1)).remove('&').replace(QChar(1), '&');
+        int textWidth = QFontMetrics(font).horizontalAdvance(text);
+
+        sz.setWidth(textWidth + 2 * (kHighlightInset + kTextPadding));
+        return sz;
+    }
+
+    void drawControl(ControlElement element, const QStyleOption* option,
+                     QPainter* painter, const QWidget* widget) const override
+    {
+        if (element == CE_MenuBarItem)
+        {
+            if (auto* item = qstyleoption_cast<const QStyleOptionMenuItem*>(option))
+            {
+                // widen the rect the theme sees so its insets land where we want them:
+                // the highlight fills the item and the text sits inside it
+                constexpr int grow = kThemeHighlightInset - kHighlightInset;
+                static_assert(kThemeTextInset - grow <= kHighlightInset + kTextPadding);
+
+                QStyleOptionMenuItem opt = *item;
+                opt.rect.adjust(-grow, 0, grow, 0);
+                QProxyStyle::drawControl(element, &opt, painter, widget);
+                return;
+            }
+        }
+
+        QProxyStyle::drawControl(element, option, painter, widget);
+    }
+};
+
+}
 
 
 
@@ -227,13 +299,6 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
     setAttribute(Qt::WA_DeleteOnClose);
     setAcceptDrops(true);
     setFocusPolicy(Qt::ClickFocus);
-
-#if QT_VERSION_MAJOR == 6 && WIN32
-    // The "windows11" theme has pretty massive padding around menubar items, this makes Config and Help not fit in a window at 1x screen sizing
-    // So let's reduce the padding a bit.
-    if (QApplication::style()->name() == "windows11")
-        setStyleSheet("QMenuBar::item { padding: 4px 8px; }");
-#endif
 
     //hasMenu = (!parent);
     hasMenu = true;
@@ -673,6 +738,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
         }
 
         setMenuBar(menubar);
+        updateMenuBarStyle();
 
         if (localCfg.GetString("Firmware.Username") == "Arisotura")
             actMPNewInstance->setText("Fart");
@@ -1091,6 +1157,37 @@ void MainWindow::focusInEvent(QFocusEvent* event)
 void MainWindow::focusOutEvent(QFocusEvent* event)
 {
     onFocusOut();
+}
+
+void MainWindow::changeEvent(QEvent* event)
+{
+    // the menu bar has its own style, so it isn't told about theme changes;
+    // the window is, so rebuild it from here
+    if (event->type() == QEvent::StyleChange)
+        updateMenuBarStyle();
+
+    QMainWindow::changeEvent(event);
+}
+
+void MainWindow::updateMenuBarStyle()
+{
+    auto* bar = qobject_cast<QMenuBar*>(menuWidget());
+    if (!bar) return;
+
+    QStyle* old = menuBarStyle;
+    menuBarStyle = nullptr;
+
+    if (QApplication::style()->name() == "windows11")
+    {
+        if (QStyle* base = QStyleFactory::create("windows11"))
+        {
+            menuBarStyle = new CompactMenuBarStyle(base);
+            menuBarStyle->setParent(this); // outlives the menu bar, which was created first
+        }
+    }
+
+    bar->setStyle(menuBarStyle);
+    delete old;
 }
 
 void MainWindow::onFocusIn()

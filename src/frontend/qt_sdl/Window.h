@@ -98,6 +98,12 @@ protected:
     void focusInEvent(QFocusEvent* event) override;
     void focusOutEvent(QFocusEvent* event) override;
 
+    void changeEvent(QEvent* event) override;
+
+private:
+    void updateMenuBarStyle();
+    QStyle* menuBarStyle = nullptr;
+
 signals:
     void screenLayoutChange();
 
