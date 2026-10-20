@@ -19,9 +19,9 @@
         then sourceInfo.dirtyShortRev
         else sourceInfo.shortRev;
 
-      melonDS = pkgs.stdenv.mkDerivation {
-        pname = "melonDS";
-        version = "1.1-${shortRevision}";
+      melonRA = pkgs.stdenv.mkDerivation {
+        pname = "melonRA";
+        version = "0.1.0-${shortRevision}";
         src = ./.;
 
         nativeBuildInputs = with pkgs; [
@@ -65,12 +65,12 @@
 
         passthru = {
           exePath = if isDarwin then
-            "/Applications/melonDS.app/Contents/MacOS/melonDS"
-            else "/bin/melonDS";
+            "/Applications/melonRA.app/Contents/MacOS/melonRA"
+            else "/bin/melonRA";
         };
       };
     in {
-      packages.default = melonDS;
+      packages.default = melonRA;
       apps.default = flake-utils.lib.mkApp {
         drv = self.packages.${system}.default;
       };
@@ -88,7 +88,7 @@
           '';
         };
 
-        # Shell for building static melonDS release builds with vcpkg
+        # Shell for building static melonRA release builds with vcpkg
         # Use mkShellNoCC to ensure Nix's gcc/clang and stdlib isn't used
         vcpkg = pkgs.mkShellNoCC {
           packages = with pkgs; [

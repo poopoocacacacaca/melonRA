@@ -547,7 +547,7 @@ void Manager::initRAIntegration(QWidget* mainWindow)
         // log in normally now; the toolkit can be loaded after downloading
         if (isEnabled()) loginWithStoredToken();
         offerRAIntegrationDownload("The RAIntegration developer toolkit is enabled, but "
-                                   "the RA_Integration DLL was not found next to melonDS.exe.");
+                                   "the RA_Integration DLL was not found next to melonRA.exe.");
         return;
     }
 

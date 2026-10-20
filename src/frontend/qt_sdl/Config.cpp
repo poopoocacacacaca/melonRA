@@ -39,7 +39,10 @@ namespace Config
 using namespace melonDS;
 
 
-const char* kConfigFile = "melonDS.toml";
+const char* kConfigFile = "melonRA.toml";
+// config of a plain melonDS install (or an older melonRA build) in the same folder,
+// imported the first time melonRA starts there
+const char* kMelonDSConfigFile = "melonDS.toml";
 
 const char* kLegacyConfigFile = "melonDS.ini";
 const char* kLegacyUniqueConfigFile = "melonDS.%d.ini";
@@ -127,7 +130,7 @@ DefaultList<std::string> DefaultStrings =
 {
     {"DLDI.ImagePath",                  "dldi.bin"},
     {"DSi.SD.ImagePath",                "dsisd.bin"},
-    {"Instance*.Firmware.Username",     "melonDS"}
+    {"Instance*.Firmware.Username",     "melonRA"}
 };
 
 DefaultList<double> DefaultDoubles =
@@ -801,7 +804,14 @@ bool Load()
     RootTable = toml::value();
 
     if (!Platform::FileExists(cfgpath))
-        return LoadLegacy();
+    {
+        // carry over settings from melonDS.toml; they are written to
+        // melonRA.toml on the next save, and the old file is left untouched
+        auto oldpath = Platform::GetLocalFilePath(kMelonDSConfigFile);
+        if (!Platform::FileExists(oldpath))
+            return LoadLegacy();
+        cfgpath = oldpath;
+    }
 
     try
     {

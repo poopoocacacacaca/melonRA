@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>Firmware settings - melonDS</string>
+   <string>Firmware settings - melonRA</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="sizeConstraint">
@@ -73,7 +73,7 @@
       <item row="0" column="1" colspan="2">
        <widget class="QLineEdit" name="usernameEdit">
         <property name="text">
-         <string>melonDS</string>
+         <string>melonRA</string>
         </property>
         <property name="maxLength">
          <number>10</number>

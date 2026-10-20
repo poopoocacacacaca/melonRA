@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=melonRA
+GenericName=Nintendo DS Emulator
+Comment=Nintendo DS emulator with RetroAchievements, based on melonDS.
+Exec=melonRA %f
+Type=Application
+Categories=Game;Emulator;
+Terminal=false
+Icon=io.github.poopoocacacacaca.melonRA
+MimeType=application/x-nintendo-ds-rom;
+Keywords=emulator;Nintendo;DS;NDS;Nintendo DS;RetroAchievements;achievements;melonDS;

@@ -231,7 +231,7 @@ void CheatsDialog::on_btnImportCheats_clicked()
     importDB = new ARDatabaseDAT(file.toStdString());
     if (importDB->Error)
     {
-        QMessageBox::critical(this, "melonDS",
+        QMessageBox::critical(this, "melonRA",
                               "Failed to open this cheat database file.");
         delete importDB;
         return;
@@ -239,7 +239,7 @@ void CheatsDialog::on_btnImportCheats_clicked()
 
     if (!importDB->FindGameCode(gameCode))
     {
-        QMessageBox::critical(this, "melonDS",
+        QMessageBox::critical(this, "melonRA",
                               "No cheat codes were found in this database for the current game.");
         delete importDB;
         return;
@@ -361,7 +361,7 @@ void CheatsDialog::on_btnSaveCode_clicked()
 
     if (ui->txtItemName->text().trimmed().isEmpty())
     {
-        QMessageBox::critical(this, "melonDS", "Error: no name entered.");
+        QMessageBox::critical(this, "melonRA", "Error: no name entered.");
         return;
     }
 
@@ -385,7 +385,7 @@ void CheatsDialog::on_btnSaveCode_clicked()
         auto codeconv = convertCodeInput();
         if (codeconv.empty())
         {
-            QMessageBox::critical(this, "melonDS", "Error: the code entered is empty or invalid.");
+            QMessageBox::critical(this, "melonRA", "Error: the code entered is empty or invalid.");
             return;
         }
 

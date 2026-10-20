@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>Join LAN game - melonDS</string>
+   <string>Join LAN game - melonRA</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>

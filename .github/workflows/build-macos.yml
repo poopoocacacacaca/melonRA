@@ -56,7 +56,7 @@ jobs:
         shell: bash
         run: |
           cd build/release-mac-${{ matrix.arch }}
-          zip -r -y ../../macOS-${{ matrix.arch }}.zip melonDS.app
+          zip -r -y ../../macOS-${{ matrix.arch }}.zip melonRA.app
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
@@ -93,11 +93,11 @@ jobs:
         run: |
           unzip x86_64/*.zip -d x86_64
           unzip arm64/*.zip -d arm64
-          lipo {x86_64,arm64}/melonDS.app/Contents/MacOS/melonDS -create -output melonDS
-          cp -a arm64/melonDS.app melonDS.app
-          cp melonDS melonDS.app/Contents/MacOS/melonDS
-          codesign -s - --deep melonDS.app
-          zip -r -y macOS-universal.zip melonDS.app
+          lipo {x86_64,arm64}/melonRA.app/Contents/MacOS/melonRA -create -output melonRA
+          cp -a arm64/melonRA.app melonRA.app
+          cp melonRA melonRA.app/Contents/MacOS/melonRA
+          codesign -s - --deep melonRA.app
+          zip -r -y macOS-universal.zip melonRA.app
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:

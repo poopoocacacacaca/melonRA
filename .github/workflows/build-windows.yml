@@ -51,8 +51,8 @@ jobs:
         buildPreset: release-windows-${{ matrix.arch.name }}
     - uses: actions/upload-artifact@v7
       with:
-        name: melonDS-windows-${{ matrix.arch.name }}
-        path: .\build\release-windows-${{ matrix.arch.name }}\melonDS.exe
+        name: melonRA-windows-${{ matrix.arch.name }}
+        path: .\build\release-windows-${{ matrix.arch.name }}\melonRA.exe
     - name: Save vcpkg cache
       uses: actions/cache/save@v4
       with:
@@ -79,7 +79,7 @@ jobs:
     - name: Package
       run: |
         for arch in x86_64 arm64; do
-          (cd "artifacts/melonDS-windows-$arch" && zip -9 "$GITHUB_WORKSPACE/melonRA-windows-$arch.zip" melonDS.exe)
+          (cd "artifacts/melonRA-windows-$arch" && zip -9 "$GITHUB_WORKSPACE/melonRA-windows-$arch.zip" melonRA.exe)
         done
         ls -la melonRA-windows-*.zip
     - name: Update nightly release
@@ -90,7 +90,7 @@ jobs:
           echo "Automatic build of the latest master commit ${GITHUB_SHA}."
           echo
           echo "**Download** \`melonRA-windows-x86_64.zip\` for most PCs, or \`melonRA-windows-arm64.zip\` for ARM Windows devices."
-          echo "Unzip it anywhere and run \`melonDS.exe\`. It keeps its config next to the exe."
+          echo "Unzip it anywhere and run \`melonRA.exe\`. It keeps its config next to the exe."
           echo
           echo "Then use **RetroAchievements > Log in...**. Until RetroAchievements approves melonRA for hardcore, hardcore unlocks are recorded as casual."
         } > notes.md

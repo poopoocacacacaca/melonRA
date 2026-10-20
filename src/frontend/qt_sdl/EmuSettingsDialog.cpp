@@ -208,7 +208,7 @@ void EmuSettingsDialog::verifyFirmware()
                       "Problematic firmware dump",
                       "You are using an old hacked firmware dump.\n"
                       "Firmware boot will stop working if you run any game that alters WFC settings.\n\n"
-                      "Note that the issue is not from melonDS, it would also happen on an actual DS.");
+                      "Note that the issue is not from melonRA, it would also happen on an actual DS.");
     }
 }
 
@@ -354,7 +354,7 @@ void EmuSettingsDialog::on_btnFirmwareBrowse_clicked()
 
     if (!Platform::CheckFileWritable(file.toStdString()))
     {
-        QMessageBox::critical(this, "melonDS", "Unable to write to firmware file.\nPlease check file/folder write permissions.");
+        QMessageBox::critical(this, "melonRA", "Unable to write to firmware file.\nPlease check file/folder write permissions.");
         return;
     }
 
@@ -416,7 +416,7 @@ void EmuSettingsDialog::on_btnDLDISDBrowse_clicked()
 
     if (!Platform::CheckFileWritable(file.toStdString()))
     {
-        QMessageBox::critical(this, "melonDS", "Unable to write to DLDI SD image.\nPlease check file/folder write permissions.");
+        QMessageBox::critical(this, "melonRA", "Unable to write to DLDI SD image.\nPlease check file/folder write permissions.");
         return;
     }
 
@@ -454,7 +454,7 @@ void EmuSettingsDialog::on_btnDSiFirmwareBrowse_clicked()
 
     if (!Platform::CheckFileWritable(file.toStdString()))
     {
-        QMessageBox::critical(this, "melonDS", "Unable to write to DSi firmware file.\nPlease check file/folder write permissions.");
+        QMessageBox::critical(this, "melonRA", "Unable to write to DSi firmware file.\nPlease check file/folder write permissions.");
         return;
     }
 
@@ -475,7 +475,7 @@ void EmuSettingsDialog::on_btnDSiNANDBrowse_clicked()
 
     if (!Platform::CheckFileWritable(file.toStdString()))
     {
-        QMessageBox::critical(this, "melonDS", "Unable to write to DSi NAND image.\nPlease check file/folder write permissions.");
+        QMessageBox::critical(this, "melonRA", "Unable to write to DSi NAND image.\nPlease check file/folder write permissions.");
         return;
     }
 
@@ -510,7 +510,7 @@ void EmuSettingsDialog::on_btnDSiSDBrowse_clicked()
 
     if (!Platform::CheckFileWritable(file.toStdString()))
     {
-        QMessageBox::critical(this, "melonDS", "Unable to write to DSi SD image.\nPlease check file/folder write permissions.");
+        QMessageBox::critical(this, "melonRA", "Unable to write to DSi SD image.\nPlease check file/folder write permissions.");
         return;
     }
 

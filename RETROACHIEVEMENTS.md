@@ -64,7 +64,7 @@ persistent queue on top, in `retroachievements/pending_submissions.json`:
   with rcheevos' request builders. The "seconds since unlock" value is updated
   and the request re-signed, so the server records the original unlock time.
 - Each entry has an HMAC-SHA256 under a random per-install key
-  (`RetroAchievements.QueueKey` in `melonDS.toml`). Corrupted or edited entries
+  (`RetroAchievements.QueueKey` in `melonRA.toml`). Corrupted or edited entries
   are discarded instead of submitted.
 
 Playing while offline from the very start still isn't possible:

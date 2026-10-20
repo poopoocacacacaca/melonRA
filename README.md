@@ -41,7 +41,7 @@ regular melonDS desktop app.
 
 1. **Windows:** download `melonRA-windows-x86_64.zip` from the
    [nightly release](https://github.com/poopoocacacacaca/melonRA/releases/tag/nightly), which is rebuilt
-   from every commit. Unzip it anywhere and run `melonDS.exe`. Other platforms: grab an artifact from the
+   from every commit. Unzip it anywhere and run `melonRA.exe`. Other platforms: grab an artifact from the
    [Actions tab](https://github.com/poopoocacacacaca/melonRA/actions), or build it yourself (see below).
 2. Set up melonDS as usual (BIOS/firmware are optional, see the original README below).
 3. Open **RetroAchievements → Log in…** and sign in with your
@@ -72,7 +72,7 @@ tree, so there are **no extra dependencies**.
    cmake -B build
    cmake --build build
    ```
-5. Run `build/melonDS.exe` from the same terminal, so it can find the DLLs.
+5. Run `build/melonRA.exe` from the same terminal, so it can find the DLLs.
 
 ### Linux
 
@@ -105,7 +105,7 @@ For achievement developers:
 
 1. Enable *Load the RAIntegration developer toolkit* in **RetroAchievements → Settings…**.
 2. Click **Download / update RAIntegration**. melonRA fetches the latest `RA_Integration-x64.dll` from
-   retroachievements.org and puts it next to `melonDS.exe`. You can also place the DLL there yourself.
+   retroachievements.org and puts it next to `melonRA.exe`. You can also place the DLL there yourself.
 3. Restart melonRA. The toolkit appears under **RetroAchievements → Developer toolkit**.
 
 melonRA also offers to download the DLL at startup if it is missing or older than the minimum version

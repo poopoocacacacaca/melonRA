@@ -45,8 +45,8 @@ jobs:
         DESTDIR=AppDir cmake --install build
     - uses: actions/upload-artifact@v7
       with:
-        name: melonDS-ubuntu-${{ matrix.arch.name }}
-        path: AppDir/usr/bin/melonDS
+        name: melonRA-ubuntu-${{ matrix.arch.name }}
+        path: AppDir/usr/bin/melonRA
     - name: Fetch AppImage tools
       run: |
         wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-${{ matrix.arch.name }}.AppImage
@@ -61,6 +61,6 @@ jobs:
         ./linuxdeploy-${{ matrix.arch.name }}.AppImage --appdir AppDir --plugin qt --output appimage
     - uses: actions/upload-artifact@v7
       with:
-        name: melonDS-appimage-${{ matrix.arch.name }}
-        path: melonDS*.AppImage
+        name: melonRA-appimage-${{ matrix.arch.name }}
+        path: melonRA*.AppImage
         archive: false

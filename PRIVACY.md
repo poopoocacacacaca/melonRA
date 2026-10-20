@@ -37,7 +37,7 @@ connect when you use them.
 
 ## What melonRA stores on your computer
 
-- `melonDS.toml` in the melonDS folder holds your RetroAchievements username,
+- `melonRA.toml` in the melonRA folder holds your RetroAchievements username,
   your login token and your settings. Your password is **never** stored. Log
   out to delete the token.
 - `retroachievements/cache/` holds downloaded badge and avatar images. You can

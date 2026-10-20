@@ -76,7 +76,7 @@
         <enum>Qt::TextFormat::PlainText</enum>
        </property>
        <property name="pixmap">
-        <pixmap resource="../../../res/melon.qrc">:/melon-icon</pixmap>
+        <pixmap resource="../../../res/melon.qrc">:/melonds-icon</pixmap>
        </property>
        <property name="scaledContents">
         <bool>true</bool>
@@ -93,10 +93,17 @@
       </widget>
      </item>
      <item>
-      <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0,0,0,1">
+      <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0,0,0,0,1">
        <property name="spacing">
         <number>12</number>
        </property>
+       <item alignment="Qt::AlignmentFlag::AlignTop">
+        <widget class="QLabel" name="lblForkOf">
+         <property name="text">
+          <string>melonRA is a fork of</string>
+         </property>
+        </widget>
+       </item>
        <item alignment="Qt::AlignmentFlag::AlignTop">
         <widget class="QLabel" name="label_2">
          <property name="enabled">

@@ -3,5 +3,6 @@
 	<qresource>
 		<file alias="melon-icon">icon/melon_256x256.png</file>
 		<file alias="melon-logo">melon384.png</file>
+		<file alias="melonds-icon">melonDS-icon.png</file>
 	</qresource>
 </RCC>

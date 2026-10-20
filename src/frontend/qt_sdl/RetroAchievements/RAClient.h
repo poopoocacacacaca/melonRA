@@ -30,10 +30,11 @@
 #include <QObject>
 #include <QString>
 
-// Version of the RetroAchievements integration. This is what the
-// RetroAchievements server sees in the User-Agent, so it must be numeric and
-// only ever increase (see the hardcore compliance requirements).
-#define MELONDS_RA_VERSION "0.1.0"
+#include "version.h"
+
+// Name and version reported to the RetroAchievements server in the
+// User-Agent (MELONRA_VERSION lives in version.h.in)
+#define MELONDS_RA_VERSION MELONRA_VERSION
 #define MELONDS_RA_PRODUCT "melonRA"
 
 typedef struct rc_client_t rc_client_t;
