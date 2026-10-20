@@ -233,7 +233,8 @@ void Overlay::paint(QPainter& p, int width, int height)
     p.setRenderHint(QPainter::TextAntialiasing, true);
 
     // scale the widgets with the window, within sane limits
-    float ui = std::clamp(std::min(width / 640.f, height / 480.f), 0.55f, 1.6f);
+    // (melonDS defaults to a small 256x384 window, so keep a readable floor)
+    float ui = std::clamp(std::min(width / 560.f, height / 420.f), 0.7f, 1.6f);
     int64_t now = nowMs();
 
     if (showPopups) paintPopups(p, width, height, ui, now);
@@ -264,16 +265,16 @@ void Overlay::paintPopups(QPainter& p, int width, int height, float ui, int64_t 
     const float w = std::min(kPopupWidth * ui, width - 2 * margin);
     const float icon = kPopupIcon * ui;
     const float pad = kPopupPad * ui;
-    const float h = icon + 2 * pad;
 
     QFont titleFont = p.font();
-    titleFont.setPixelSize(std::max(9, (int)(14 * ui)));
+    titleFont.setPixelSize(std::max(11, (int)(14 * ui)));
     titleFont.setBold(true);
     QFont bodyFont = titleFont;
     bodyFont.setBold(false);
-    bodyFont.setPixelSize(std::max(8, (int)(12 * ui)));
+    bodyFont.setPixelSize(std::max(10, (int)(12 * ui)));
     QFont smallFont = bodyFont;
-    smallFont.setPixelSize(std::max(7, (int)(11 * ui)));
+    smallFont.setPixelSize(std::max(9, (int)(11 * ui)));
+    QFontMetricsF tfm(titleFont), bfm(bodyFont), sfm(smallFont);
 
     float y = margin;
     int drawn = 0;
@@ -281,6 +282,11 @@ void Overlay::paintPopups(QPainter& p, int width, int height, float ui, int64_t 
     {
         if (drawn >= visible) break;
         drawn++;
+
+        // size the box to its content: icon height, or text height if taller
+        const bool hasIcon = !pop.iconUrl.empty();
+        float textH = tfm.height() + bfm.height() + (pop.line2.isEmpty() ? 0.f : sfm.height());
+        float h = std::max(hasIcon ? icon : 0.f, textH) + 2 * pad;
 
         int64_t age = now - pop.shownAt;
         float slide = std::min(1.f, age / (float)kSlideInMs);
@@ -303,33 +309,30 @@ void Overlay::paintPopups(QPainter& p, int width, int height, float ui, int64_t 
         p.setBrush(accent);
         p.drawRoundedRect(QRectF(box.left(), box.top(), 4 * ui, box.height()), 2 * ui, 2 * ui);
 
-        QRectF iconRect(box.left() + pad + 2 * ui, box.top() + pad, icon, icon);
-        if (!pop.iconUrl.empty())
+        QRectF iconRect(box.left() + pad + 2 * ui, box.top() + (h - icon) / 2, icon, icon);
+        if (hasIcon)
             drawIcon(p, pop.iconUrl, iconRect);
 
-        float textX = pop.iconUrl.empty() ? box.left() + pad + 4 * ui : iconRect.right() + pad;
+        float textX = hasIcon ? iconRect.right() + pad : box.left() + pad + 4 * ui;
         float textW = box.right() - pad - textX;
+        float ly = box.top() + (h - textH) / 2;
 
         p.setPen(accent);
         p.setFont(titleFont);
-        QFontMetricsF tfm(titleFont);
-        p.drawText(QRectF(textX, box.top() + pad - 1 * ui, textW, tfm.height()),
-                   Qt::AlignLeft | Qt::AlignVCenter,
+        p.drawText(QRectF(textX, ly, textW, tfm.height()), Qt::AlignLeft | Qt::AlignVCenter,
                    tfm.elidedText(pop.title, Qt::ElideRight, textW));
+        ly += tfm.height();
 
-        float ly = box.top() + pad + tfm.height();
         p.setPen(QColor(235, 237, 240));
         p.setFont(bodyFont);
-        QFontMetricsF bfm(bodyFont);
         p.drawText(QRectF(textX, ly, textW, bfm.height()), Qt::AlignLeft | Qt::AlignVCenter,
                    bfm.elidedText(pop.line1, Qt::ElideRight, textW));
+        ly += bfm.height();
 
         if (!pop.line2.isEmpty())
         {
-            ly += bfm.height();
             p.setPen(QColor(160, 166, 176));
             p.setFont(smallFont);
-            QFontMetricsF sfm(smallFont);
             p.drawText(QRectF(textX, ly, textW, sfm.height()), Qt::AlignLeft | Qt::AlignVCenter,
                        sfm.elidedText(pop.line2, Qt::ElideRight, textW));
         }

@@ -1,6 +1,163 @@
-> **melonDS-RA** — this fork adds native [RetroAchievements](https://retroachievements.org) support:
-> login, multi-set (subsets), Hardcore mode, on-screen unlock notifications, challenge/progress indicators,
-> leaderboard trackers and an achievements/leaderboards browser. See [RETROACHIEVEMENTS.md](RETROACHIEVEMENTS.md).
+<p align="center"><img src="res/melonRA-logo.png" alt="melonRA" width="480"></p>
+<h3 align="center">melonRA - fork of melonDS with RetroAchievements integration</h3>
+<p align="center">
+<a href="https://retroachievements.org"><img src="https://img.shields.io/badge/RetroAchievements-supported-%23f2b632.svg"></a>
+<a href="https://github.com/melonDS-emu/melonDS"><img src="https://img.shields.io/badge/based%20on-melonDS%201.1-%235c913b.svg"></a>
+<a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPL%20v3-%23ff554d.svg"></a>
+<br>
+<a href="https://github.com/poopoocacacacaca/melonRA/actions/workflows/build-windows.yml"><img src="https://github.com/poopoocacacacaca/melonRA/actions/workflows/build-windows.yml/badge.svg" /></a>
+<a href="https://github.com/poopoocacacacaca/melonRA/actions/workflows/build-ubuntu.yml"><img src="https://github.com/poopoocacacacaca/melonRA/actions/workflows/build-ubuntu.yml/badge.svg" /></a>
+<a href="https://github.com/poopoocacacacaca/melonRA/actions/workflows/build-macos.yml"><img src="https://github.com/poopoocacacacaca/melonRA/actions/workflows/build-macos.yml/badge.svg" /></a>
+<a href="https://github.com/poopoocacacacaca/melonRA/actions/workflows/build-bsd.yml"><img src="https://github.com/poopoocacacacaca/melonRA/actions/workflows/build-bsd.yml/badge.svg" /></a>
+</p>
+
+melonRA is [melonDS](https://github.com/melonDS-emu/melonDS), the Nintendo DS/DSi emulator, with
+[RetroAchievements](https://retroachievements.org) built in. Log in, load a game, and earn achievements,
+compete on leaderboards and show off your progress on your RetroAchievements profile, all from the
+regular melonDS desktop app.
+
+## Features
+
+- **Log in** with your RetroAchievements account. Only a login token is saved, never your password.
+- **Automatic game detection.** Games are recognized from the ROM itself, including `.nds`, `.zst` and zipped ROMs.
+- **Multi-set support.** Bonus sets (subsets) load alongside the main set, each with its own progress and mastery notification.
+- **Hardcore mode**, on by default, for full-credit unlocks.
+- **On-screen notifications:**
+  - game start with your progress
+  - unlocks and mastery
+  - leaderboard attempts and your new rank
+- **Challenge and progress indicators**, so you know when an achievement is "armed" or how close you are.
+- **Leaderboard trackers**, which show the live timer or score while an attempt is running.
+- **Achievements and leaderboards browser** with badges, unlock dates, rarity and the rankings around you.
+- **Rich Presence.** Your RetroAchievements profile shows what you're doing in the game.
+- **Extras:**
+  - encore mode, spectator mode and unofficial achievements
+  - sound effects
+  - savestates that remember achievement progress
+- **Optional RAIntegration** developer toolkit on Windows, for achievement creators.
+
+## How it works
+
+RetroAchievements doesn't patch games. Every achievement is a set of rules about the game's memory, for
+example "this level ID is 5 *and* the lap counter just became 3". melonRA:
+
+1. **Identifies the game.** When you load a ROM, it computes the official RetroAchievements hash of the
+   ROM and asks the server which game and achievement sets it belongs to.
+2. **Checks the rules every frame.** After each emulated frame, the
+   [rcheevos](https://github.com/RetroAchievements/rcheevos) library reads the DS's main RAM and the
+   ARM9 data TCM. When all of an achievement's conditions are true at once, it unlocks.
+3. **Talks to the server.** Unlocks, leaderboard entries and Rich Presence are sent to RetroAchievements.org.
+   If you lose your connection, unlocks are queued and sent when it comes back.
+4. **Shows it to you.** The overlay draws notifications and trackers on top of the game, with both the
+   software and OpenGL renderers.
+
+### Hardcore vs. casual
+
+| | Hardcore | Casual |
+|---|---|---|
+| Points | full ("hardcore") points | casual points |
+| Loading savestates | ❌ (saving is fine) | ✅ |
+| Cheats, RAM search, GDB stub | ❌ | ✅ |
+| Slow motion / frame advance | ❌ | ✅ |
+| Fast forward | ✅ | ✅ |
+| Pausing | rate-limited | ✅ |
+
+If you try a blocked feature in hardcore, melonRA offers to switch you to casual. Switching from casual
+back to hardcore resets the game; that's a RetroAchievements rule.
+
+> **Note:** melonRA is a new client. Until it is approved by RetroAchievements for hardcore, the server
+> records hardcore unlocks as casual ones.
+
+## Getting started
+
+1. Get a build from the [Actions tab](https://github.com/poopoocacacacaca/melonRA/actions): open the latest
+   successful run and download the artifact for your platform. You can also build it yourself, see below.
+2. Set up melonDS as usual (BIOS/firmware are optional, see the original README below).
+3. Open **RetroAchievements → Log in…** and sign in with your
+   [RetroAchievements.org](https://retroachievements.org) account.
+4. Load a game. A popup shows the game and your progress. **RetroAchievements → Achievements…** opens
+   the full list and the leaderboards.
+
+All options live in **RetroAchievements → Settings…**: hardcore, encore, spectator, unofficial
+achievements, which notifications to show, and sounds.
+
+## Building
+
+melonRA builds exactly like melonDS. The RetroAchievements library (rcheevos) is included in the source
+tree, so there are **no extra dependencies**.
+
+### Windows (MSYS2)
+
+1. Install [MSYS2](https://www.msys2.org/) and open the **MSYS2 UCRT64** terminal.
+2. Update with `pacman -Syu` (reopen the terminal if it asks).
+3. Install the tools and dependencies:
+   ```bash
+   pacman -S git mingw-w64-ucrt-x86_64-{toolchain,cmake,SDL2,libarchive,enet,zstd,faad2,qt6-base,qt6-svg,qt6-multimedia,qt6-tools}
+   ```
+4. Clone and build:
+   ```bash
+   git clone https://github.com/poopoocacacacaca/melonRA
+   cd melonRA
+   cmake -B build
+   cmake --build build
+   ```
+5. Run `build/melonDS.exe` from the same terminal, so it can find the DLLs.
+
+### Linux
+
+Install the same dependencies as for melonDS. On Ubuntu 24.04:
+
+```bash
+sudo apt install cmake extra-cmake-modules libcurl4-gnutls-dev libpcap0.8-dev libsdl2-dev libarchive-dev \
+  libenet-dev libzstd-dev libfaad-dev qt6-{base,base-private,multimedia,svg}-dev
+git clone https://github.com/poopoocacacacaca/melonRA
+cd melonRA
+cmake -B build
+cmake --build build -j$(nproc --all)
+```
+
+### macOS
+
+```zsh
+brew install git pkg-config cmake sdl2 qt@6 libarchive enet zstd faad2
+git clone https://github.com/poopoocacacacaca/melonRA
+cd melonRA
+cmake -B build -DCMAKE_PREFIX_PATH="$(brew --prefix qt@6);$(brew --prefix libarchive)"
+cmake --build build -j$(sysctl -n hw.logicalcpu)
+```
+
+For other platforms, Nix and static builds, see [BUILD.md](./BUILD.md).
+
+### Optional: RAIntegration (Windows)
+
+For achievement developers:
+
+1. Put `RA_Integration-x64.dll` (from RetroAchievements) next to `melonDS.exe`.
+2. Enable *Load the RAIntegration developer toolkit* in **RetroAchievements → Settings…**.
+3. Restart melonRA. The toolkit appears under **RetroAchievements → Developer toolkit**.
+
+## For developers
+
+The RetroAchievements code is in `src/frontend/qt_sdl/RetroAchievements/`, and the vendored rcheevos library
+is in `src/rcheevos/`. [RETROACHIEVEMENTS.md](./RETROACHIEVEMENTS.md) covers:
+
+- how the pieces fit together
+- the DS memory map
+- the savestate format
+- the hardcore compliance details
+
+## Credits
+
+- [melonDS](https://github.com/melonDS-emu/melonDS) by Arisotura and the melonDS team, which is all the actual emulation.
+- [RetroAchievements](https://retroachievements.org) and [rcheevos](https://github.com/RetroAchievements/rcheevos) (MIT).
+- melonRA is free software under the GPLv3, like melonDS. It is not affiliated with the melonDS team or RetroAchievements.
+
+<br>
+<hr>
+<hr>
+<br>
+
+# Original melonDS README
 
 <p align="center"><img src="https://raw.githubusercontent.com/melonDS-emu/melonDS/master/res/icon/melon_128x128.png"></p>
 <h2 align="center"><b>melonDS</b></h2>

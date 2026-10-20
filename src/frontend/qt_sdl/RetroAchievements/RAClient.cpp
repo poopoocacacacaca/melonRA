@@ -984,7 +984,7 @@ void Manager::showGamePlacard()
     }
     else
     {
-        line1 = QString("%1 of %2 achievements unlocked (%3/%4 points)")
+        line1 = QString("%1/%2 achievements, %3/%4 points")
                     .arg(summary.num_unlocked_achievements)
                     .arg(summary.num_promoted_achievements)
                     .arg(summary.points_unlocked)
@@ -999,7 +999,7 @@ void Manager::showGamePlacard()
     if (rc_client_subset_list_t* subsets = rc_client_create_subset_list(rcClient))
     {
         if (subsets->num_subsets > 1)
-            line2 += QString(" - %1 subsets").arg(subsets->num_subsets - 1);
+            line2 += QString(" - +%1 bonus set%2").arg(subsets->num_subsets - 1).arg(subsets->num_subsets > 2 ? "s" : "");
         rc_client_destroy_subset_list(subsets);
     }
 
