@@ -116,10 +116,10 @@ RetroAchievements requires. The toolkit is available on x64 (and x86) Windows on
 The RetroAchievements code is in `src/frontend/qt_sdl/RetroAchievements/`, and the vendored rcheevos library
 is in `src/rcheevos/`. [RETROACHIEVEMENTS.md](./RETROACHIEVEMENTS.md) covers:
 
-- how the pieces fit together
-- the DS memory map
-- the savestate format
-- the hardcore compliance details
+- how the pieces fit together and where melonDS is hooked
+- the DS memory map and the savestate format
+- the offline unlock queue
+- the hardcore compliance checklist
 
 ## Privacy and licenses
 

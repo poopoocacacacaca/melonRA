@@ -59,7 +59,7 @@ jobs:
         path: ${{ github.workspace }}/vcpkg_cache
         key: vcpkg-${{ matrix.arch.name }}-windows-${{ hashFiles('vcpkg.json') }}
 
-  # melonRA: publish every master build as a public "nightly" pre-release, so
+  # Publish every master build as a public "nightly" pre-release, so
   # testers can download it without a GitHub account
   publish:
     name: Publish nightly release

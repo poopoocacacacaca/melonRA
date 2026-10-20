@@ -547,7 +547,7 @@ void Manager::initRAIntegration(QWidget* mainWindow)
         // log in normally now; the toolkit can be loaded after downloading
         if (isEnabled()) loginWithStoredToken();
         offerRAIntegrationDownload("The RAIntegration developer toolkit is enabled, but "
-                                   "RA_Integration DLL was not found next to melonDS.");
+                                   "the RA_Integration DLL was not found next to melonDS.exe.");
         return;
     }
 
@@ -661,7 +661,7 @@ void Manager::downloadRAIntegration(std::function<void(bool, QString)> done)
                 file.write(dl.body.data(), (qint64)dl.body.size()) != (qint64)dl.body.size())
             {
                 file.remove();
-                finish(false, QString("could not write %1 (is the melonDS folder writable?)").arg(path));
+                finish(false, QString("could not write %1 (is the melonRA folder writable?)").arg(path));
                 return;
             }
             file.close();
@@ -1340,7 +1340,7 @@ void Manager::handleEvent(const rc_client_event_t* ev)
 
     case RC_CLIENT_EVENT_DISCONNECTED:
         osd(kColorWarn, "RetroAchievements: connection lost. Unlocks are saved and will be "
-                        "submitted when it returns, even if you close melonDS.");
+                        "submitted when it returns, even if you close melonRA.");
         break;
 
     case RC_CLIENT_EVENT_RECONNECTED:

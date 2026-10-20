@@ -126,7 +126,7 @@ LoginDialog::LoginDialog(QWidget* parent) : QDialog(parent)
 
     auto* intro = new QLabel(
         "Log in with your <a href=\"https://retroachievements.org\">RetroAchievements.org</a> account.<br>"
-        "Your password is only sent to RetroAchievements; melonDS stores a login token instead.");
+        "Your password is only sent to RetroAchievements; melonRA only stores a login token.");
     intro->setOpenExternalLinks(true);
     intro->setWordWrap(true);
     layout->addWidget(intro);
@@ -313,7 +313,7 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent)
         {
             if (!self) return;
             self->toolkitDownload->setEnabled(true);
-            self->toolkitStatus->setText(ok ? msg + ". Restart melonDS to load it." : msg);
+            self->toolkitStatus->setText(ok ? msg + ". Restart melonRA to load it." : msg);
         });
     });
 

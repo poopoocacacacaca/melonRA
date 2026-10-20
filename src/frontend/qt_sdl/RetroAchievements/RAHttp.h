@@ -89,7 +89,7 @@ private:
         std::condition_variable cond;
         std::deque<Job> queue;
         bool stopping = false;
-        std::string userAgent = "melonDS-RA";
+        std::string userAgent = "melonRA";
     };
 
     static void workerMain(std::shared_ptr<Shared> shared);

@@ -1,67 +1,13 @@
-# RetroAchievements in melonDS-RA
+# melonRA developer notes
 
-This fork of [melonDS](https://github.com/melonDS-emu/melonDS) adds native
-[RetroAchievements](https://retroachievements.org) support to the desktop
-(Qt) frontend, using the official
-[rcheevos](https://github.com/RetroAchievements/rcheevos) `rc_client` runtime.
+How the RetroAchievements integration is put together. For what it does and how to use it, see
+the [README](README.md).
 
-## Features
+melonRA uses the official [rcheevos](https://github.com/RetroAchievements/rcheevos) `rc_client`
+runtime in the Qt desktop frontend. Only the first emulator instance runs achievements; extra
+local-multiplayer instances play without them.
 
-- **Login** with your RetroAchievements account. Only a login token is
-  stored in `melonDS.toml`, never your password.
-- **Automatic game identification.** The ROM is hashed with the official
-  RetroAchievements DS hashing method. Plain `.nds`, `.zst` and archived ROMs
-  all work.
-- **Multi-set support.** Subsets attached to a game are loaded alongside the
-  core set. The achievement list groups them per set and shows each set's
-  progress, and finishing a subset shows its own mastery notification.
-- **Hardcore mode** (on by default). It blocks loading savestates, cheats, slow
-  motion, frame advance, the RAM search tool and the GDB stub, and it throttles
-  pausing. Switching from casual to hardcore resets the game. Fast forward and
-  *saving* states remain available.
-- **Overlay notifications**, drawn by both the software and OpenGL renderers:
-  - game placard with your progress and the active mode
-  - achievement unlocks, game mastery and subset completion
-  - leaderboard started, failed, submitted, and your new rank
-  - server errors, and connection lost/restored
-- **Challenge indicators.** Primed achievements show as small badges in the
-  bottom-left corner.
-- **Progress indicators.** Measured achievements briefly show `12/50`-style
-  progress.
-- **Leaderboard trackers.** Live timers and scores appear in the bottom-right
-  corner, in a fixed-width font so they don't jitter.
-- **Achievements and leaderboards browser** (*RetroAchievements → Achievements…*).
-  - Achievements are grouped by state and by set, with badges, points, unlock
-    dates, rarity and measured progress.
-  - The leaderboards tab fetches the rankings around you from the server.
-- **Rich Presence**, sent to the site automatically. It is also shown in the
-  achievements window.
-- **Savestates carry achievement state** (hit counts, leaderboard progress),
-  so casual play resumes correctly after a load.
-- **Encore**, **unofficial (unpromoted)** and **spectator** modes.
-- **Sound effects** for unlocks, mastery and leaderboard submissions. These are
-  original synthesized sounds bundled with the build.
-- **RAIntegration toolkit support** (Windows x86/x64): the RetroAchievements
-  developer toolkit.
-  - It is loaded through rcheevos' `rc_client_begin_load_raintegration`.
-  - The settings can download or update `RA_Integration-x64.dll`, using the
-    same `latestintegration` lookup as the official RAInterface.
-  - At startup melonRA offers the download if the DLL is missing or outdated.
-  - Its tools appear under *RetroAchievements → Developer toolkit*.
-  - The toolkit's memory inspector can write to emulated RAM.
-
-## Using it
-
-1. Open *RetroAchievements → Log in…* and sign in.
-2. Load a DS game that has an achievement set. A placard appears in the top
-   right with your progress and the current mode.
-3. Change the mode or the notification options under *RetroAchievements →
-   Settings…*.
-
-Only the first emulator instance runs achievements. Extra local-multiplayer
-instances play without them.
-
-## Implementation notes
+## Code layout
 
 | Piece | Where |
 |---|---|
@@ -98,7 +44,7 @@ instances play without them.
 - Memory is only read from the emulator thread.
 
 **Savestate format.** The rcheevos block is appended to the end of the file
-as `[data][u32 length]["RCHV"]`. melonDS-RA strips it before parsing the
+as `[data][u32 length]["RCHV"]`. melonRA strips it before parsing the
 state, so states without the block still load.
 
 ## Offline queue
@@ -129,7 +75,7 @@ RetroAchievements needs a login to load the achievement set.
 The client identifies itself to the server as:
 
 ```
-melonDS-RA/0.1.0 (<OS>) melonDS/<version> rcheevos/<version>
+melonRA/0.1.0 (<OS>) melonDS/<version> rcheevos/<version>
 ```
 
 `MELONDS_RA_VERSION` in `RAClient.h` must only ever increase.
@@ -149,7 +95,7 @@ applying.
 | A. Achievement list accessible in-emulator | ✅ RetroAchievements → Achievements… |
 | A. Triggers, measured progress, challenge indicators | ✅ |
 | A. Rich Presence and leaderboards | ✅ |
-| A. Offline queueing | ✅ Unlocks and leaderboard entries are saved to disk before sending. If the app closes before they're delivered, they're resubmitted (re-signed) at the next login or reconnect; see below. |
+| A. Offline queueing | ✅ Unlocks and leaderboard entries are saved to disk before sending. If the app closes before they're delivered, they're resubmitted (re-signed) at the next login or reconnect; see [Offline queue](#offline-queue). |
 | A. Hit counts in savestates | ✅ |
 | A. Toolkit (RAIntegration) support | ✅ Windows x86/x64; includes downloader/updater |
 | A. Standard save file formats | ✅ unchanged melonDS `.sav` |
@@ -158,13 +104,13 @@ applying.
 | B. Rich Presence and leaderboards can't be disabled in hardcore | ✅ (trackers forced visible) |
 | B. Casual → hardcore resets the game | ✅ |
 | B. Memory editors, debuggers, input playback blocked | ✅ RAM search and GDB stub blocked; melonDS has no input playback |
-| C. Unique, numeric User-Agent | ✅ `melonDS-RA/x.y.z`; never used another client's UA |
+| C. Unique, numeric User-Agent | ✅ `melonRA/x.y.z`; never used another client's UA |
 | D. 6 months public | ✅ via upstream melonDS |
 | E. Hardcore on by default, mode shown at game start | ✅ |
 | F. No monetization; licenses list; privacy policy | ✅ [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md), [PRIVACY.md](PRIVACY.md) |
 
 ## Building
 
-Build exactly like upstream melonDS (see [BUILD.md](BUILD.md)). rcheevos is
-built from `src/rcheevos` automatically and needs no extra dependencies. On
-Windows the build also links `winhttp`, which is part of the system.
+Build instructions are in the [README](README.md#building) and [BUILD.md](BUILD.md). rcheevos is
+built from `src/rcheevos` automatically and needs no extra dependencies. On Windows the build also
+links `winhttp`, which is part of the system.

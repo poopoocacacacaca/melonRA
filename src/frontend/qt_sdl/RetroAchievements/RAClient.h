@@ -34,7 +34,7 @@
 // RetroAchievements server sees in the User-Agent, so it must be numeric and
 // only ever increase (see the hardcore compliance requirements).
 #define MELONDS_RA_VERSION "0.1.0"
-#define MELONDS_RA_PRODUCT "melonDS-RA"
+#define MELONDS_RA_PRODUCT "melonRA"
 
 typedef struct rc_client_t rc_client_t;
 typedef struct rc_client_event_t rc_client_event_t;
