@@ -38,11 +38,11 @@ static constexpr int kSlideInMs = 220;
 static constexpr int kFadeOutMs = 450;
 static constexpr int kProgressHoldMs = 2500;
 static constexpr float kMargin = 10.f;
-static constexpr float kPopupWidth = 330.f;      // narrowest popup
-static constexpr float kPopupMaxShare = 0.55f;   // widest popup, as a share of the window
-static constexpr float kPopupIcon = 52.f;
-static constexpr float kPopupPad = 8.f;
-static constexpr float kChallengeIcon = 30.f;
+static constexpr float kPopupWidth = 260.f;      // narrowest popup
+static constexpr float kPopupMaxShare = 0.42f;   // widest popup, as a share of the window
+static constexpr float kPopupIcon = 38.f;
+static constexpr float kPopupPad = 6.f;
+static constexpr float kChallengeIcon = 26.f;
 
 Overlay::Style Overlay::Style::defaults()
 {
@@ -229,7 +229,7 @@ QColor Overlay::accentColor(PopupKind kind)
 void Overlay::drawBox(QPainter& p, const QRectF& box, const ElementStyle& st, float ui,
                       const QColor& fill, const QColor& borderColor, const QColor& accent)
 {
-    const float radius = st.rounded ? 6 * ui : 0.f;
+    const float radius = st.rounded ? 5 * ui : 0.f;
     QPainterPath path;
     path.addRoundedRect(box, radius, radius);
 
@@ -242,7 +242,7 @@ void Overlay::drawBox(QPainter& p, const QRectF& box, const ElementStyle& st, fl
         // accent bar along the left edge, following the box's corners
         p.save();
         p.setClipPath(path);
-        p.fillRect(QRectF(box.left(), box.top(), 4 * ui, box.height()), accent);
+        p.fillRect(QRectF(box.left(), box.top(), 3 * ui, box.height()), accent);
         p.restore();
     }
 
@@ -285,7 +285,7 @@ void Overlay::paint(QPainter& p, int width, int height)
 
     // scale the widgets with the window, within sane limits
     // (melonDS defaults to a small 256x384 window, so keep a readable floor)
-    float ui = std::clamp(std::min(width / 560.f, height / 420.f), 0.7f, 1.6f) * style.scale;
+    float ui = std::clamp(std::min(width / 640.f, height / 480.f), 0.65f, 1.3f) * style.scale;
     int64_t now = nowMs();
 
     std::vector<Item> items[kNumElements];
@@ -317,20 +317,20 @@ void Overlay::popupItems(std::deque<Popup>& queue, const ElementStyle& st, std::
     const float margin = kMargin * ui;
     const float icon = kPopupIcon * ui;
     const float pad = kPopupPad * ui;
-    const float bar = 4 * ui;
+    const float bar = 3 * ui;
     const float minW = kPopupWidth * ui;
     // use the room a wide window has, so long names and descriptions fit on fewer lines
     const float maxW = std::max(minW, width * kPopupMaxShare);
     const float limitW = width - 2 * margin;
 
     QFont titleFont;
-    titleFont.setPixelSize(std::max(11, (int)(14 * ui)));
+    titleFont.setPixelSize(std::max(10, (int)(13 * ui)));
     titleFont.setBold(st.bold);
     QFont bodyFont = titleFont;
     bodyFont.setBold(false);
-    bodyFont.setPixelSize(std::max(10, (int)(12 * ui)));
+    bodyFont.setPixelSize(std::max(9, (int)(11 * ui)));
     QFont smallFont = bodyFont;
-    smallFont.setPixelSize(std::max(9, (int)(11 * ui)));
+    smallFont.setPixelSize(std::max(8, (int)(10 * ui)));
     QFontMetricsF tfm(titleFont), bfm(bodyFont), sfm(smallFont);
 
     const int wrap = Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap;
@@ -458,12 +458,12 @@ void Overlay::progressItems(const ElementStyle& st, std::vector<Item>& out, floa
     }
 
     QFont font;
-    font.setPixelSize(std::max(8, (int)(13 * ui)));
+    font.setPixelSize(std::max(8, (int)(12 * ui)));
     font.setBold(st.bold);
     QFontMetricsF fm(font);
 
-    const float icon = 28 * ui;
-    const float pad = 5 * ui;
+    const float icon = 24 * ui;
+    const float pad = 4 * ui;
     const float textW = fm.horizontalAdvance(progressText);
 
     Item item;
@@ -489,7 +489,7 @@ void Overlay::trackerItems(const ElementStyle& st, std::vector<Item>& out, float
 
     // fixed-width font so timers don't jitter as digits change
     QFont font = fixedFont;
-    font.setPixelSize(std::max(9, (int)(15 * ui)));
+    font.setPixelSize(std::max(9, (int)(13 * ui)));
     font.setBold(st.bold);
     QFontMetricsF fm(font);
 
@@ -498,7 +498,7 @@ void Overlay::trackerItems(const ElementStyle& st, std::vector<Item>& out, float
     std::sort(ordered.begin(), ordered.end(),
               [](const Tracker* a, const Tracker* b) { return a->order < b->order; });
 
-    const float padX = 8 * ui, padY = 3 * ui;
+    const float padX = 7 * ui, padY = 2 * ui;
     for (const Tracker* tr : ordered)
     {
         const QString text = tr->text;
