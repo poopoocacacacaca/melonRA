@@ -5,6 +5,8 @@ on:
     branches:
       - master
       - ci/*
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - master
@@ -60,30 +62,43 @@ jobs:
         path: ${{ github.workspace }}/vcpkg_cache
         key: vcpkg-${{ matrix.arch.name }}-windows-${{ hashFiles('vcpkg.json') }}
 
-  # Publish every master build as a public "nightly" pre-release, so
-  # testers can download it without a GitHub account
+  # Publish builds: every master push replaces the public "nightly" pre-release,
+  # and version tags (v0.1.0, ...) create the versioned melonRA release.
   publish:
-    name: Publish nightly release
+    name: Publish release
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
     concurrency:
-      group: nightly-release
+      group: publish-${{ github.ref }}
       cancel-in-progress: true
     steps:
+    - name: Check out sources
+      uses: actions/checkout@v6
     - name: Download build artifacts
       uses: actions/download-artifact@v4
       with:
         path: artifacts
     - name: Package
       run: |
+        if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+          prefix="melonRA-${GITHUB_REF_NAME#v}"
+        else
+          prefix="melonRA"
+        fi
         for arch in x86_64 arm64; do
-          (cd "artifacts/melonRA-windows-$arch" && zip -9 "$GITHUB_WORKSPACE/melonRA-windows-$arch.zip" melonRA.exe)
+          (cd "artifacts/melonRA-windows-$arch" && zip -9 "$GITHUB_WORKSPACE/$prefix-windows-$arch.zip" melonRA.exe)
         done
-        ls -la melonRA-windows-*.zip
+        ls -la melonRA*-windows-*.zip
+    - name: Publish versioned release
+      if: github.ref_type == 'tag'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: tools/ci-release.sh melonRA-*-windows-*.zip
     - name: Update nightly release
+      if: github.ref_type != 'tag'
       env:
         GH_TOKEN: ${{ github.token }}
       run: |

@@ -5,6 +5,8 @@ on:
     branches:
       - master
       - ci/*
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - master
@@ -57,12 +59,12 @@ jobs:
         shell: bash
         run: |
           cd build/release-mac-${{ matrix.arch }}
-          zip -r -y ../../macOS-${{ matrix.arch }}.zip melonRA.app
+          zip -r -y ../../melonRA-macOS-${{ matrix.arch }}.zip melonRA.app
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: macOS-${{ matrix.arch }}
-          path: macOS-${{ matrix.arch }}.zip
+          name: melonRA-macOS-${{ matrix.arch }}
+          path: melonRA-macOS-${{ matrix.arch }}.zip
           retention-days: 1
           archive: false
       - name: Save vcpkg cache
@@ -76,17 +78,19 @@ jobs:
     needs: [build-macos]
     runs-on: macos-26
     continue-on-error: true
+    permissions:
+      contents: write
     steps:
       - name: Download x86_64
         uses: actions/download-artifact@v8
         with:
-          name: macOS-x86_64.zip
+          name: melonRA-macOS-x86_64.zip
           path: x86_64
           skip-decompress: true
       - name: Download arm64
         uses: actions/download-artifact@v8
         with:
-          name: macOS-arm64.zip
+          name: melonRA-macOS-arm64.zip
           path: arm64
           skip-decompress: true
       - name: Combine app bundles
@@ -98,17 +102,30 @@ jobs:
           cp -a arm64/melonRA.app melonRA.app
           cp melonRA melonRA.app/Contents/MacOS/melonRA
           codesign -s - --deep melonRA.app
-          zip -r -y macOS-universal.zip melonRA.app
+          zip -r -y melonRA-macOS-universal.zip melonRA.app
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: macOS-universal
-          path: macOS-universal.zip
+          name: melonRA-macOS-universal
+          path: melonRA-macOS-universal.zip
           archive: false
+      - name: Check out sources (release script)
+        if: github.ref_type == 'tag'
+        uses: actions/checkout@v6
+        with:
+          path: src
+      - name: Publish versioned release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          file="melonRA-${GITHUB_REF_NAME#v}-macOS-universal.zip"
+          cp melonRA-macOS-universal.zip "$file"
+          src/tools/ci-release.sh "$file"
 #     - name: Clean up architecture-specific artifacts
 #       uses: geekyeggo/delete-artifact@v4
 #       with:
 #         failOnError: false
 #         name: |
-#           macOS-x86_64
-#           macOS-arm64
+#           melonRA-macOS-x86_64.zip
+#           melonRA-macOS-arm64.zip

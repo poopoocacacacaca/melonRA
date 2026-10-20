@@ -25,9 +25,9 @@
 #define MELONDS_VERSION_SUFFIX "${MELONDS_VERSION_SUFFIX}"
 #define MELONDS_VERSION        MELONDS_VERSION_BASE MELONDS_VERSION_SUFFIX
 
-// melonRA's own version. It is also sent to RetroAchievements in the
-// User-Agent, so it must stay numeric and only ever increase.
-#define MELONRA_VERSION        "0.1.0"
+// melonRA's own version (MAJOR.MINOR.PATCH), set in the top-level CMakeLists.txt.
+// It is also sent to RetroAchievements in the User-Agent.
+#define MELONRA_VERSION        "${MELONRA_VERSION}"
 
 #ifdef MELONDS_EMBED_BUILD_INFO
 #define MELONDS_GIT_BRANCH       "${MELONDS_GIT_BRANCH}"

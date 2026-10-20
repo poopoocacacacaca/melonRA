@@ -78,7 +78,7 @@ The client identifies itself to the server as:
 melonRA/0.1.0 (<OS>) melonDS/<version> rcheevos/<version>
 ```
 
-`MELONDS_RA_VERSION` in `RAClient.h` must only ever increase.
+The version comes from `MELONRA_VERSION` in the top-level `CMakeLists.txt` and must only ever increase.
 
 Until RetroAchievements approves this client for hardcore, the server records
 hardcore unlocks as casual ones. To apply, follow the

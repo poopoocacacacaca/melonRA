@@ -5,6 +5,8 @@ on:
     branches:
       - master
       - ci/*
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - master
@@ -29,6 +31,8 @@ jobs:
 
     name: ${{ matrix.arch.name }}
     runs-on: ${{ matrix.arch.runner }}
+    permissions:
+      contents: write
 
     steps:
     - uses: actions/checkout@v6
@@ -65,3 +69,11 @@ jobs:
         name: melonRA-appimage-${{ matrix.arch.name }}
         path: melonRA*.AppImage
         archive: false
+    - name: Publish versioned release
+      if: github.ref_type == 'tag'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        file="melonRA-${GITHUB_REF_NAME#v}-linux-${{ matrix.arch.name }}.AppImage"
+        cp melonRA*-${{ matrix.arch.name }}.AppImage "$file"
+        tools/ci-release.sh "$file"

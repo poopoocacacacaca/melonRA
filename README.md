@@ -39,10 +39,11 @@ regular melonDS desktop app.
 
 ## Getting started
 
-1. **Windows:** download `melonRA-windows-x86_64.zip` from the
-   [nightly release](https://github.com/poopoocacacacaca/melonRA/releases/tag/nightly), which is rebuilt
-   from every commit. Unzip it anywhere and run `melonRA.exe`. Other platforms: grab an artifact from the
-   [Actions tab](https://github.com/poopoocacacacaca/melonRA/actions), or build it yourself (see below).
+1. Download the [latest release](https://github.com/poopoocacacacaca/melonRA/releases/latest):
+   `melonRA-<version>-windows-x86_64.zip` for Windows, or the Linux AppImage. Unzip it anywhere and run
+   `melonRA.exe`. To try the newest changes before a release, use the
+   [nightly build](https://github.com/poopoocacacacaca/melonRA/releases/tag/nightly), or build it yourself
+   (see below).
 2. Set up melonDS as usual (BIOS/firmware are optional, see the original README below).
 3. Open **RetroAchievements → Log in…** and sign in with your
    [RetroAchievements.org](https://retroachievements.org) account.
@@ -51,6 +52,16 @@ regular melonDS desktop app.
 
 All options live in **RetroAchievements → Settings…**: hardcore, encore, spectator, unofficial
 achievements, which notifications to show, and sounds.
+
+## Versions
+
+melonRA versions are `MAJOR.MINOR.PATCH`, starting at 0.1.0:
+
+- **MAJOR** goes up for major releases.
+- **MINOR** goes up for feature releases.
+- **PATCH** goes up for small updates and fixes.
+
+What changed in each version is in [CHANGELOG.md](./CHANGELOG.md).
 
 ## Building
 

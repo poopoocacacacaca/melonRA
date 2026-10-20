@@ -22,6 +22,15 @@ project(melonDS
     HOMEPAGE_URL "https://melonds.kuribo64.net"
     LANGUAGES C CXX)
 
+# melonRA's own version: MAJOR.MINOR.PATCH
+#   MAJOR - major releases
+#   MINOR - feature releases
+#   PATCH - small updates and bug fixes
+# This is the single place to bump it. It is also reported to RetroAchievements,
+# so it must only ever increase. (melonDS_VERSION above is the upstream melonDS
+# version this fork is based on.)
+set(MELONRA_VERSION "0.1.0")
+
 include(CheckSymbolExists)
 include(CheckLibraryExists)
 include(CMakeDependentOption)
