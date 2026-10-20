@@ -24,8 +24,11 @@ if [[ "${GITHUB_REF_TYPE:-}" == "branch" && "${GITHUB_REF_NAME:-}" == "master" ]
         echo "- **Windows:** \`melonRA-windows-x86_64.zip\` (or \`-arm64\`). Unzip it anywhere and run \`melonRA.exe\`."
         echo "- **Linux:** \`melonRA-linux-x86_64.AppImage\` (or \`-aarch64\`). Make it executable and run it."
         echo
-        echo "Each file is replaced as its build finishes, so for a few minutes after a new commit"
-        echo "the platforms can be one commit apart. Built from ${GITHUB_SHA}."
+        echo "**Last updated:** $(date -u '+%Y-%m-%d %H:%M') UTC, from commit [\`${GITHUB_SHA::7}\`](https://github.com/$repo/commit/$GITHUB_SHA)."
+        echo
+        echo "A new nightly is built for every commit to \`master\`. Each file is replaced as its build"
+        echo "finishes, about 10-15 minutes after the commit, so for a short while the platforms can be"
+        echo "one commit apart. Built from ${GITHUB_SHA}."
     } > "$notes"
 
     if ! gh release view nightly --repo "$repo" > /dev/null 2>&1; then
