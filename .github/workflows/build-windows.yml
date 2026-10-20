@@ -58,3 +58,46 @@ jobs:
       with:
         path: ${{ github.workspace }}/vcpkg_cache
         key: vcpkg-${{ matrix.arch.name }}-windows-${{ hashFiles('vcpkg.json') }}
+
+  # melonRA: publish every master build as a public "nightly" pre-release, so
+  # testers can download it without a GitHub account
+  publish:
+    name: Publish nightly release
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: nightly-release
+      cancel-in-progress: true
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    - name: Package
+      run: |
+        for arch in x86_64 arm64; do
+          (cd "artifacts/melonDS-windows-$arch" && zip -9 "$GITHUB_WORKSPACE/melonRA-windows-$arch.zip" melonDS.exe)
+        done
+        ls -la melonRA-windows-*.zip
+    - name: Update nightly release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        {
+          echo "Automatic build of the latest master commit ${GITHUB_SHA}."
+          echo
+          echo "**Download** \`melonRA-windows-x86_64.zip\` for most PCs, or \`melonRA-windows-arm64.zip\` for ARM Windows devices."
+          echo "Unzip it anywhere and run \`melonDS.exe\`. It keeps its config next to the exe."
+          echo
+          echo "Then use **RetroAchievements > Log in...**. Until RetroAchievements approves melonRA for hardcore, hardcore unlocks are recorded as casual."
+        } > notes.md
+        gh release delete nightly --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+        gh release create nightly melonRA-windows-*.zip \
+          --repo "$GITHUB_REPOSITORY" \
+          --target "$GITHUB_SHA" \
+          --prerelease \
+          --title "melonRA nightly (${GITHUB_SHA::7})" \
+          --notes-file notes.md

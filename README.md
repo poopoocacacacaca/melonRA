@@ -39,8 +39,10 @@ regular melonDS desktop app.
 
 ## Getting started
 
-1. Get a build from the [Actions tab](https://github.com/poopoocacacacaca/melonRA/actions): open the latest
-   successful run and download the artifact for your platform. You can also build it yourself, see below.
+1. **Windows:** download `melonRA-windows-x86_64.zip` from the
+   [nightly release](https://github.com/poopoocacacacaca/melonRA/releases/tag/nightly), which is rebuilt
+   from every commit. Unzip it anywhere and run `melonDS.exe`. Other platforms: grab an artifact from the
+   [Actions tab](https://github.com/poopoocacacacaca/melonRA/actions), or build it yourself (see below).
 2. Set up melonDS as usual (BIOS/firmware are optional, see the original README below).
 3. Open **RetroAchievements → Log in…** and sign in with your
    [RetroAchievements.org](https://retroachievements.org) account.
