@@ -132,6 +132,14 @@ melonRA has no telemetry. The only data it sends goes to RetroAchievements.org, 
 - [RetroAchievements](https://retroachievements.org) and [rcheevos](https://github.com/RetroAchievements/rcheevos) (MIT).
 - melonRA is free software under the GPLv3, like melonDS. It is not affiliated with the melonDS team or RetroAchievements.
 
+## Ethos on AI Usage
+
+I am not a developer with much finesse, but new technologies make it easier every day to mold things in a direction that you'd like them to.
+I don't think developing stuff with the help of AI is inherently bad, but there are a slew of people who only really care about the end result
+and not forging a more polished product, I can at least say I polish up on visuals and stuff that AI could never replace to a T,
+my end goal is to have a temporary solution until something better comes along the way, hopefully taking into account what AI was able to come
+up with in this or any other repository, Pandora's Box has already opened... Why not take advantage of it?
+
 <br>
 <hr>
 <hr>
