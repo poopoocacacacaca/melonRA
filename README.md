@@ -24,11 +24,15 @@ regular melonDS desktop app.
 - (WIP) **Hardcore mode**, on by default, for full-credit unlocks.
 - **Offline-safe unlocks.** If the connection drops, unlocks and leaderboard entries are saved and submitted later, even after restarting melonRA.
 - **On-screen notifications:**
+  - your username and points when a game starts
   - game start with your progress
   - unlocks and mastery
   - leaderboard attempts and your new rank
 - **Challenge and progress indicators**, so you know when an achievement is "armed" or how close you are.
 - **Leaderboard trackers**, which show the live timer or score while an attempt is running.
+- **Customizable overlay.** Put each kind of notification in any corner, along an edge or in the
+  center, with rounded or square corners, bold text and borders, at four sizes, with a live preview and
+  a test button.
 - **Achievements and leaderboards browser** with badges, unlock dates, rarity and the rankings around you.
 - **Rich Presence.** Your RetroAchievements profile shows what you're doing in the game.
 - **Extras:**
@@ -52,7 +56,8 @@ regular melonDS desktop app.
    the full list and the leaderboards.
 
 All options live in **RetroAchievements → Settings…**: hardcore, encore, spectator, unofficial
-achievements, which notifications to show, and sounds.
+achievements, which notifications to show, and sounds. Its **Appearance** tab sets where each
+notification goes and how it looks.
 
 ## Versions
 

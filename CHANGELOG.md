@@ -11,6 +11,15 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 - **Updater.** melonRA checks for new versions at startup and offers to update now, skip that version or
   wait. Config → Update Settings picks the Stable or Nightly channel, can install updates automatically
   before melonRA opens, and can turn the question off.
+- **Notification layout and style.** A new Appearance tab in RetroAchievements Settings places each
+  kind of notification (achievements, leaderboards, challenge indicators, progress, trackers) in a
+  corner, along the top or bottom edge, or in the center. Each one can have rounded or square
+  corners, bold text and a border, and there are four sizes. A live preview and a Test Notifications
+  button show the result.
+- **Your account at game start.** When a game starts, a notification shows your RetroAchievements
+  username and points (can be turned off).
+- Notifications use the room a wider window has, and long achievement names and descriptions wrap
+  onto more lines instead of being cut off.
 - Menus, window titles and section headings use Title Case ("Emulation Settings", "Wi-Fi Settings", ...).
 - Fixed the menu bar's hover highlight being shorter than the menu name with the Windows 11 theme.
 

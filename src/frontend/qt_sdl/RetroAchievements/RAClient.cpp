@@ -30,6 +30,7 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLocale>
 #include <QMessageBox>
 #include <QMetaObject>
 #include <QRandomGenerator>
@@ -79,6 +80,7 @@ static std::atomic<bool> optChallenges{true};
 static std::atomic<bool> optProgress{true};
 static std::atomic<bool> optTrackers{true};
 static std::atomic<bool> optSounds{true};
+static std::atomic<bool> optAccountOnStart{true};
 static std::atomic<bool> optEnabled{true};
 
 
@@ -485,11 +487,71 @@ void Manager::reloadDisplayOptions()
     optProgress = cfg.GetBool("ProgressIndicators");
     optTrackers = cfg.GetBool("LeaderboardTrackers");
     optSounds = cfg.GetBool("Sounds");
+    optAccountOnStart = cfg.GetBool("ShowAccountOnStart");
 
     // Leaderboards can't be turned off in hardcore; keep their trackers
     // visible there so players always see what is being submitted.
     bool trackers = optTrackers || (rcClient && rc_client_get_hardcore_enabled(rcClient));
     ovl->setOptions(optPopups, optChallenges, optProgress, trackers);
+    ovl->setStyle(loadOverlayStyle());
+}
+
+static const char* const kAnchorNames[Overlay::kNumAnchors] = {
+    "top-left", "top-center", "top-right", "center", "bottom-left", "bottom-center", "bottom-right",
+};
+
+const char* Manager::overlayElementKey(Overlay::Element element)
+{
+    switch (element)
+    {
+    case Overlay::Element::Notifications:            return "Notifications";
+    case Overlay::Element::LeaderboardNotifications: return "LeaderboardNotifications";
+    case Overlay::Element::Challenges:               return "ChallengeIndicators";
+    case Overlay::Element::Progress:                 return "ProgressIndicators";
+    case Overlay::Element::Trackers:                 return "LeaderboardTrackers";
+    }
+    return "Notifications";
+}
+
+Overlay::Style Manager::loadOverlayStyle()
+{
+    Config::Table cfg = raConfig();
+    Overlay::Style st = Overlay::Style::defaults();
+
+    for (int e = 0; e < Overlay::kNumElements; e++)
+    {
+        std::string key = overlayElementKey((Overlay::Element)e);
+        Overlay::ElementStyle& es = st.elements[e];
+
+        std::string pos = cfg.GetString(key + "Position");
+        for (int a = 0; a < Overlay::kNumAnchors; a++)
+            if (pos == kAnchorNames[a]) es.anchor = (Overlay::Anchor)a;
+
+        es.rounded = !cfg.GetBool(key + "Square");
+        es.bold = cfg.GetBool(key + "Bold");
+        es.border = cfg.GetBool(key + "Border");
+    }
+
+    int scale = cfg.GetInt("OverlayScale");
+    st.scale = (scale >= 50 && scale <= 200) ? scale / 100.f : 1.f;
+    return st;
+}
+
+void Manager::saveOverlayStyle(const Overlay::Style& st)
+{
+    Config::Table cfg = raConfig();
+
+    for (int e = 0; e < Overlay::kNumElements; e++)
+    {
+        std::string key = overlayElementKey((Overlay::Element)e);
+        const Overlay::ElementStyle& es = st.elements[e];
+        cfg.SetString(key + "Position", kAnchorNames[(int)es.anchor]);
+        cfg.SetBool(key + "Square", !es.rounded);
+        cfg.SetBool(key + "Bold", es.bold);
+        cfg.SetBool(key + "Border", es.border);
+    }
+    cfg.SetInt("OverlayScale", (int)(st.scale * 100.f + 0.5f));
+    Config::Save();
 }
 
 bool Manager::soundsEnabled() const
@@ -1158,10 +1220,26 @@ QString Manager::hardcoreStatusText() const
     return rc_client_get_hardcore_enabled(rcClient) ? "Hardcore Mode" : "Casual Mode";
 }
 
+void Manager::showAccountPopup()
+{
+    const rc_client_user_t* user = rc_client_get_user_info(rcClient);
+    if (!user) return;
+
+    QLocale loc;
+    QString name = QString::fromUtf8(user->display_name ? user->display_name : user->username);
+    ovl->addPopup(Overlay::PopupKind::Account, userAvatarUrl(), name,
+                  QString("%1 points").arg(loc.toString(user->score)),
+                  QString("%1 casual points").arg(loc.toString(user->score_casual)), 5000);
+}
+
 void Manager::showGamePlacard()
 {
     const rc_client_game_t* game = rc_client_get_game_info(rcClient);
     if (!game) return;
+
+    // like DuckStation: who's playing, at the start of the session
+    if (optAccountOnStart && optPopups)
+        showAccountPopup();
 
     rc_client_user_game_summary_t summary;
     rc_client_get_user_game_summary(rcClient, &summary);

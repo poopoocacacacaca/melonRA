@@ -27,7 +27,11 @@
 #include <QDateTime>
 #include <QDialogButtonBox>
 #include <QFileInfo>
+#include <QComboBox>
 #include <QFormLayout>
+#include <QGridLayout>
+#include <QLinearGradient>
+#include <QLocale>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -45,6 +49,7 @@
 #include <QTableWidget>
 #include <QTreeWidget>
 #include <QUrl>
+#include <QTimer>
 #include <QVBoxLayout>
 
 #include "rc_client.h"
@@ -216,6 +221,28 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent)
     Manager* m = Manager::get();
     auto* layout = new QVBoxLayout(this);
 
+    auto* tabs = new QTabWidget();
+    tabs->addTab(createGeneralTab(), "General");
+    tabs->addTab(createAppearanceTab(), "Appearance");
+    layout->addWidget(tabs);
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close);
+    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::close);
+    layout->addWidget(buttons);
+
+    connect(m, &Manager::stateChanged, this, &SettingsDialog::refresh);
+    connect(m, &Manager::imagesUpdated, this, &SettingsDialog::refresh);
+
+    showStyle(Manager::loadOverlayStyle());
+    refresh();
+}
+
+QWidget* SettingsDialog::createGeneralTab()
+{
+    Manager* m = Manager::get();
+    auto* page = new QWidget();
+    auto* layout = new QVBoxLayout(page);
+
     // account
     auto* accountBox = new QGroupBox("Account");
     auto* accountLayout = new QHBoxLayout(accountBox);
@@ -267,18 +294,24 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent)
     auto* notifBox = new QGroupBox("On-Screen Notifications");
     auto* notif = new QVBoxLayout(notifBox);
     cbNotifications = new QCheckBox("Achievement and game notifications");
+    cbAccountOnStart = new QCheckBox("Show your username and points when a game starts");
     cbLeaderboardNotifications = new QCheckBox("Leaderboard notifications");
     cbChallenges = new QCheckBox("Challenge indicators");
     cbProgress = new QCheckBox("Progress indicators");
     cbTrackers = new QCheckBox("Leaderboard trackers (always shown in hardcore)");
     cbSounds = new QCheckBox("Sound effects");
-    for (QCheckBox* cb : {cbNotifications, cbLeaderboardNotifications, cbChallenges, cbProgress, cbTrackers, cbSounds})
+    notif->addWidget(cbNotifications);
+    auto* accountRow = new QHBoxLayout();
+    accountRow->addSpacing(20);
+    accountRow->addWidget(cbAccountOnStart, 1);
+    notif->addLayout(accountRow);
+    for (QCheckBox* cb : {cbLeaderboardNotifications, cbChallenges, cbProgress, cbTrackers, cbSounds})
         notif->addWidget(cb);
+    auto* styleHint = new QLabel("Positions and looks are on the Appearance tab.");
+    styleHint->setEnabled(false);
+    notif->addWidget(styleHint);
     layout->addWidget(notifBox);
-
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close);
-    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::close);
-    layout->addWidget(buttons);
+    layout->addStretch(1);
 
     connect(loginButton, &QPushButton::clicked, this, [this]() { LoginDialog::open(this); });
     connect(logoutButton, &QPushButton::clicked, this, []() { Manager::get()->logout(); });
@@ -325,19 +358,207 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent)
             Config::GetGlobalTable().GetTable("RetroAchievements").SetBool(key, on);
             Config::Save();
             m->reloadDisplayOptions();
+            refresh();
         });
     };
     bindDisplay(cbNotifications, "Notifications");
+    bindDisplay(cbAccountOnStart, "ShowAccountOnStart");
     bindDisplay(cbLeaderboardNotifications, "LeaderboardNotifications");
     bindDisplay(cbChallenges, "ChallengeIndicators");
     bindDisplay(cbProgress, "ProgressIndicators");
     bindDisplay(cbTrackers, "LeaderboardTrackers");
     bindDisplay(cbSounds, "Sounds");
 
-    connect(m, &Manager::stateChanged, this, &SettingsDialog::refresh);
-    connect(m, &Manager::imagesUpdated, this, &SettingsDialog::refresh);
+    return page;
+}
 
-    refresh();
+QWidget* SettingsDialog::createAppearanceTab()
+{
+    auto* page = new QWidget();
+    auto* layout = new QVBoxLayout(page);
+
+    preview = new OverlayPreview();
+    layout->addWidget(preview, 1);
+
+    auto* testRow = new QHBoxLayout();
+    auto* testButton = new QPushButton("Test Notifications");
+    testButton->setToolTip("Shows sample notifications here, and on the game screen while a game is running.");
+    testRow->addWidget(testButton);
+    auto* testNote = new QLabel("Also shown on the game screen while a game is running.");
+    testNote->setWordWrap(true);
+    testNote->setEnabled(false);
+    testRow->addWidget(testNote, 1);
+    layout->addLayout(testRow);
+
+    auto* styleBox = new QGroupBox("Notification Style");
+    auto* grid = new QGridLayout(styleBox);
+    grid->setColumnStretch(0, 1);
+    const char* headers[] = {"Position", "Corners", "Bold Text", "Border"};
+    for (int c = 0; c < 4; c++)
+    {
+        auto* h = new QLabel(QString("<b>%1</b>").arg(headers[c]));
+        grid->addWidget(h, 0, c + 1, c >= 2 ? Qt::AlignHCenter : Qt::AlignLeft);
+    }
+
+    // same names and order as the checkboxes on the General tab
+    const char* names[Overlay::kNumElements] = {
+        "Achievement and game notifications",
+        "Leaderboard notifications",
+        "Challenge indicators",
+        "Progress indicators",
+        "Leaderboard trackers",
+    };
+    const QStringList positions = {"Top Left", "Top Center", "Top Right", "Center",
+                                   "Bottom Left", "Bottom Center", "Bottom Right"};
+
+    for (int e = 0; e < Overlay::kNumElements; e++)
+    {
+        int row = e + 1;
+        styleLabel[e] = new QLabel(names[e]);
+        grid->addWidget(styleLabel[e], row, 0);
+
+        stylePosition[e] = new QComboBox();
+        stylePosition[e]->addItems(positions);
+        grid->addWidget(stylePosition[e], row, 1);
+
+        styleCorners[e] = new QComboBox();
+        styleCorners[e]->addItems({"Rounded", "Square"});
+        grid->addWidget(styleCorners[e], row, 2);
+
+        styleBold[e] = new QCheckBox();
+        grid->addWidget(styleBold[e], row, 3, Qt::AlignHCenter);
+        // challenge indicators are badges without text
+        if ((Overlay::Element)e == Overlay::Element::Challenges)
+            styleBold[e]->hide();
+
+        styleBorder[e] = new QCheckBox();
+        grid->addWidget(styleBorder[e], row, 4, Qt::AlignHCenter);
+
+        connect(stylePosition[e], qOverload<int>(&QComboBox::currentIndexChanged), this, &SettingsDialog::applyStyle);
+        connect(styleCorners[e], qOverload<int>(&QComboBox::currentIndexChanged), this, &SettingsDialog::applyStyle);
+        connect(styleBold[e], &QCheckBox::toggled, this, &SettingsDialog::applyStyle);
+        connect(styleBorder[e], &QCheckBox::toggled, this, &SettingsDialog::applyStyle);
+    }
+    layout->addWidget(styleBox);
+
+    auto* bottomRow = new QHBoxLayout();
+    bottomRow->addWidget(new QLabel("Size:"));
+    styleSize = new QComboBox();
+    styleSize->addItem("Small", 80);
+    styleSize->addItem("Normal", 100);
+    styleSize->addItem("Large", 125);
+    styleSize->addItem("Extra Large", 150);
+    bottomRow->addWidget(styleSize);
+    bottomRow->addStretch(1);
+    auto* resetButton = new QPushButton("Reset to Defaults");
+    bottomRow->addWidget(resetButton);
+    layout->addLayout(bottomRow);
+
+    connect(styleSize, qOverload<int>(&QComboBox::currentIndexChanged), this, &SettingsDialog::applyStyle);
+    connect(resetButton, &QPushButton::clicked, this, [this]()
+    {
+        showStyle(Overlay::Style::defaults());
+        applyStyle();
+    });
+    connect(testButton, &QPushButton::clicked, this, &SettingsDialog::showTestNotifications);
+
+    return page;
+}
+
+Overlay::Style SettingsDialog::styleFromControls() const
+{
+    Overlay::Style st;
+    for (int e = 0; e < Overlay::kNumElements; e++)
+    {
+        Overlay::ElementStyle& es = st.elements[e];
+        es.anchor = (Overlay::Anchor)std::max(0, stylePosition[e]->currentIndex());
+        es.rounded = styleCorners[e]->currentIndex() == 0;
+        es.bold = styleBold[e]->isChecked();
+        es.border = styleBorder[e]->isChecked();
+    }
+    st.scale = styleSize->currentData().toInt() / 100.f;
+    return st;
+}
+
+void SettingsDialog::showStyle(const Overlay::Style& st)
+{
+    bool wasUpdating = updating;
+    updating = true;
+    for (int e = 0; e < Overlay::kNumElements; e++)
+    {
+        const Overlay::ElementStyle& es = st.elements[e];
+        stylePosition[e]->setCurrentIndex((int)es.anchor);
+        styleCorners[e]->setCurrentIndex(es.rounded ? 0 : 1);
+        styleBold[e]->setChecked(es.bold);
+        styleBorder[e]->setChecked(es.border);
+    }
+    int size = 1;
+    for (int i = 0; i < styleSize->count(); i++)
+        if (std::abs(styleSize->itemData(i).toInt() - st.scale * 100.f) < 1.f) size = i;
+    styleSize->setCurrentIndex(size);
+    updating = wasUpdating;
+
+    preview->setStyle(st);
+}
+
+void SettingsDialog::applyStyle()
+{
+    if (updating) return;
+
+    Overlay::Style st = styleFromControls();
+    Manager::saveOverlayStyle(st);
+    Manager::get()->reloadDisplayOptions();
+    preview->setStyle(st);
+}
+
+// sample notifications, one of each kind of box
+static void addTestNotifications(Overlay& ovl, bool withAccount)
+{
+    Manager* m = Manager::get();
+    const std::string icon = ":/melon-icon";
+
+    if (withAccount)
+    {
+        QLocale loc;
+        bool loggedIn = m->isLoggedIn();
+        ovl.addPopup(Overlay::PopupKind::Account, loggedIn ? m->userAvatarUrl() : icon,
+                     loggedIn ? m->userDisplayName() : QString("Your Username"),
+                     QString("%1 points").arg(loc.toString(loggedIn ? m->userScore() : 12345)),
+                     QString("%1 casual points").arg(loc.toString(loggedIn ? m->userCasualScore() : 678)),
+                     5000);
+    }
+    ovl.addPopup(Overlay::PopupKind::Unlock, icon, "Achievement Unlocked",
+                 "Test Achievement With a Rather Long Name",
+                 "This is how an unlock looks. Long names and descriptions wrap onto more lines "
+                 "instead of being cut off. (10 points)",
+                 6000);
+    ovl.addPopup(Overlay::PopupKind::Leaderboard, "", "Leaderboard attempt started",
+                 "Test Leaderboard", "Finish the first course as fast as you can", 6000);
+}
+
+void SettingsDialog::showTestNotifications()
+{
+    Manager* m = Manager::get();
+    Config::Table cfg = Config::GetGlobalTable().GetTable("RetroAchievements");
+    bool account = cfg.GetBool("ShowAccountOnStart");
+
+    addTestNotifications(preview->overlay(), account);
+
+    // on the game screen too, with sample indicators for a few seconds
+    if (m->isEnabled())
+    {
+        Overlay& ovl = m->overlay();
+        addTestNotifications(ovl, account);
+        constexpr uint32_t kTestId = 0xFFFFFF00;
+        ovl.showChallenge(kTestId, ":/melon-icon");
+        ovl.showProgress(":/melon-icon", "12/50");
+        ovl.showTracker(kTestId, "01:23.45");
+        QTimer::singleShot(6000, m, [m]()
+        {
+            m->overlay().hideChallenge(kTestId);
+            m->overlay().hideTracker(kTestId);
+        });
+    }
 }
 
 void SettingsDialog::refresh()
@@ -385,6 +606,7 @@ void SettingsDialog::refresh()
             toolkitStatus->setText(QFileInfo::exists(Manager::raIntegrationDllPath()) ? "Installed." : "Not installed.");
     }
     cbNotifications->setChecked(cfg.GetBool("Notifications"));
+    cbAccountOnStart->setChecked(cfg.GetBool("ShowAccountOnStart"));
     cbLeaderboardNotifications->setChecked(cfg.GetBool("LeaderboardNotifications"));
     cbChallenges->setChecked(cfg.GetBool("ChallengeIndicators"));
     cbProgress->setChecked(cfg.GetBool("ProgressIndicators"));
@@ -394,9 +616,93 @@ void SettingsDialog::refresh()
     for (QCheckBox* cb : {cbHardcore, cbEncore, cbUnpromoted, cbSpectator, cbNotifications,
                           cbLeaderboardNotifications, cbChallenges, cbProgress, cbTrackers, cbSounds})
         cb->setEnabled(m->isEnabled());
+    cbAccountOnStart->setEnabled(m->isEnabled() && cbNotifications->isChecked());
     loginButton->setEnabled(m->isEnabled());
 
+    // grey out the style of anything that's turned off
+    bool shown[Overlay::kNumElements] = {
+        cbNotifications->isChecked(),
+        cbLeaderboardNotifications->isChecked(),
+        cbChallenges->isChecked(),
+        cbProgress->isChecked(),
+        cbTrackers->isChecked(),
+    };
+    for (int e = 0; e < Overlay::kNumElements; e++)
+    {
+        bool on = m->isEnabled() && shown[e];
+        for (QWidget* w : std::initializer_list<QWidget*>{styleLabel[e], stylePosition[e], styleCorners[e],
+                                                          styleBold[e], styleBorder[e]})
+            w->setEnabled(on);
+    }
+    // popups share one switch in the overlay; the preview mirrors what's turned on
+    preview->setOptions(shown[0] || shown[1], shown[2], shown[3], shown[4]);
+
     updating = false;
+}
+
+
+// ---------------------------------------------------------------------------
+// OverlayPreview
+
+OverlayPreview::OverlayPreview(QWidget* parent) : QFrame(parent)
+{
+    setFrameShape(QFrame::StyledPanel);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    ovl = std::make_unique<Overlay>(Manager::get()->images());
+
+    // sample indicators that stay up, so their positions can be seen
+    ovl->showChallenge(1, ":/melon-icon");
+    ovl->showChallenge(2, ":/melon-icon");
+    ovl->showTracker(1, "01:23.45");
+    ovl->showProgress(":/melon-icon", "12/50");
+
+    connect(&timer, &QTimer::timeout, this, [this]()
+    {
+        // the progress indicator fades out on its own; keep it showing
+        if (++tick % 30 == 0)
+            ovl->showProgress(":/melon-icon", "12/50");
+        update();
+    });
+    timer.start(33);
+}
+
+void OverlayPreview::setStyle(const Overlay::Style& style)
+{
+    ovl->setStyle(style);
+    update();
+}
+
+void OverlayPreview::setOptions(bool popups, bool challenges, bool progress, bool trackers)
+{
+    ovl->setOptions(popups, challenges, progress, trackers);
+    update();
+}
+
+void OverlayPreview::paintEvent(QPaintEvent* event)
+{
+    QFrame::paintEvent(event);
+
+    QPainter p(this);
+    QRect area = contentsRect();
+    p.setClipRect(area);
+    p.fillRect(area, QColor(0x10, 0x11, 0x14));
+
+    // two DS screens stacked in the middle, like the default layout
+    float sh = area.height() / 2.f;
+    float sw = sh * 4.f / 3.f;
+    float x = area.left() + (area.width() - sw) / 2;
+    for (int i = 0; i < 2; i++)
+    {
+        QRectF screen(x, area.top() + i * sh, sw, sh);
+        QLinearGradient grad(screen.topLeft(), screen.bottomRight());
+        grad.setColorAt(0, QColor(0x3C, 0x4A, 0x5E));
+        grad.setColorAt(1, QColor(0x22, 0x2A, 0x36));
+        p.fillRect(screen, grad);
+    }
+
+    p.translate(area.topLeft());
+    ovl->paint(p, area.width(), area.height());
 }
 
 

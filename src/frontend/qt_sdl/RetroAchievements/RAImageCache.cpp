@@ -82,6 +82,18 @@ QImage ImageCache::get(const std::string& url)
 {
     if (url.empty()) return QImage();
 
+    // Qt resources (":/..."), used for the sample notifications in the settings
+    if (url.size() > 2 && url[0] == ':' && url[1] == '/')
+    {
+        std::lock_guard<std::mutex> guard(lock);
+        auto it = images.find(url);
+        if (it != images.end()) return it->second;
+        QImage img(QString::fromStdString(url));
+        if (!img.isNull()) img = img.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+        images[url] = img;
+        return img;
+    }
+
     std::string path;
     {
         std::lock_guard<std::mutex> guard(lock);

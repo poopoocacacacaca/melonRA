@@ -21,13 +21,19 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <string>
 
 #include <QDialog>
+#include <QFrame>
 #include <QIcon>
 #include <QObject>
+#include <QTimer>
+
+#include "RAOverlay.h"
 
 class QCheckBox;
+class QComboBox;
 class QLabel;
 class QLineEdit;
 class QProgressBar;
@@ -79,6 +85,31 @@ private:
 };
 
 
+// A stand-in game screen showing the overlay with sample content, for the
+// Appearance tab of the settings
+class OverlayPreview : public QFrame
+{
+    Q_OBJECT
+public:
+    explicit OverlayPreview(QWidget* parent = nullptr);
+
+    void setStyle(const Overlay::Style& style);
+    void setOptions(bool popups, bool challenges, bool progress, bool trackers);
+    Overlay& overlay() { return *ovl; }
+
+    QSize sizeHint() const override { return QSize(520, 300); }
+    QSize minimumSizeHint() const override { return QSize(320, 200); }
+
+protected:
+    void paintEvent(QPaintEvent* event) override;
+
+private:
+    std::unique_ptr<Overlay> ovl;
+    QTimer timer;
+    int tick = 0;
+};
+
+
 class SettingsDialog : public QDialog
 {
     Q_OBJECT
@@ -90,6 +121,14 @@ private slots:
     void refresh();
 
 private:
+    QWidget* createGeneralTab();
+    QWidget* createAppearanceTab();
+    // reads the Appearance tab's controls
+    Overlay::Style styleFromControls() const;
+    void showStyle(const Overlay::Style& style);
+    void applyStyle();
+    void showTestNotifications();
+
     QLabel* avatar;
     QLabel* account;
     QPushButton* loginButton;
@@ -105,11 +144,21 @@ private:
     QLabel* toolkitStatus;
 
     QCheckBox* cbNotifications;
+    QCheckBox* cbAccountOnStart;
     QCheckBox* cbLeaderboardNotifications;
     QCheckBox* cbChallenges;
     QCheckBox* cbProgress;
     QCheckBox* cbTrackers;
     QCheckBox* cbSounds;
+
+    // Appearance tab, one row per Overlay::Element
+    OverlayPreview* preview;
+    QLabel* styleLabel[Overlay::kNumElements];
+    QComboBox* stylePosition[Overlay::kNumElements];
+    QComboBox* styleCorners[Overlay::kNumElements];
+    QCheckBox* styleBold[Overlay::kNumElements];
+    QCheckBox* styleBorder[Overlay::kNumElements];
+    QComboBox* styleSize;
 
     bool updating = false;
 

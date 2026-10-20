@@ -22,13 +22,16 @@
 #include <atomic>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <map>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include <QColor>
 #include <QFont>
 #include <QImage>
+#include <QRectF>
 #include <QString>
 
 class QPainter;
@@ -50,11 +53,55 @@ public:
     enum class PopupKind
     {
         Info,
+        Account,
         GameStart,
         Unlock,
         Mastery,
         Leaderboard,
         Error,
+    };
+
+    // the groups of widgets that can be placed and styled separately
+    enum class Element
+    {
+        Notifications,            // game placard, unlocks, mastery, account, errors
+        LeaderboardNotifications, // leaderboard started/failed/submitted/rank
+        Challenges,
+        Progress,
+        Trackers,
+    };
+    static constexpr int kNumElements = 5;
+
+    enum class Anchor
+    {
+        TopLeft,
+        TopCenter,
+        TopRight,
+        Center,
+        BottomLeft,
+        BottomCenter,
+        BottomRight,
+    };
+    static constexpr int kNumAnchors = 7;
+
+    struct ElementStyle
+    {
+        Anchor anchor = Anchor::TopRight;
+        bool rounded = true;
+        bool bold = true;
+        bool border = false;
+    };
+
+    struct Style
+    {
+        ElementStyle elements[kNumElements];
+        // multiplies the automatic size, which follows the window size
+        float scale = 1.f;
+
+        ElementStyle& operator[](Element e) { return elements[(int)e]; }
+        const ElementStyle& operator[](Element e) const { return elements[(int)e]; }
+
+        static Style defaults();
     };
 
     explicit Overlay(ImageCache& images);
@@ -83,6 +130,9 @@ public:
 
     // per-widget visibility, from the user's settings
     void setOptions(bool popups, bool challenges, bool progress, bool trackers);
+
+    // positions and looks, from the user's settings
+    void setStyle(const Style& style);
 
     // forces a redraw (e.g. after a badge image finished downloading)
     void invalidate();
@@ -115,13 +165,29 @@ private:
         int64_t order;
     };
 
+    // one box on screen, sized first and then placed by its element's anchor
+    struct Item
+    {
+        QSizeF size;
+        float enter = 1.f;  // 0 -> 1 while sliding/fading in
+        float alpha = 1.f;
+        std::function<void(QPainter&, const QRectF&)> draw;
+    };
+
     static int64_t nowMs();
+    std::deque<Popup>& queueFor(PopupKind kind);
 
-    void paintPopups(QPainter& p, int width, int height, float ui, int64_t now);
-    void paintIndicators(QPainter& p, int width, int height, float ui, int64_t now);
-    void paintTrackers(QPainter& p, int width, int height, float ui);
+    void popupItems(std::deque<Popup>& queue, const ElementStyle& st, std::vector<Item>& out,
+                    int width, float ui, int64_t now);
+    void challengeItems(const ElementStyle& st, std::vector<Item>& out, int width, float ui);
+    void progressItems(const ElementStyle& st, std::vector<Item>& out, float ui, int64_t now);
+    void trackerItems(const ElementStyle& st, std::vector<Item>& out, float ui);
+    void placeItems(QPainter& p, std::vector<Item> (&items)[kNumElements], int width, int height, float ui);
 
-    void drawIcon(QPainter& p, const std::string& url, const QRectF& rect, bool grayscale = false);
+    // the box behind every widget, honoring the shape and border options
+    static void drawBox(QPainter& p, const QRectF& box, const ElementStyle& st, float ui,
+                        const QColor& fill, const QColor& borderColor, const QColor& accent = QColor());
+    void drawIcon(QPainter& p, const std::string& url, const QRectF& rect, bool rounded = true);
     static QColor accentColor(PopupKind kind);
 
     ImageCache& images;
@@ -131,7 +197,9 @@ private:
 
     std::mutex lock;
 
+    // achievement/game popups, and leaderboard popups, which can be placed elsewhere
     std::deque<Popup> popups;
+    std::deque<Popup> lbPopups;
     std::map<uint32_t, std::string> challenges;
     bool progressVisible = false;
     std::string progressIcon;
@@ -144,6 +212,8 @@ private:
     bool showChallenges = true;
     bool showProgressInd = true;
     bool showTrackers = true;
+
+    Style style = Style::defaults();
 
     // bumped on every visible change, for renderToImage
     uint64_t version = 1;

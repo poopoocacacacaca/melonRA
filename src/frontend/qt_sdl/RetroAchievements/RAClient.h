@@ -31,6 +31,7 @@
 #include <QString>
 
 #include "version.h"
+#include "RAOverlay.h"
 
 // Name and version reported to the RetroAchievements server in the
 // User-Agent (MELONRA_VERSION lives in version.h.in)
@@ -50,7 +51,6 @@ namespace RA
 
 class Http;
 class ImageCache;
-class Overlay;
 class PendingQueue;
 
 // Owns the rc_client instance and connects it to melonDS.
@@ -122,6 +122,12 @@ public:
     // re-read notification/overlay options from the config
     void reloadDisplayOptions();
     bool soundsEnabled() const;
+
+    // overlay positions and looks, as stored in the config
+    static Overlay::Style loadOverlayStyle();
+    static void saveOverlayStyle(const Overlay::Style& style);
+    // config key prefix of each overlay element ("Notifications", ...)
+    static const char* overlayElementKey(Overlay::Element element);
 
     // --- account (GUI thread) ---
     bool isLoggedIn() const;
@@ -215,6 +221,8 @@ private:
     void osd(unsigned int color, const QString& text);
 
     void showGamePlacard();
+    // the account's name and points, shown when a game starts
+    void showAccountPopup();
     void handleEvent(const rc_client_event_t* event);
 
     // C callbacks handed to rc_client (defined in RAClient.cpp)

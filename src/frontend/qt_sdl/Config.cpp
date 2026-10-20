@@ -124,6 +124,12 @@ DefaultList<bool> DefaultBools =
     {"RetroAchievements.ProgressIndicators", true},
     {"RetroAchievements.LeaderboardTrackers", true},
     {"RetroAchievements.Sounds", true},
+    {"RetroAchievements.ShowAccountOnStart", true},
+    {"RetroAchievements.NotificationsBold", true},
+    {"RetroAchievements.LeaderboardNotificationsBold", true},
+    {"RetroAchievements.ChallengeIndicatorsBold", true},
+    {"RetroAchievements.ProgressIndicatorsBold", true},
+    {"RetroAchievements.LeaderboardTrackersBold", true},
 };
 
 DefaultList<std::string> DefaultStrings =
