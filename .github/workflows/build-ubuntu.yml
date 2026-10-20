@@ -77,3 +77,11 @@ jobs:
         file="melonRA-${GITHUB_REF_NAME#v}-linux-${{ matrix.arch.name }}.AppImage"
         cp melonRA*-${{ matrix.arch.name }}.AppImage "$file"
         tools/ci-release.sh "$file"
+    - name: Update nightly release
+      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        file="melonRA-linux-${{ matrix.arch.name }}.AppImage"
+        cp melonRA*-${{ matrix.arch.name }}.AppImage "$file"
+        tools/ci-release.sh "$file"

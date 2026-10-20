@@ -101,19 +101,4 @@ jobs:
       if: github.ref_type != 'tag'
       env:
         GH_TOKEN: ${{ github.token }}
-      run: |
-        {
-          echo "Automatic build of the latest master commit ${GITHUB_SHA}."
-          echo
-          echo "**Download** \`melonRA-windows-x86_64.zip\` for most PCs, or \`melonRA-windows-arm64.zip\` for ARM Windows devices."
-          echo "Unzip it anywhere and run \`melonRA.exe\`. It keeps its config next to the exe."
-          echo
-          echo "Then use **RetroAchievements > Log in...**. Until RetroAchievements approves melonRA for hardcore, hardcore unlocks are recorded as casual."
-        } > notes.md
-        gh release delete nightly --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
-        gh release create nightly melonRA-windows-*.zip \
-          --repo "$GITHUB_REPOSITORY" \
-          --target "$GITHUB_SHA" \
-          --prerelease \
-          --title "melonRA nightly (${GITHUB_SHA::7})" \
-          --notes-file notes.md
+      run: tools/ci-release.sh melonRA-windows-*.zip
