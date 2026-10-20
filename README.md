@@ -36,38 +36,6 @@ regular melonDS desktop app.
   - savestates that remember achievement progress
 - **Optional RAIntegration** developer toolkit on Windows, for achievement creators.
 
-## How it works
-
-RetroAchievements doesn't patch games. Every achievement is a set of rules about the game's memory, for
-example "this level ID is 5 *and* the lap counter just became 3". melonRA:
-
-1. **Identifies the game.** When you load a ROM, it computes the official RetroAchievements hash of the
-   ROM and asks the server which game and achievement sets it belongs to.
-2. **Checks the rules every frame.** After each emulated frame, the
-   [rcheevos](https://github.com/RetroAchievements/rcheevos) library reads the DS's main RAM and the
-   ARM9 data TCM. When all of an achievement's conditions are true at once, it unlocks.
-3. **Talks to the server.** Unlocks, leaderboard entries and Rich Presence are sent to RetroAchievements.org.
-   If you lose your connection, unlocks are queued and sent when it comes back.
-4. **Shows it to you.** The overlay draws notifications and trackers on top of the game, with both the
-   software and OpenGL renderers.
-
-### Hardcore vs. casual
-
-| | Hardcore | Casual |
-|---|---|---|
-| Points | full ("hardcore") points | casual points |
-| Loading savestates | ❌ (saving is fine) | ✅ |
-| Cheats, RAM search, GDB stub | ❌ | ✅ |
-| Slow motion / frame advance | ❌ | ✅ |
-| Fast forward | ✅ | ✅ |
-| Pausing | rate-limited | ✅ |
-
-If you try a blocked feature in hardcore, melonRA offers to switch you to casual. Switching from casual
-back to hardcore resets the game; that's a RetroAchievements rule.
-
-> **Note:** melonRA is a new client. Until it is approved by RetroAchievements for hardcore, the server
-> records hardcore unlocks as casual ones.
-
 ## Getting started
 
 1. Get a build from the [Actions tab](https://github.com/poopoocacacacaca/melonRA/actions): open the latest
