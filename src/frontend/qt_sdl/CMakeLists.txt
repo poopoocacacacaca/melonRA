@@ -71,6 +71,8 @@ set(SOURCES_QT_SDL
     RetroAchievements/RAImageCache.h
     RetroAchievements/RAOverlay.cpp
     RetroAchievements/RAOverlay.h
+    RetroAchievements/RAPendingQueue.cpp
+    RetroAchievements/RAPendingQueue.h
     RetroAchievements/resources/retroachievements.qrc
 )
 

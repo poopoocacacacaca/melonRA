@@ -69,6 +69,7 @@ instances play without them.
 | `rc_client` wrapper, events, hardcore logic | `src/frontend/qt_sdl/RetroAchievements/RAClient.*` |
 | HTTP: WinHTTP on Windows, Qt Network elsewhere | `RetroAchievements/RAHttp.*` |
 | Badge/avatar download and disk cache | `RetroAchievements/RAImageCache.*` |
+| Saved (offline) submission queue | `RetroAchievements/RAPendingQueue.*` |
 | Overlay widgets (popups, indicators, trackers) | `RetroAchievements/RAOverlay.*` |
 | Login, settings, achievements/leaderboards windows | `RetroAchievements/RADialogs.*` |
 
@@ -100,6 +101,29 @@ instances play without them.
 as `[data][u32 length]["RCHV"]`. melonDS-RA strips it before parsing the
 state, so states without the block still load.
 
+## Offline queue
+
+rcheevos retries failed unlocks itself, but only in memory. melonRA adds a
+persistent queue on top, in `retroachievements/pending_submissions.json`:
+
+- Every unlock (`awardachievement`) and leaderboard submission
+  (`submitlbentry`) is recorded **before** it is sent.
+- Entries are removed once the server has given a definitive answer,
+  including "already unlocked".
+- Entries are kept on no connection, timeouts, HTTP 5xx and 429. rcheevos'
+  own in-session retries map onto the same entry, so there are no duplicates.
+- The queue stores what was earned and when: achievement or leaderboard ID,
+  hardcore flag or score, game hash, and time. It never stores the login token.
+- On the next login, or when the connection comes back, entries are rebuilt
+  with rcheevos' request builders. The "seconds since unlock" value is updated
+  and the request re-signed, so the server records the original unlock time.
+- Each entry has an HMAC-SHA256 under a random per-install key
+  (`RetroAchievements.QueueKey` in `melonDS.toml`). Corrupted or edited entries
+  are discarded instead of submitted.
+
+Playing while offline from the very start still isn't possible:
+RetroAchievements needs a login to load the achievement set.
+
 ## Hardcore compliance
 
 The client identifies itself to the server as:
@@ -125,7 +149,7 @@ applying.
 | A. Achievement list accessible in-emulator | ✅ RetroAchievements → Achievements… |
 | A. Triggers, measured progress, challenge indicators | ✅ |
 | A. Rich Presence and leaderboards | ✅ |
-| A. Offline queueing | ⚠️ rcheevos retries failed unlocks for the rest of the session. Unlocks still pending when melonRA is closed are lost; there is no on-disk queue yet. |
+| A. Offline queueing | ✅ Unlocks and leaderboard entries are saved to disk before sending. If the app closes before they're delivered, they're resubmitted (re-signed) at the next login or reconnect; see below. |
 | A. Hit counts in savestates | ✅ |
 | A. Toolkit (RAIntegration) support | ✅ Windows x86/x64; includes downloader/updater |
 | A. Standard save file formats | ✅ unchanged melonDS `.sav` |

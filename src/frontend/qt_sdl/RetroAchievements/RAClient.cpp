@@ -20,6 +20,7 @@
 #include "RAHttp.h"
 #include "RAImageCache.h"
 #include "RAOverlay.h"
+#include "RAPendingQueue.h"
 
 #include <cstring>
 
@@ -31,6 +32,7 @@
 #include <QJsonObject>
 #include <QMessageBox>
 #include <QMetaObject>
+#include <QRandomGenerator>
 #include <QSysInfo>
 
 #include "rc_client.h"
@@ -121,8 +123,15 @@ struct ClientCallbacks
         std::string post = request->post_data ? request->post_data : "";
         std::string ctype = request->content_type ? request->content_type : "";
 
-        m->http->request(url, post, ctype, [callback, callbackData](const HttpResponse& r)
+        // unlocks and leaderboard entries are saved to disk until the server
+        // has accepted (or definitively rejected) them
+        uint64_t handle = m->pending->track(post);
+        PendingQueue* queue = m->pending.get();
+
+        m->http->request(url, post, ctype, [callback, callbackData, handle, queue](const HttpResponse& r)
         {
+            queue->resolve(handle, r);
+
             rc_api_server_response_t resp;
             memset(&resp, 0, sizeof(resp));
 
@@ -177,6 +186,8 @@ struct ClientCallbacks
             if (user->num_unread_messages)
                 m->osd(kColorInfo, QString("RetroAchievements: you have %1 unread message(s)")
                                        .arg(user->num_unread_messages));
+
+            m->submitSavedQueue();
         }
         else
         {
@@ -373,6 +384,25 @@ Manager::Manager()
 
     imageCache = std::make_unique<ImageCache>(*http, Platform::GetLocalFilePath("retroachievements/cache"));
     ovl = std::make_unique<Overlay>(*imageCache);
+
+    // per-installation key for the saved-submission integrity check
+    {
+        Config::Table cfg = raConfig();
+        QByteArray key = QByteArray::fromHex(QByteArray::fromStdString(cfg.GetString("QueueKey")));
+        if (key.size() < 32)
+        {
+            key.resize(32);
+            for (int i = 0; i < 32; i += 4)
+            {
+                quint32 r = QRandomGenerator::system()->generate();
+                memcpy(key.data() + i, &r, 4);
+            }
+            cfg.SetString("QueueKey", key.toHex().toStdString());
+            Config::Save();
+        }
+        pending = std::make_unique<PendingQueue>(*http,
+            Platform::GetLocalFilePath("retroachievements/pending_submissions.json"), key);
+    }
 
     imageCache->setLoadedCallback([this]()
     {
@@ -852,6 +882,34 @@ void Manager::loginWithStoredToken()
                                      ClientCallbacks::loginDone, (void*)1);
 }
 
+size_t Manager::pendingSubmissions() const
+{
+    std::string user = userName().toStdString();
+    return user.empty() ? 0 : pending->count(user);
+}
+
+void Manager::submitSavedQueue()
+{
+    const rc_client_user_t* user = rc_client_get_user_info(rcClient);
+    if (!user || !user->username || !user->token) return;
+    if (rc_client_get_spectator_mode_enabled(rcClient)) return;
+
+    std::string name = user->username;
+    size_t n = pending->count(name);
+    if (!n) return;
+
+    osd(kColorInfo, QString("RetroAchievements: submitting %1 saved unlock(s) from an earlier session").arg(n));
+    pending->replay(name, user->token, [this](int submitted, int remaining)
+    {
+        if (remaining)
+            osd(kColorWarn, QString("RetroAchievements: %1 saved unlock(s) submitted, %2 still pending "
+                                    "(will retry later)").arg(submitted).arg(remaining));
+        else if (submitted)
+            osd(kColorInfo, QString("RetroAchievements: %1 saved unlock(s) submitted").arg(submitted));
+        emit stateChanged();
+    });
+}
+
 void Manager::loginWithPassword(const QString& username, const QString& password)
 {
     if (!isEnabled())
@@ -1281,11 +1339,14 @@ void Manager::handleEvent(const rc_client_event_t* ev)
     }
 
     case RC_CLIENT_EVENT_DISCONNECTED:
-        osd(kColorWarn, "RetroAchievements: connection lost, unlocks will be submitted when it returns");
+        osd(kColorWarn, "RetroAchievements: connection lost. Unlocks are saved and will be "
+                        "submitted when it returns, even if you close melonDS.");
         break;
 
     case RC_CLIENT_EVENT_RECONNECTED:
         osd(kColorInfo, "RetroAchievements: reconnected, pending unlocks submitted");
+        // also flush anything left over from previous sessions
+        submitSavedQueue();
         break;
 
     default:

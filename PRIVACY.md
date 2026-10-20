@@ -42,6 +42,11 @@ connect when you use them.
   out to delete the token.
 - `retroachievements/cache/` holds downloaded badge and avatar images. You can
   delete this folder at any time.
+- `retroachievements/pending_submissions.json` exists only while there are
+  unlocks or leaderboard entries that couldn't reach the server yet. It holds
+  your username, the achievement or leaderboard IDs, the score, a game hash and
+  a timestamp, but never your password or token. It is deleted once
+  everything has been submitted.
 - Savestates may contain achievement progress (hit counts) for the game.
 
 Nothing is kept anywhere else, and nothing leaves your computer except the

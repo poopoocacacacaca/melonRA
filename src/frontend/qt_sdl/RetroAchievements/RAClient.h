@@ -50,6 +50,7 @@ namespace RA
 class Http;
 class ImageCache;
 class Overlay;
+class PendingQueue;
 
 // Owns the rc_client instance and connects it to melonDS.
 //
@@ -176,6 +177,8 @@ public:
     std::string gameBadgeUrl() const;
     QString richPresence() const;
     QString hardcoreStatusText() const;
+    // unlocks/leaderboard entries saved because the server couldn't be reached
+    size_t pendingSubmissions() const;
 
 signals:
     // login/logout, game load/unload, hardcore toggled
@@ -205,6 +208,8 @@ private:
 
     void applyClientSettings();
     void loginWithStoredToken();
+    // re-submits unlocks/leaderboard entries saved from earlier sessions
+    void submitSavedQueue();
     std::string buildUserAgent() const;
     void osd(unsigned int color, const QString& text);
 
@@ -220,6 +225,7 @@ private:
     std::unique_ptr<Http> http;
     std::unique_ptr<ImageCache> imageCache;
     std::unique_ptr<Overlay> ovl;
+    std::unique_ptr<PendingQueue> pending;
 
     EmuInstance* emuInstance = nullptr;
 
