@@ -159,6 +159,7 @@ private:
     QCheckBox* styleBold[Overlay::kNumElements];
     QCheckBox* styleBorder[Overlay::kNumElements];
     QComboBox* styleSize;
+    QComboBox* styleColors;
 
     bool updating = false;
 

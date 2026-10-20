@@ -375,9 +375,9 @@ void Overlay::popupItems(std::deque<Popup>& queue, const ElementStyle& st, std::
         const Popup* pp = &pop;
         item.draw = [=](QPainter& p, const QRectF& box)
         {
-            QColor accent = accentColor(pp->kind);
-            // the account popup is plain black, without a colored stripe
-            const bool plain = pp->kind == PopupKind::Account;
+            // the account popup is always plain, the rest unless color is off
+            const bool plain = pp->kind == PopupKind::Account || !style.colored;
+            QColor accent = plain ? accentColor(PopupKind::Account) : accentColor(pp->kind);
             drawBox(p, box, st, ui, QColor(18, 20, 26, 232),
                     plain ? QColor(255, 255, 255, 110) : accent, plain ? QColor() : accent);
 

@@ -14,7 +14,8 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 - **Notification layout and style.** A new Appearance tab in RetroAchievements Settings places each
   kind of notification (achievements, leaderboards, challenge indicators, progress, trackers) in a
   corner or in the middle of the top or bottom edge. Each one can have rounded or square
-  corners, bold text and a border, and there are four sizes. A live preview and a Test Notifications
+  corners, bold text and a border. There are four sizes, and popups can be colored by kind or
+  plain black and white. A live preview and a Test Notifications
   button show the result.
 - **Your account at game start.** When a game starts, a notification shows your RetroAchievements
   username and points (can be turned off).

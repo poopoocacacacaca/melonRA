@@ -96,6 +96,9 @@ public:
         ElementStyle elements[kNumElements];
         // multiplies the automatic size, which follows the window size
         float scale = 1.f;
+        // colored stripes and titles by kind (gold unlocks, green leaderboards,
+        // ...), or plain black and white
+        bool colored = true;
 
         ElementStyle& operator[](Element e) { return elements[(int)e]; }
         const ElementStyle& operator[](Element e) const { return elements[(int)e]; }

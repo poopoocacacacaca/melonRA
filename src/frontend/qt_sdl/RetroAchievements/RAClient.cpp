@@ -534,6 +534,8 @@ Overlay::Style Manager::loadOverlayStyle()
         es.border = cfg.GetBool(key + "Border");
     }
 
+    st.colored = !cfg.GetBool("OverlayBlackAndWhite");
+
     int scale = cfg.GetInt("OverlayScale");
     st.scale = (scale >= 50 && scale <= 200) ? scale / 100.f : 1.f;
     return st;
@@ -553,6 +555,7 @@ void Manager::saveOverlayStyle(const Overlay::Style& st)
         cfg.SetBool(key + "Border", es.border);
     }
     cfg.SetInt("OverlayScale", (int)(st.scale * 100.f + 0.5f));
+    cfg.SetBool("OverlayBlackAndWhite", !st.colored);
     Config::Save();
 }
 

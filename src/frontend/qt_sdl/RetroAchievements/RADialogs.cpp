@@ -449,12 +449,21 @@ QWidget* SettingsDialog::createAppearanceTab()
     styleSize->addItem("Large", 125);
     styleSize->addItem("Extra Large", 150);
     bottomRow->addWidget(styleSize);
+    bottomRow->addSpacing(12);
+    bottomRow->addWidget(new QLabel("Colors:"));
+    styleColors = new QComboBox();
+    styleColors->addItem("Colored");
+    styleColors->addItem("Black and White");
+    styleColors->setToolTip("Colored: a gold stripe and title for unlocks, blue for games, green for "
+                            "leaderboards. Black and White: all plain.");
+    bottomRow->addWidget(styleColors);
     bottomRow->addStretch(1);
     auto* resetButton = new QPushButton("Reset to Defaults");
     bottomRow->addWidget(resetButton);
     layout->addLayout(bottomRow);
 
     connect(styleSize, qOverload<int>(&QComboBox::currentIndexChanged), this, &SettingsDialog::applyStyle);
+    connect(styleColors, qOverload<int>(&QComboBox::currentIndexChanged), this, &SettingsDialog::applyStyle);
     connect(resetButton, &QPushButton::clicked, this, [this]()
     {
         showStyle(Overlay::Style::defaults());
@@ -477,6 +486,7 @@ Overlay::Style SettingsDialog::styleFromControls() const
         es.border = styleBorder[e]->isChecked();
     }
     st.scale = styleSize->currentData().toInt() / 100.f;
+    st.colored = styleColors->currentIndex() == 0;
     return st;
 }
 
@@ -496,6 +506,7 @@ void SettingsDialog::showStyle(const Overlay::Style& st)
     for (int i = 0; i < styleSize->count(); i++)
         if (std::abs(styleSize->itemData(i).toInt() - st.scale * 100.f) < 1.f) size = i;
     styleSize->setCurrentIndex(size);
+    styleColors->setCurrentIndex(st.colored ? 0 : 1);
     updating = wasUpdating;
 
     preview->setStyle(st);
