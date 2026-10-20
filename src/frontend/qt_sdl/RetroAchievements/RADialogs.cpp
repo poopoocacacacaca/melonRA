@@ -226,8 +226,8 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent)
     account->setWordWrap(true);
     accountLayout->addWidget(account, 1);
     auto* accountButtons = new QVBoxLayout();
-    loginButton = new QPushButton("Log in...");
-    logoutButton = new QPushButton("Log out");
+    loginButton = new QPushButton("Log In...");
+    logoutButton = new QPushButton("Log Out");
     accountButtons->addWidget(loginButton);
     accountButtons->addWidget(logoutButton);
     accountLayout->addLayout(accountButtons);
@@ -264,7 +264,7 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent)
     layout->addWidget(generalBox);
 
     // notifications
-    auto* notifBox = new QGroupBox("On-screen notifications");
+    auto* notifBox = new QGroupBox("On-Screen Notifications");
     auto* notif = new QVBoxLayout(notifBox);
     cbNotifications = new QCheckBox("Achievement and game notifications");
     cbLeaderboardNotifications = new QCheckBox("Leaderboard notifications");
@@ -289,7 +289,7 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent)
         if (updating) return;
         if (on && m->isGameLoaded())
         {
-            auto res = QMessageBox::question(this, "Enable Hardcore mode",
+            auto res = QMessageBox::question(this, "Enable Hardcore Mode",
                 "Enabling Hardcore mode resets the running game. Continue?",
                 QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
             if (res != QMessageBox::Yes)
@@ -351,21 +351,21 @@ void SettingsDialog::refresh()
                              .arg(m->userDisplayName().toHtmlEscaped())
                              .arg(m->userScore()).arg(m->userCasualScore()));
         avatar->setPixmap(roundedPixmap(m->images().get(m->userAvatarUrl()), 56));
-        loginButton->setText("Switch account...");
+        loginButton->setText("Switch Account...");
         logoutButton->setEnabled(true);
     }
     else if (m->isLoginPending())
     {
         account->setText("Logging in...");
         avatar->setPixmap(roundedPixmap(QImage(), 56));
-        loginButton->setText("Log in...");
+        loginButton->setText("Log In...");
         logoutButton->setEnabled(false);
     }
     else
     {
         account->setText("Not logged in.");
         avatar->setPixmap(roundedPixmap(QImage(), 56));
-        loginButton->setText("Log in...");
+        loginButton->setText("Log In...");
         logoutButton->setEnabled(false);
     }
 

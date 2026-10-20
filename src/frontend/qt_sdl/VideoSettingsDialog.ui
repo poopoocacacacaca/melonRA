@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>Video settings - melonRA</string>
+   <string>Video Settings - melonRA</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <property name="sizeConstraint">
@@ -29,7 +29,7 @@
    <item row="1" column="1">
     <widget class="QGroupBox" name="groupBox_3">
      <property name="title">
-      <string>OpenGL renderer</string>
+      <string>OpenGL Renderer</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_4">
       <item row="0" column="0">
@@ -69,7 +69,7 @@
    <item row="0" column="1">
     <widget class="QGroupBox" name="groupBox_2">
      <property name="title">
-      <string>Software renderer</string>
+      <string>Software Renderer</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
       <item row="0" column="0">
@@ -98,7 +98,7 @@
    <item row="0" column="0" rowspan="3" alignment="Qt::AlignmentFlag::AlignTop">
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
-      <string>Display settings</string>
+      <string>Display Settings</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
       <item row="7" column="1">

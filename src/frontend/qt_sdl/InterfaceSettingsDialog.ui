@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>Interface settings - melonRA</string>
+   <string>Interface Settings - melonRA</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
    <property name="sizeConstraint">
@@ -26,7 +26,7 @@
    <item>
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
-      <string>User interface</string>
+      <string>User Interface</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>

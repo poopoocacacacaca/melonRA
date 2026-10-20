@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>Emu settings - melonRA</string>
+   <string>Emulation Settings - melonRA</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="sizeConstraint">
@@ -86,7 +86,7 @@
      </widget>
      <widget class="QWidget" name="tab_2">
       <attribute name="title">
-       <string>DS-mode</string>
+       <string>DS Mode</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout">
        <item row="3" column="2">
@@ -203,7 +203,7 @@
      </widget>
      <widget class="QWidget" name="tab_4">
       <attribute name="title">
-       <string>DSi-mode</string>
+       <string>DSi Mode</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_2">
        <item row="3" column="0">
@@ -410,7 +410,7 @@
      </widget>
      <widget class="QWidget" name="tab_3">
       <attribute name="title">
-       <string>CPU emulation</string>
+       <string>CPU Emulation</string>
       </attribute>
       <layout class="QFormLayout" name="formLayout_5">
        <item row="0" column="0">

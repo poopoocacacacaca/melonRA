@@ -248,15 +248,15 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             connect(actOpenROM, &QAction::triggered, this, &MainWindow::onOpenFile);
             actOpenROM->setShortcut(QKeySequence(QKeySequence::StandardKey::Open));
 
-            /*actOpenROMArchive = menu->addAction("Open ROM inside archive...");
+            /*actOpenROMArchive = menu->addAction("Open ROM Inside Archive...");
             connect(actOpenROMArchive, &QAction::triggered, this, &MainWindow::onOpenFileArchive);
             actOpenROMArchive->setShortcut(QKeySequence(Qt::Key_O | Qt::CTRL | Qt::SHIFT));*/
 
-            recentMenu = menu->addMenu("Open recent");
+            recentMenu = menu->addMenu("Open Recent");
             loadRecentFilesMenu(true);
 
-            //actBootFirmware = menu->addAction("Launch DS menu");
-            actBootFirmware = menu->addAction("Boot firmware");
+            //actBootFirmware = menu->addAction("Launch DS Menu");
+            actBootFirmware = menu->addAction("Boot Firmware");
             connect(actBootFirmware, &QAction::triggered, this, &MainWindow::onBootFirmware);
 
             menu->addSeparator();
@@ -264,10 +264,10 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             actCurrentCart = menu->addAction("DS slot: " + emuInstance->cartLabel());
             actCurrentCart->setEnabled(false);
 
-            actInsertCart = menu->addAction("Insert cart...");
+            actInsertCart = menu->addAction("Insert Cart...");
             connect(actInsertCart, &QAction::triggered, this, &MainWindow::onInsertCart);
 
-            actEjectCart = menu->addAction("Eject cart");
+            actEjectCart = menu->addAction("Eject Cart");
             connect(actEjectCart, &QAction::triggered, this, &MainWindow::onEjectCart);
 
             menu->addSeparator();
@@ -275,11 +275,11 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             actCurrentGBACart = menu->addAction("GBA slot: " + emuInstance->gbaCartLabel());
             actCurrentGBACart->setEnabled(false);
 
-            actInsertGBACart = menu->addAction("Insert ROM cart...");
+            actInsertGBACart = menu->addAction("Insert ROM Cart...");
             connect(actInsertGBACart, &QAction::triggered, this, &MainWindow::onInsertGBACart);
 
             {
-                QMenu * submenu = menu->addMenu("Insert add-on cart");
+                QMenu * submenu = menu->addMenu("Insert Add-On Cart");
                 QAction *act;
 
                 int addons[] = {
@@ -304,18 +304,18 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                 }
             }
 
-            actEjectGBACart = menu->addAction("Eject cart");
+            actEjectGBACart = menu->addAction("Eject Cart");
             connect(actEjectGBACart, &QAction::triggered, this, &MainWindow::onEjectGBACart);
 
             menu->addSeparator();
 
-            actImportSavefile = menu->addAction("Import savefile");
+            actImportSavefile = menu->addAction("Import Save File");
             connect(actImportSavefile, &QAction::triggered, this, &MainWindow::onImportSavefile);
 
             menu->addSeparator();
 
             {
-                QMenu * submenu = menu->addMenu("Save state");
+                QMenu * submenu = menu->addMenu("Save State");
 
                 for (int i = 1; i < 9; i++)
                 {
@@ -331,7 +331,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                 connect(actSaveState[0], &QAction::triggered, this, &MainWindow::onSaveState);
             }
             {
-                QMenu * submenu = menu->addMenu("Load state");
+                QMenu * submenu = menu->addMenu("Load State");
 
                 for (int i = 1; i < 9; i++)
                 {
@@ -347,12 +347,12 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                 connect(actLoadState[0], &QAction::triggered, this, &MainWindow::onLoadState);
             }
 
-            actUndoStateLoad = menu->addAction("Undo state load");
+            actUndoStateLoad = menu->addAction("Undo State Load");
             actUndoStateLoad->setShortcut(QKeySequence(Qt::Key_F12));
             connect(actUndoStateLoad, &QAction::triggered, this, &MainWindow::onUndoStateLoad);
 
             menu->addSeparator();
-            actOpenConfig = menu->addAction("Open melonRA directory");
+            actOpenConfig = menu->addAction("Open melonRA Directory");
             connect(actOpenConfig, &QAction::triggered, this, [&]()
             {
                 QDesktopServices::openUrl(QUrl::fromLocalFile(emuDirectory));
@@ -377,37 +377,37 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             actStop = menu->addAction("Stop");
             connect(actStop, &QAction::triggered, this, &MainWindow::onStop);
 
-            actFrameStep = menu->addAction("Frame step");
+            actFrameStep = menu->addAction("Frame Step");
             connect(actFrameStep, &QAction::triggered, this, &MainWindow::onFrameStep);
 
             menu->addSeparator();
 
-            actPowerManagement = menu->addAction("Power management");
+            actPowerManagement = menu->addAction("Power Management");
             connect(actPowerManagement, &QAction::triggered, this, &MainWindow::onOpenPowerManagement);
 
-            actDateTime = menu->addAction("Date and time");
+            actDateTime = menu->addAction("Date and Time");
             connect(actDateTime, &QAction::triggered, this, &MainWindow::onOpenDateTime);
 
             menu->addSeparator();
 
-            actEnableCheats = menu->addAction("Enable cheats");
+            actEnableCheats = menu->addAction("Enable Cheats");
             actEnableCheats->setCheckable(true);
             connect(actEnableCheats, &QAction::triggered, this, &MainWindow::onEnableCheats);
 
             //if (inst == 0)
             {
-                actSetupCheats = menu->addAction("Setup cheat codes");
+                actSetupCheats = menu->addAction("Set Up Cheat Codes");
                 actSetupCheats->setMenuRole(QAction::NoRole);
                 connect(actSetupCheats, &QAction::triggered, this, &MainWindow::onSetupCheats);
 
                 menu->addSeparator();
-                actROMInfo = menu->addAction("ROM info");
+                actROMInfo = menu->addAction("ROM Info");
                 connect(actROMInfo, &QAction::triggered, this, &MainWindow::onROMInfo);
 
-                actRAMInfo = menu->addAction("RAM search");
+                actRAMInfo = menu->addAction("RAM Search");
                 connect(actRAMInfo, &QAction::triggered, this, &MainWindow::onRAMInfo);
 
-                actTitleManager = menu->addAction("Manage DSi titles");
+                actTitleManager = menu->addAction("Manage DSi Titles");
                 connect(actTitleManager, &QAction::triggered, this, &MainWindow::onOpenTitleManager);
             }
 
@@ -415,15 +415,15 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                 menu->addSeparator();
                 QMenu * submenu = menu->addMenu("Multiplayer");
 
-                actMPNewInstance = submenu->addAction("Launch new instance");
+                actMPNewInstance = submenu->addAction("Launch New Instance");
                 connect(actMPNewInstance, &QAction::triggered, this, &MainWindow::onMPNewInstance);
 
                 submenu->addSeparator();
 
-                actLANStartHost = submenu->addAction("Host LAN game");
+                actLANStartHost = submenu->addAction("Host LAN Game");
                 connect(actLANStartHost, &QAction::triggered, this, &MainWindow::onLANStartHost);
 
-                actLANStartClient = submenu->addAction("Join LAN game");
+                actLANStartClient = submenu->addAction("Join LAN Game");
                 connect(actLANStartClient, &QAction::triggered, this, &MainWindow::onLANStartClient);
 
                 /*submenu->addSeparator();
@@ -442,7 +442,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             QMenu * menu = menubar->addMenu("View");
 
             {
-                QMenu * submenu = menu->addMenu("Screen size");
+                QMenu * submenu = menu->addMenu("Screen Size");
 
                 for (int i = 0; i < 4; i++)
                 {
@@ -453,7 +453,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                 }
             }
             {
-                QMenu * submenu = menu->addMenu("Screen rotation");
+                QMenu * submenu = menu->addMenu("Screen Rotation");
                 grpScreenRotation = new QActionGroup(submenu);
 
                 for (int i = 0; i < screenRot_MAX; i++)
@@ -468,7 +468,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                 connect(grpScreenRotation, &QActionGroup::triggered, this, &MainWindow::onChangeScreenRotation);
             }
             {
-                QMenu * submenu = menu->addMenu("Screen gap");
+                QMenu * submenu = menu->addMenu("Screen Gap");
                 grpScreenGap = new QActionGroup(submenu);
 
                 const int screengap[] = {0, 1, 8, 64, 90, 128};
@@ -485,7 +485,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                 connect(grpScreenGap, &QActionGroup::triggered, this, &MainWindow::onChangeScreenGap);
             }
             {
-                QMenu * submenu = menu->addMenu("Screen layout");
+                QMenu * submenu = menu->addMenu("Screen Layout");
                 grpScreenLayout = new QActionGroup(submenu);
 
                 const char *screenlayout[] = {"Natural", "Vertical", "Horizontal", "Hybrid"};
@@ -502,12 +502,12 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
 
                 submenu->addSeparator();
 
-                actScreenSwap = submenu->addAction("Swap screens");
+                actScreenSwap = submenu->addAction("Swap Screens");
                 actScreenSwap->setCheckable(true);
                 connect(actScreenSwap, &QAction::triggered, this, &MainWindow::onChangeScreenSwap);
             }
             {
-                QMenu * submenu = menu->addMenu("Screen sizing");
+                QMenu * submenu = menu->addMenu("Screen Sizing");
                 grpScreenSizing = new QActionGroup(submenu);
 
                 const char *screensizing[] = {"Even", "Emphasize top", "Emphasize bottom", "Auto", "Top only",
@@ -525,12 +525,12 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
 
                 submenu->addSeparator();
 
-                actIntegerScaling = submenu->addAction("Force integer scaling");
+                actIntegerScaling = submenu->addAction("Force Integer Scaling");
                 actIntegerScaling->setCheckable(true);
                 connect(actIntegerScaling, &QAction::triggered, this, &MainWindow::onChangeIntegerScaling);
             }
             {
-                QMenu * submenu = menu->addMenu("Aspect ratio");
+                QMenu * submenu = menu->addMenu("Aspect Ratio");
                 grpScreenAspectTop = new QActionGroup(submenu);
                 grpScreenAspectBot = new QActionGroup(submenu);
                 actScreenAspectTop = new QAction *[AspectRatiosNum];
@@ -564,12 +564,12 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
 
             menu->addSeparator();
 
-            actNewWindow = menu->addAction("Open new window");
+            actNewWindow = menu->addAction("Open New Window");
             connect(actNewWindow, &QAction::triggered, this, &MainWindow::onOpenNewWindow);
 
             menu->addSeparator();
 
-            actScreenFiltering = menu->addAction("Screen filtering");
+            actScreenFiltering = menu->addAction("Screen Filtering");
             actScreenFiltering->setCheckable(true);
             connect(actScreenFiltering, &QAction::triggered, this, &MainWindow::onChangeScreenFiltering);
 
@@ -580,7 +580,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
         {
             QMenu * menu = menubar->addMenu("Config");
 
-            actEmuSettings = menu->addAction("Emu settings");
+            actEmuSettings = menu->addAction("Emulation Settings");
             connect(actEmuSettings, &QAction::triggered, this, &MainWindow::onOpenEmuSettings);
 
 #ifdef __APPLE__
@@ -589,40 +589,40 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             actPreferences->setMenuRole(QAction::PreferencesRole);
 #endif
 
-            actInputConfig = menu->addAction("Input and hotkeys");
+            actInputConfig = menu->addAction("Input and Hotkeys");
             connect(actInputConfig, &QAction::triggered, this, &MainWindow::onOpenInputConfig);
 
-            actVideoSettings = menu->addAction("Video settings");
+            actVideoSettings = menu->addAction("Video Settings");
             connect(actVideoSettings, &QAction::triggered, this, &MainWindow::onOpenVideoSettings);
 
-            actCameraSettings = menu->addAction("Camera settings");
+            actCameraSettings = menu->addAction("Camera Settings");
             connect(actCameraSettings, &QAction::triggered, this, &MainWindow::onOpenCameraSettings);
 
-            actAudioSettings = menu->addAction("Audio settings");
+            actAudioSettings = menu->addAction("Audio Settings");
             connect(actAudioSettings, &QAction::triggered, this, &MainWindow::onOpenAudioSettings);
 
-            actMPSettings = menu->addAction("Multiplayer settings");
+            actMPSettings = menu->addAction("Multiplayer Settings");
             connect(actMPSettings, &QAction::triggered, this, &MainWindow::onOpenMPSettings);
 
-            actWifiSettings = menu->addAction("Wifi settings");
+            actWifiSettings = menu->addAction("Wi-Fi Settings");
             connect(actWifiSettings, &QAction::triggered, this, &MainWindow::onOpenWifiSettings);
 
-            actFirmwareSettings = menu->addAction("Firmware settings");
+            actFirmwareSettings = menu->addAction("Firmware Settings");
             connect(actFirmwareSettings, &QAction::triggered, this, &MainWindow::onOpenFirmwareSettings);
 
-            actInterfaceSettings = menu->addAction("Interface settings");
+            actInterfaceSettings = menu->addAction("Interface Settings");
             connect(actInterfaceSettings, &QAction::triggered, this, &MainWindow::onOpenInterfaceSettings);
 
-            actPathSettings = menu->addAction("Path settings");
+            actPathSettings = menu->addAction("Path Settings");
             connect(actPathSettings, &QAction::triggered, this, &MainWindow::onOpenPathSettings);
 
             menu->addSeparator();
 
-            actLimitFramerate = menu->addAction("Limit framerate");
+            actLimitFramerate = menu->addAction("Limit Framerate");
             actLimitFramerate->setCheckable(true);
             connect(actLimitFramerate, &QAction::triggered, this, &MainWindow::onChangeLimitFramerate);
 
-            actAudioSync = menu->addAction("Audio sync");
+            actAudioSync = menu->addAction("Audio Sync");
             actAudioSync->setCheckable(true);
             connect(actAudioSync, &QAction::triggered, this, &MainWindow::onChangeAudioSync);
         }
@@ -630,7 +630,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
         {
             QMenu * menu = menubar->addMenu("RetroAchievements");
 
-            actRAStatus = menu->addAction("Not logged in");
+            actRAStatus = menu->addAction("Not Logged In");
             actRAStatus->setEnabled(false);
             menu->addSeparator();
 
@@ -642,16 +642,16 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
 
             menu->addSeparator();
 
-            actRAHardcore = menu->addAction("Hardcore mode");
+            actRAHardcore = menu->addAction("Hardcore Mode");
             actRAHardcore->setCheckable(true);
             connect(actRAHardcore, &QAction::triggered, this, &MainWindow::onRAToggleHardcore);
 
             menu->addSeparator();
 
-            actRALogin = menu->addAction("Log in...");
+            actRALogin = menu->addAction("Log In...");
             connect(actRALogin, &QAction::triggered, this, [this]() { RA::LoginDialog::open(this); });
 
-            actRALogout = menu->addAction("Log out");
+            actRALogout = menu->addAction("Log Out");
             connect(actRALogout, &QAction::triggered, this, []() { RA::Manager::get()->logout(); });
 
             actRASettings = menu->addAction("Settings...");
@@ -659,7 +659,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             connect(actRASettings, &QAction::triggered, this, [this]() { RA::SettingsDialog::open(this); });
 
             // filled with the RAIntegration menu once the toolkit DLL loads
-            raToolkitMenu = menu->addMenu("Developer toolkit");
+            raToolkitMenu = menu->addMenu("Developer Toolkit");
             raToolkitMenu->menuAction()->setVisible(false);
         }
         {
@@ -1602,7 +1602,7 @@ void MainWindow::onSaveState()
         // TODO: specific 'last directory' for savestate files?
         emuThread->emuPause();
         filename = QFileDialog::getSaveFileName(this,
-                                                         "Save state",
+                                                         "Save State",
                                                          globalCfg.GetQString("LastROMFolder"),
                                                          "melonRA savestates (*.mln);;Any file (*.*)");
         emuThread->emuUnpause();
@@ -1641,7 +1641,7 @@ void MainWindow::onLoadState()
         // TODO: specific 'last directory' for savestate files?
         emuThread->emuPause();
         filename = QFileDialog::getOpenFileName(this,
-                                                         "Load state",
+                                                         "Load State",
                                                          globalCfg.GetQString("LastROMFolder"),
                                                          "melonRA savestates (*.ml*);;Any file (*.*)");
         emuThread->emuUnpause();
@@ -1834,7 +1834,7 @@ void MainWindow::onRAMInfo()
 {
     // memory viewers/editors are not allowed in hardcore
     if (RA::Manager* ra = RA::Manager::get(); ra && ra->isAttached(emuInstance))
-        if (!ra->requestHardcoreExemption(this, "RAM search"))
+        if (!ra->requestHardcoreExemption(this, "RAM Search"))
             return;
 
     RAMInfoDialog* dlg = RAMInfoDialog::openDlg(this);
@@ -1847,7 +1847,7 @@ void MainWindow::onRAToggleHardcore(bool checked)
 
     if (checked && ra->isGameLoaded() && emuThread->emuIsActive())
     {
-        auto res = QMessageBox::question(this, "Enable Hardcore mode",
+        auto res = QMessageBox::question(this, "Enable Hardcore Mode",
             "Enabling Hardcore mode resets the running game. Continue?",
             QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
         if (res != QMessageBox::Yes)
@@ -1906,7 +1906,7 @@ void MainWindow::onRAStateChanged()
         else if (ra->isLoginPending())
             status = "Logging in...";
         else
-            status = "Not logged in";
+            status = "Not Logged In";
         if (ra->isGameLoaded())
             status += " - " + ra->gameTitle();
         actRAStatus->setText(status);
@@ -1914,7 +1914,7 @@ void MainWindow::onRAStateChanged()
         actRAHardcore->setChecked(ra->isHardcorePreferred());
         actRAHardcore->setEnabled(ra->isEnabled());
         actRALogin->setEnabled(ra->isEnabled());
-        actRALogin->setText(ra->isLoggedIn() ? "Switch account..." : "Log in...");
+        actRALogin->setText(ra->isLoggedIn() ? "Switch Account..." : "Log In...");
         actRALogout->setEnabled(ra->isLoggedIn());
         actRAAchievements->setEnabled(ra->isEnabled());
         actRALeaderboards->setEnabled(ra->isEnabled());

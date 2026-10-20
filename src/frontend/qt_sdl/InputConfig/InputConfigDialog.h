@@ -75,7 +75,7 @@ static constexpr std::initializer_list<const char*> hk_general_labels =
 {
     "Pause/resume",
     "Reset",
-    "Frame step",
+    "Frame Step",
     "Fast forward",
     "Toggle fast forward",
     "Slow mo",
@@ -84,7 +84,7 @@ static constexpr std::initializer_list<const char*> hk_general_labels =
     "Toggle fullscreen",
     "Close/open lid",
     "Microphone",
-    "Swap screens",
+    "Swap Screens",
     "Swap screen emphasis",
     "DSi Power button",
     "DSi Volume up",

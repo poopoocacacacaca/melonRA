@@ -11,13 +11,13 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Date and time - melonRA</string>
+   <string>Date and Time - melonRA</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QGroupBox" name="groupBox_2">
      <property name="title">
-      <string>Date and time</string>
+      <string>Date and Time</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
       <item row="3" column="0" colspan="2">

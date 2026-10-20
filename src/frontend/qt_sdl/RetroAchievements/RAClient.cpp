@@ -970,7 +970,7 @@ bool Manager::requestHardcoreExemption(QWidget* parent, const QString& action)
 {
     if (!hardcoreActive()) return true;
 
-    QMessageBox::StandardButton res = QMessageBox::question(parent, "RetroAchievements - Hardcore mode",
+    QMessageBox::StandardButton res = QMessageBox::question(parent, "RetroAchievements - Hardcore Mode",
         QString("%1 is not available in Hardcore mode.\n\n"
                 "Switch to Casual mode? Hardcore unlocks will not be awarded until "
                 "Hardcore mode is enabled again, which resets the game.").arg(action),
@@ -1155,7 +1155,7 @@ QString Manager::richPresence() const
 
 QString Manager::hardcoreStatusText() const
 {
-    return rc_client_get_hardcore_enabled(rcClient) ? "Hardcore mode" : "Casual mode";
+    return rc_client_get_hardcore_enabled(rcClient) ? "Hardcore Mode" : "Casual Mode";
 }
 
 void Manager::showGamePlacard()

@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>DSi title manager - melonRA</string>
+   <string>DSi Title Manager - melonRA</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <property name="leftMargin">
@@ -44,7 +44,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Import data (save, banner...) for the selected title.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Import title data</string>
+        <string>Import Title Data</string>
        </property>
       </widget>
      </item>
@@ -54,7 +54,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Export the data (save, banner...) associated with the selected title.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Export title data</string>
+        <string>Export Title Data</string>
        </property>
       </widget>
      </item>
@@ -64,7 +64,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Permanently delete the selected title and its associated data from your emulated DSi.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Delete title</string>
+        <string>Delete Title</string>
        </property>
       </widget>
      </item>

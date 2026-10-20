@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>ROM info - melonRA</string>
+   <string>ROM Info - melonRA</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="2" column="0">
@@ -208,7 +208,7 @@
    <item row="2" column="1">
     <widget class="QGroupBox" name="arm9AndArm7Binaries">
      <property name="title">
-      <string>ARM7 and ARM9 binaries</string>
+      <string>ARM7 and ARM9 Binaries</string>
      </property>
      <layout class="QFormLayout" name="formLayout_2">
       <item row="0" column="0">
@@ -490,7 +490,7 @@
    <item row="3" column="0">
     <widget class="QGroupBox" name="generalInfo">
      <property name="title">
-      <string>General info</string>
+      <string>General Info</string>
      </property>
      <layout class="QFormLayout" name="formLayout_3">
       <item row="0" column="0">

@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>Wifi settings - melonRA</string>
+   <string>Wi-Fi Settings - melonRA</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="sizeConstraint">
@@ -44,7 +44,7 @@
    <item>
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
-      <string>Network mode</string>
+      <string>Network Mode</string>
      </property>
      <layout class="QGridLayout" name="gridLayout">
       <item row="1" column="0">
@@ -73,7 +73,7 @@
    <item>
     <widget class="QGroupBox" name="groupBox_3">
      <property name="title">
-      <string>Direct mode settings</string>
+      <string>Direct Mode Settings</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
       <item row="3" column="1">
