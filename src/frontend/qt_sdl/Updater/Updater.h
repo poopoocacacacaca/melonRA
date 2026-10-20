@@ -50,6 +50,9 @@ struct Release
     // the package for this platform; empty if it can't be installed here
     QString assetUrl;
     qint64 assetSize = 0;
+    // identifies the exact uploaded file (name and upload time), so the same
+    // file is never installed twice in a row
+    QString packageKey;
 };
 
 struct CheckResult
@@ -71,6 +74,9 @@ bool autoUpdate();
 void setAutoUpdate(bool enabled);
 QString skippedRelease();
 void setSkippedRelease(const QString& id);
+// the package installed last, see Release::packageKey
+QString lastInstalledPackage();
+void setLastInstalledPackage(const QString& key);
 
 // whether this build can replace itself with a downloaded update
 bool canInstall();

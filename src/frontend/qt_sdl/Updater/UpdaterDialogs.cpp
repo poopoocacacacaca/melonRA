@@ -144,7 +144,21 @@ bool downloadAndInstall(QWidget* parent, const Release& rel)
         showFailure(parent, rel, error);
         return false;
     }
+
+    setLastInstalledPackage(rel.packageKey);
+    Config::Save();
     return true;
+}
+
+// The file just installed is still what the server offers, but this build
+// doesn't identify as it (an upload racing a newer commit, or a build without
+// its commit recorded). Installing it again would only repeat the same thing,
+// over and over with "Always update" on, so treat it as current.
+void guardAgainstRepeats(CheckResult& res, const QString& lastInstalled)
+{
+    if (res.status == CheckResult::Available && !res.release.packageKey.isEmpty() &&
+        res.release.packageKey == lastInstalled)
+        res.status = CheckResult::UpToDate;
 }
 
 void askToRestart(QWidget* parent, const Release& rel)
@@ -243,6 +257,7 @@ bool runAutoUpdate()
 
     if (!finished)
         return false;
+    guardAgainstRepeats(res, lastInstalledPackage());
     if (res.status == CheckResult::Failed)
     {
         // probably offline; start normally
@@ -263,12 +278,14 @@ void startupCheck(QWidget* window)
 
     const Channel ch = channel();
     const QString skipped = skippedRelease();
+    const QString lastInstalled = lastInstalledPackage();
     QPointer<QWidget> win = window;
     auto cancel = std::make_shared<std::atomic<bool>>(false);
 
     QThread* thread = QThread::create([=]
     {
         CheckResult res = check(ch, *cancel);
+        guardAgainstRepeats(res, lastInstalled);
         if (*cancel || res.status != CheckResult::Available || res.release.id == skipped)
         {
             if (res.status == CheckResult::Failed)
@@ -475,6 +492,7 @@ void UpdateSettingsDialog::checkNow()
         });
     if (!finished)
         return;
+    guardAgainstRepeats(res, lastInstalledPackage());
 
     switch (res.status)
     {

@@ -355,21 +355,26 @@ QJsonObject parseObject(const QByteArray& body)
     return QJsonDocument::fromJson(body).object();
 }
 
-void fillAsset(Release& rel, const QJsonObject& json)
+// finds this platform's package; returns its label (the nightly's labels
+// carry the commit each file was built from)
+QString fillAsset(Release& rel, const QJsonObject& json)
 {
     QString suffix = assetSuffix();
-    if (suffix.isEmpty()) return;
+    if (suffix.isEmpty()) return {};
 
     for (const QJsonValue& v : json["assets"].toArray())
     {
         QJsonObject asset = v.toObject();
-        if (asset["name"].toString().endsWith(suffix, Qt::CaseInsensitive))
+        QString name = asset["name"].toString();
+        if (name.endsWith(suffix, Qt::CaseInsensitive))
         {
             rel.assetUrl = asset["browser_download_url"].toString();
             rel.assetSize = (qint64)asset["size"].toDouble();
-            return;
+            rel.packageKey = name + "@" + asset["updated_at"].toString();
+            return asset["label"].toString();
         }
     }
+    return {};
 }
 
 QString firstLine(const QString& s)
@@ -459,10 +464,17 @@ CheckResult checkNightly(const std::atomic<bool>& cancel)
 
     Release& rel = res.release;
     rel.channel = Channel::Nightly;
+    // Each platform's file is replaced when its build finishes, so for a few
+    // minutes after a push the release can name a newer commit than this
+    // platform's file. Go by the commit the file itself was built from.
+    QString label = fillAsset(rel, json);
+    m = QRegularExpression("commit ([0-9a-f]{7,40})").match(label);
+    if (m.hasMatch())
+        sha = m.captured(1);
+
     rel.id = sha;
     rel.version = "nightly " + sha.left(7);
     rel.pageUrl = json["html_url"].toString();
-    fillAsset(rel, json);
 
     QString current = buildHash();
     if (!current.isEmpty() && (sha.startsWith(current) || current.startsWith(sha)))
@@ -790,6 +802,16 @@ QString skippedRelease()
 void setSkippedRelease(const QString& id)
 {
     globalConfig().SetQString("Updater.SkippedRelease", id);
+}
+
+QString lastInstalledPackage()
+{
+    return globalConfig().GetQString("Updater.LastInstalledPackage");
+}
+
+void setLastInstalledPackage(const QString& key)
+{
+    globalConfig().SetQString("Updater.LastInstalledPackage", key);
 }
 
 bool canInstall()

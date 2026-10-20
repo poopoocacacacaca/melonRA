@@ -48,8 +48,15 @@ if [[ "${GITHUB_REF_TYPE:-}" == "branch" && "${GITHUB_REF_NAME:-}" == "master" ]
             --title "melonRA nightly (${GITHUB_SHA::7})" --notes-file "$notes"
     fi
 
+    # each file is labelled with the commit it was built from: until every
+    # platform has finished, they can differ, and the updater checks this
+    files=()
+    for f in "$@"; do
+        files+=("$f#$(basename "$f") (commit ${GITHUB_SHA::7})")
+    done
+
     for attempt in 1 2 3; do
-        if gh release upload nightly "$@" --repo "$repo" --clobber; then
+        if gh release upload nightly "${files[@]}" --repo "$repo" --clobber; then
             exit 0
         fi
         sleep $((attempt * 10))
