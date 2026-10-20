@@ -377,6 +377,16 @@ void setEnabled(bool enabled)
     globalConfig().SetBool("GameList.Enabled", enabled);
 }
 
+bool showRegionNames()
+{
+    return globalConfig().GetBool("GameList.RegionNames");
+}
+
+void setShowRegionNames(bool show)
+{
+    globalConfig().SetBool("GameList.RegionNames", show);
+}
+
 
 // ---------------------------------------------------------------------------
 // Model
@@ -394,6 +404,14 @@ void Model::setGames(std::vector<Game> games)
     for (const Game& g : list)
         icons.push_back(g.icon.isNull() ? QIcon() : QIcon(QPixmap::fromImage(g.icon)));
     endResetModel();
+}
+
+void Model::setShowRegionNames(bool show)
+{
+    if (show == regionNames) return;
+    regionNames = show;
+    if (!list.empty())
+        emit dataChanged(index(0, Col_Region), index((int)list.size() - 1, Col_Region));
 }
 
 int Model::rowCount(const QModelIndex& parent) const
@@ -457,6 +475,7 @@ QVariant Model::data(const QModelIndex& index, int role) const
         QString tip = g.title;
         if (!g.subtitle.isEmpty()) tip += "\n" + g.subtitle;
         if (!g.developer.isEmpty()) tip += "\n" + g.developer;
+        if (!g.region.isEmpty()) tip += "\n" + g.region;
         return tip + "\n\n" + QDir::toNativeSeparators(g.path);
     }
 
@@ -473,7 +492,10 @@ QVariant Model::data(const QModelIndex& index, int role) const
         if (role == SortRole) return g.developer.toCaseFolded();
         break;
     case Col_Region:
-        if (role == Qt::DisplayRole || role == SortRole) return g.region;
+        // with names hidden, games without a flag (homebrew, region free) still say what they are
+        if (role == Qt::DisplayRole)
+            return (regionNames || g.regionFlag.isEmpty()) ? g.region : QString();
+        if (role == SortRole) return g.region;
         if (role == Qt::DecorationRole) return flagIcon(g.regionFlag);
         break;
     case Col_GameCode:
@@ -592,6 +614,8 @@ Widget::Widget(QWidget* parent) : QWidget(parent)
     view->setContextMenuPolicy(Qt::CustomContextMenu);
     view->header()->setContextMenuPolicy(Qt::CustomContextMenu);
     view->header()->setSectionsMovable(true);
+    view->header()->setFirstSectionMovable(true);
+    model->setShowRegionNames(showRegionNames());
     view->header()->setStretchLastSection(false);
     view->header()->setSectionResizeMode(Model::Col_Title, QHeaderView::Stretch);
     listLayout->addWidget(view, 1);
@@ -767,18 +791,53 @@ void Widget::showHeaderMenu(const QPoint& pos)
 {
     QMenu menu(this);
     QHeaderView* header = view->header();
-    for (int c = 0; c < Model::NumColumns; c++)
+
+    // in the order they're shown, so the menu matches the header
+    for (int v = 0; v < Model::NumColumns; v++)
     {
-        if (c == Model::Col_Title) continue; // always shown
+        int c = header->logicalIndex(v);
         QAction* act = menu.addAction(model->headerData(c, Qt::Horizontal, Qt::DisplayRole).toString());
         act->setCheckable(true);
         act->setChecked(!header->isSectionHidden(c));
+        if (c == Model::Col_Title)
+        {
+            act->setEnabled(false); // always shown
+            continue;
+        }
         connect(act, &QAction::toggled, this, [this, header, c](bool on)
         {
             header->setSectionHidden(c, !on);
             saveHeader();
         });
     }
+
+    menu.addSeparator();
+    QAction* names = menu.addAction("Show Region Names");
+    names->setCheckable(true);
+    names->setChecked(model->showsRegionNames());
+    names->setEnabled(!header->isSectionHidden(Model::Col_Region));
+    connect(names, &QAction::toggled, this, [this, header](bool on)
+    {
+        model->setShowRegionNames(on);
+        setShowRegionNames(on);
+        // fit the column to just the flags, or to the names again
+        header->resizeSection(Model::Col_Region, on ? 140 : 80);
+        saveHeader();
+    });
+
+    menu.addSeparator();
+    QAction* reset = menu.addAction("Reset Columns");
+    connect(reset, &QAction::triggered, this, [this]()
+    {
+        model->setShowRegionNames(true);
+        setShowRegionNames(true);
+        defaultColumns();
+        saveHeader();
+    });
+
+    auto* hint = menu.addAction("Drag the column headers to reorder them");
+    hint->setEnabled(false);
+
     menu.exec(header->mapToGlobal(pos));
 }
 
@@ -804,7 +863,19 @@ void Widget::restoreHeader()
         return;
     }
 
-    // first run
+    defaultColumns();
+}
+
+void Widget::defaultColumns()
+{
+    QHeaderView* header = view->header();
+
+    // original order, everything but platform and file name shown
+    for (int c = 0; c < Model::NumColumns; c++)
+    {
+        header->moveSection(header->visualIndex(c), c);
+        header->setSectionHidden(c, false);
+    }
     header->setSectionHidden(Model::Col_Platform, true);
     header->setSectionHidden(Model::Col_FileName, true);
     header->resizeSection(Model::Col_Developer, 160);

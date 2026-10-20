@@ -76,6 +76,8 @@ bool searchSubfolders();
 void setSearchSubfolders(bool recursive);
 bool isEnabled();
 void setEnabled(bool enabled);
+bool showRegionNames();
+void setShowRegionNames(bool show);
 
 
 class Model : public QAbstractTableModel
@@ -101,6 +103,9 @@ public:
     explicit Model(QObject* parent = nullptr);
 
     void setGames(std::vector<Game> games);
+    // region column: flag and name, or just the flag
+    void setShowRegionNames(bool show);
+    bool showsRegionNames() const { return regionNames; }
     const std::vector<Game>& games() const { return list; }
 
     int rowCount(const QModelIndex& parent = QModelIndex()) const override;
@@ -114,6 +119,7 @@ private:
     std::vector<Game> list;
     std::vector<QIcon> icons;
     mutable QHash<QString, QIcon> flags;
+    bool regionNames = true;
 };
 
 
@@ -144,6 +150,7 @@ private:
     void bootIndex(const QModelIndex& index);
     void saveHeader();
     void restoreHeader();
+    void defaultColumns();
 
     QStackedWidget* pages;
     QWidget* listPage;

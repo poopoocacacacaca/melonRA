@@ -127,6 +127,7 @@ DefaultList<bool> DefaultBools =
     {"RetroAchievements.ShowAccountOnStart", true},
     {"GameList.Enabled", true},
     {"GameList.SearchSubfolders", true},
+    {"GameList.RegionNames", true},
     {"RetroAchievements.NotificationsBold", true},
     {"RetroAchievements.LeaderboardNotificationsBold", true},
     {"RetroAchievements.ChallengeIndicatorsBold", true},
