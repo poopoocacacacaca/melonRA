@@ -218,7 +218,7 @@ QColor Overlay::accentColor(PopupKind kind)
     case PopupKind::Unlock:      return QColor(0xE8, 0xB9, 0x3A);
     case PopupKind::Mastery:     return QColor(0xF0, 0xD0, 0x60);
     case PopupKind::GameStart:   return QColor(0x5A, 0xA9, 0xE6);
-    case PopupKind::Account:     return QColor(0xB4, 0x8C, 0xF0);
+    case PopupKind::Account:     return QColor(0xEB, 0xED, 0xF0);  // plain, no color
     case PopupKind::Leaderboard: return QColor(0x6C, 0xC4, 0x8C);
     case PopupKind::Error:       return QColor(0xE0, 0x5A, 0x5A);
     case PopupKind::Info:
@@ -376,7 +376,10 @@ void Overlay::popupItems(std::deque<Popup>& queue, const ElementStyle& st, std::
         item.draw = [=](QPainter& p, const QRectF& box)
         {
             QColor accent = accentColor(pp->kind);
-            drawBox(p, box, st, ui, QColor(18, 20, 26, 232), accent, accent);
+            // the account popup is plain black, without a colored stripe
+            const bool plain = pp->kind == PopupKind::Account;
+            drawBox(p, box, st, ui, QColor(18, 20, 26, 232),
+                    plain ? QColor(255, 255, 255, 110) : accent, plain ? QColor() : accent);
 
             QRectF iconRect(box.left() + bar + pad, box.top() + (box.height() - icon) / 2, icon, icon);
             if (hasIcon)
