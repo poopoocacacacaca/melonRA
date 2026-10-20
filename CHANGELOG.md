@@ -6,6 +6,14 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 - **MINOR** goes up for feature releases.
 - **PATCH** goes up for small updates and bug fixes.
 
+## Unreleased
+
+- **Updater.** melonRA checks for new versions at startup and offers to update now, skip that version or
+  wait. Config → Update Settings picks the Stable or Nightly channel, can install updates automatically
+  before melonRA opens, and can turn the question off.
+- Menus, window titles and section headings use Title Case ("Emulation Settings", "Wi-Fi Settings", ...).
+- Fixed the menu bar's hover highlight being shorter than the menu name with the Windows 11 theme.
+
 ## 0.1.0
 
 First release of melonRA: melonDS 1.1 with RetroAchievements built in.

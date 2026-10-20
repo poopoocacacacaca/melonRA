@@ -52,6 +52,7 @@
 #include "main.h"
 #include "RetroAchievements/RAClient.h"
 #include "RetroAchievements/RADialogs.h"
+#include "Updater/UpdaterDialogs.h"
 #include "version.h"
 
 #include "Config.h"
@@ -386,6 +387,18 @@ int main(int argc, char** argv)
         }
     }
 
+    // with "Always update to the latest version" on, a newer build is
+    // installed before anything opens, and then started in place of this one
+    if (Updater::runAutoUpdate())
+    {
+        delete camManager[0];
+        delete camManager[1];
+        Config::Save();
+        SDL_Quit();
+        Updater::relaunch();
+        return 0;
+    }
+
     // fix for Wayland OpenGL glitches
     QGuiApplication::setAttribute(Qt::AA_NativeWindows, false);
     QGuiApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings, true);
@@ -430,9 +443,13 @@ int main(int argc, char** argv)
 
         if (options->fullscreen)
             win->toggleFullscreen();
+
+        Updater::startupCheck(win);
     }
 
     int ret = melon.exec();
+
+    Updater::shutdown();
 
     delete options;
 
@@ -448,5 +465,10 @@ int main(int argc, char** argv)
     Config::Save();
 
     SDL_Quit();
+
+    // an update was installed and the user chose to restart
+    if (Updater::relaunchRequested())
+        Updater::relaunch();
+
     return ret;
 }

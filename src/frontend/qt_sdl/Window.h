@@ -284,6 +284,7 @@ public:
     QAction* actFirmwareSettings;
     QAction* actPathSettings;
     QAction* actInterfaceSettings;
+    QAction* actUpdateSettings;
     QAction* actScreenSize[4];
     QActionGroup* grpScreenRotation;
     QAction* actScreenRotation[screenRot_MAX];

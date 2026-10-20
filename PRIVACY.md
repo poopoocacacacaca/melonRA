@@ -8,9 +8,12 @@ servers and receive no data from you.
 
 ## What melonRA sends, and to whom
 
-melonRA only talks to the network for RetroAchievements, and only while
-RetroAchievements is enabled and you are logged in. All of this traffic goes
-over HTTPS to **RetroAchievements.org** (`retroachievements.org` and
+melonRA talks to the network for RetroAchievements and to check for updates.
+
+### RetroAchievements
+
+This traffic only happens while RetroAchievements is enabled and you are
+logged in. All of it goes over HTTPS to **RetroAchievements.org** (`retroachievements.org` and
 `media.retroachievements.org`):
 
 - your RetroAchievements username, and your password the first time you log
@@ -31,6 +34,18 @@ RetroAchievements' handling of this data is covered by
 [their privacy policy](https://retroachievements.org/privacy). melonRA has
 no control over their servers, retention periods or server locations.
 
+### Update checks
+
+At startup (unless you turned this off) and when you click *Check for Updates
+Now*, melonRA asks **GitHub** (`api.github.com`) for the latest melonRA
+release or nightly build, and downloads updates from `github.com`. These
+requests carry no account or personal information, only the melonRA version
+in the User-Agent header (like any website, GitHub sees your IP address).
+GitHub's handling of them is covered by the
+[GitHub privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
+
+### Other features
+
 Other melonDS features that use the network work exactly as in upstream
 melonDS. Local wireless, LAN/netplay and the DSi title downloader only
 connect when you use them.
@@ -50,7 +65,7 @@ connect when you use them.
 - Savestates may contain achievement progress (hit counts) for the game.
 
 Nothing is kept anywhere else, and nothing leaves your computer except the
-RetroAchievements traffic described above.
+RetroAchievements and update traffic described above.
 
 ## GDPR
 

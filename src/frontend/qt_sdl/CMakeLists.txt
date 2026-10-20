@@ -74,6 +74,11 @@ set(SOURCES_QT_SDL
     RetroAchievements/RAPendingQueue.cpp
     RetroAchievements/RAPendingQueue.h
     RetroAchievements/resources/retroachievements.qrc
+
+    Updater/Updater.cpp
+    Updater/Updater.h
+    Updater/UpdaterDialogs.cpp
+    Updater/UpdaterDialogs.h
 )
 
 option(USE_QT6 "Use Qt 6 instead of Qt 5" ON)

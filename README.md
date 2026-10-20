@@ -36,6 +36,7 @@ regular melonDS desktop app.
   - sound effects
   - savestates that remember achievement progress
 - **Optional RAIntegration** developer toolkit on Windows, for achievement creators.
+- **Built-in updater** with a Stable and a Nightly channel.
 
 ## Getting started
 
@@ -62,6 +63,20 @@ melonRA versions are `MAJOR.MINOR.PATCH`, starting at 0.1.0:
 - **PATCH** goes up for small updates and fixes.
 
 What changed in each version is in [CHANGELOG.md](./CHANGELOG.md).
+
+## Updates
+
+When a new version is out, melonRA asks whether to update now, skip that version, or wait until next
+time. **Config → Update Settings** has the rest:
+
+- **Update Channel:** *Stable* follows the releases. *Nightly* follows the
+  [nightly build](https://github.com/poopoocacacacaca/melonRA/releases/tag/nightly), a new build for every
+  change.
+- **Always update to the latest version** downloads and installs updates on startup, before melonRA opens.
+- **Never ask about updates** stops the check at startup. You can still check from the same window.
+
+melonRA updates itself on Windows and when run as the Linux AppImage. On macOS, or a Linux build installed
+another way, it tells you about new versions and links to the download.
 
 ## Building
 

@@ -79,6 +79,7 @@
 #include "AboutDialog.h"
 #include "RetroAchievements/RAClient.h"
 #include "RetroAchievements/RADialogs.h"
+#include "Updater/UpdaterDialogs.h"
 
 using namespace melonDS;
 
@@ -681,6 +682,15 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             actPathSettings = menu->addAction("Path Settings");
             connect(actPathSettings, &QAction::triggered, this, &MainWindow::onOpenPathSettings);
 
+            actUpdateSettings = menu->addAction("Update Settings");
+            // keep macOS from moving it to the application menu as "Preferences"
+            actUpdateSettings->setMenuRole(QAction::NoRole);
+            connect(actUpdateSettings, &QAction::triggered, this, [this]
+            {
+                Updater::UpdateSettingsDialog dlg(this);
+                dlg.exec();
+            });
+
             menu->addSeparator();
 
             actLimitFramerate = menu->addAction("Limit Framerate");
@@ -844,6 +854,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             actMPSettings->setEnabled(false);
             actWifiSettings->setEnabled(false);
             actInterfaceSettings->setEnabled(false);
+            actUpdateSettings->setEnabled(false);
 
 #ifdef __APPLE__
             actPreferences->setEnabled(false);
