@@ -50,6 +50,8 @@
 #include "duckstation/gl/context.h"
 
 #include "main.h"
+#include "RetroAchievements/RAClient.h"
+#include "RetroAchievements/RADialogs.h"
 #include "version.h"
 
 #include "Config.h"
@@ -394,6 +396,12 @@ int main(int argc, char** argv)
 
     NetInit();
 
+    // RetroAchievements: create the client before the first emulator
+    // instance so it can attach to it (and log in with a stored token)
+    RA::Manager::create();
+    RA::SoundPlayer* raSounds = new RA::SoundPlayer(&melon);
+    QObject::connect(RA::Manager::get(), &RA::Manager::playSound, raSounds, &RA::SoundPlayer::play);
+
     createEmuInstance();
 
     {
@@ -431,6 +439,8 @@ int main(int argc, char** argv)
     // if we get here, all the existing emu instances should have been deleted already
     // but with this we make extra sure they are all deleted
     deleteAllEmuInstances();
+
+    RA::Manager::destroy();
 
     delete camManager[0];
     delete camManager[1];

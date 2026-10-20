@@ -239,6 +239,11 @@ private:
 
     GLuint logoTexture;
 
+    // RetroAchievements overlay
+    GLuint raOverlayTexture = 0;
+    QImage raOverlayImage;
+    uint64_t raOverlayVersion = 0;
+
     void osdRenderItem(OSDItem* item) override;
     void osdDeleteItem(OSDItem* item) override;
 };

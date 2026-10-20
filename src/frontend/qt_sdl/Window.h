@@ -185,6 +185,10 @@ private slots:
     void onFullscreenToggled();
     void onScreenEmphasisToggled();
 
+    void onRAToggleHardcore(bool checked);
+    void onRAStateChanged();
+    void onRAToolkitMenuChanged();
+
 private:
     virtual void closeEvent(QCloseEvent* event) override;
 
@@ -296,6 +300,16 @@ public:
     QAction* actAudioSync;
 
     QAction* actAbout;
+
+    // RetroAchievements menu (first instance only)
+    QAction* actRAStatus = nullptr;
+    QAction* actRAAchievements = nullptr;
+    QAction* actRALeaderboards = nullptr;
+    QAction* actRAHardcore = nullptr;
+    QAction* actRALogin = nullptr;
+    QAction* actRALogout = nullptr;
+    QAction* actRASettings = nullptr;
+    QMenu* raToolkitMenu = nullptr;
 };
 
 #endif // WINDOW_H

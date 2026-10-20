@@ -60,6 +60,18 @@ set(SOURCES_QT_SDL
 
     LANDialog.cpp
     NetplayDialog.cpp
+
+    RetroAchievements/RAClient.cpp
+    RetroAchievements/RAClient.h
+    RetroAchievements/RADialogs.cpp
+    RetroAchievements/RADialogs.h
+    RetroAchievements/RAHttp.cpp
+    RetroAchievements/RAHttp.h
+    RetroAchievements/RAImageCache.cpp
+    RetroAchievements/RAImageCache.h
+    RetroAchievements/RAOverlay.cpp
+    RetroAchievements/RAOverlay.h
+    RetroAchievements/resources/retroachievements.qrc
 )
 
 option(USE_QT6 "Use Qt 6 instead of Qt 5" ON)
@@ -191,6 +203,14 @@ else()
     target_include_directories(melonDS PUBLIC ${Qt5Gui_PRIVATE_INCLUDE_DIRS})
 endif()
 target_link_libraries(melonDS PRIVATE core)
+
+# RetroAchievements runtime (vendored rcheevos)
+add_subdirectory("${CMAKE_SOURCE_DIR}/src/rcheevos" "${CMAKE_BINARY_DIR}/rcheevos")
+target_link_libraries(melonDS PRIVATE rcheevos)
+target_include_directories(melonDS PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/RetroAchievements")
+if (WIN32)
+    target_link_libraries(melonDS PRIVATE winhttp)
+endif()
 target_link_libraries(melonDS PRIVATE PkgConfig::SDL2 PkgConfig::LibArchive PkgConfig::Zstd PkgConfig::Faad)
 target_link_libraries(melonDS PRIVATE ${QT_LINK_LIBS} ${CMAKE_DL_LIBS})
 

@@ -54,9 +54,17 @@
 #include "Savestate.h"
 
 #include "EmuInstance.h"
+#include "RetroAchievements/RAClient.h"
 
 using namespace melonDS;
 
+
+// RetroAchievements manager, if it is bound to this emulator instance
+static RA::Manager* raFor(EmuInstance* inst)
+{
+    RA::Manager* m = RA::Manager::get();
+    return (m && m->isAttached(inst)) ? m : nullptr;
+}
 
 EmuThread::EmuThread(EmuInstance* inst, QObject* parent) : QThread(parent)
 {
@@ -159,9 +167,21 @@ void EmuThread::run()
 
         if (emuInstance->hotkeyPressed(HK_FrameLimitToggle)) emit windowLimitFPSChange();
 
-        if (emuInstance->hotkeyPressed(HK_Pause)) emuTogglePause();
+        RA::Manager* ra = raFor(emuInstance);
+        bool hardcore = ra && ra->hardcoreActive();
+
+        if (emuInstance->hotkeyPressed(HK_Pause))
+        {
+            // hardcore throttles pausing so it can't be used as slow motion
+            if (emuStatus == emuStatus_Paused || !ra || ra->canPause())
+                emuTogglePause();
+        }
         if (emuInstance->hotkeyPressed(HK_Reset)) emuReset();
-        if (emuInstance->hotkeyPressed(HK_FrameStep)) emuFrameStep();
+        if (emuInstance->hotkeyPressed(HK_FrameStep))
+        {
+            if (hardcore) ra->notifyBlocked("Frame advance");
+            else emuFrameStep();
+        }
 
         if (emuInstance->hotkeyPressed(HK_FullscreenToggle)) emit windowFullscreenToggle();
 
@@ -309,6 +329,10 @@ void EmuThread::run()
             else
             {
                 nlines = emuInstance->nds->RunFrame();
+
+                // evaluate achievements every emulated frame, including
+                // fast-forwarded ones
+                if (ra) ra->doFrame();
             }
 
             if (emuInstance->ndsSave)
@@ -336,10 +360,18 @@ void EmuThread::run()
             if (emuInstance->hotkeyPressed(HK_FastForwardToggle)) emuInstance->fastForwardToggled = !emuInstance->fastForwardToggled;
             if (emuInstance->hotkeyPressed(HK_SlowMoToggle)) emuInstance->slowmoToggled = !emuInstance->slowmoToggled;
 
+            // slow motion is not allowed in hardcore (fast forward is fine)
+            if (hardcore)
+            {
+                if (emuInstance->hotkeyPressed(HK_SlowMo) || emuInstance->hotkeyPressed(HK_SlowMoToggle))
+                    ra->notifyBlocked("Slow motion");
+                emuInstance->slowmoToggled = false;
+            }
+
             if (emuInstance->hotkeyPressed(HK_AudioMuteToggle)) emuInstance->toggleAudioMute();
 
             bool enablefastforward = emuInstance->hotkeyDown(HK_FastForward) | emuInstance->fastForwardToggled;
-            bool enableslowmo = emuInstance->hotkeyDown(HK_SlowMo) | emuInstance->slowmoToggled;
+            bool enableslowmo = (emuInstance->hotkeyDown(HK_SlowMo) | emuInstance->slowmoToggled) && !hardcore;
 
             if (useOpenGL)
             {
@@ -439,6 +471,9 @@ void EmuThread::run()
 
             SDL_Delay(75);
 
+            // keep the RetroAchievements session alive (pings, retries)
+            if (ra && emuActive) ra->idle();
+
             emuInstance->drawScreen();
         }
 
@@ -530,6 +565,8 @@ void EmuThread::handleMessages()
             emuStatus = emuStatus_Paused;
             emuActive = false;
 
+            if (RA::Manager* ra = raFor(emuInstance)) ra->onGameUnloaded();
+
             emuInstance->audioDisable();
             emit windowEmuStop();
             break;
@@ -540,6 +577,14 @@ void EmuThread::handleMessages()
 
         case msg_EmuReset:
             emuInstance->reset();
+
+            // resets the achievement runtime, or loads the game if it wasn't
+            // yet (e.g. after logging in or enabling hardcore)
+            if (RA::Manager* ra = raFor(emuInstance))
+            {
+                if (emuInstance->cartInserted()) ra->onROMStarted();
+                else ra->onGameUnloaded();
+            }
 
             emuStatus = emuStatus_Running;
             emuPauseStack = emuPauseStackRunning;
@@ -574,6 +619,8 @@ void EmuThread::handleMessages()
             assert(emuInstance->nds != nullptr);
             emuInstance->nds->Start();
             msgResult = 1;
+
+            if (RA::Manager* ra = raFor(emuInstance)) ra->onROMStarted();
             break;
 
         case msg_BootFirmware:
@@ -584,6 +631,13 @@ void EmuThread::handleMessages()
             assert(emuInstance->nds != nullptr);
             emuInstance->nds->Start();
             msgResult = 1;
+
+            // the firmware menu may go on to boot the inserted cart
+            if (RA::Manager* ra = raFor(emuInstance))
+            {
+                if (emuInstance->cartInserted()) ra->onROMStarted();
+                else ra->onGameUnloaded();
+            }
             break;
 
         case msg_InsertCart:
@@ -592,6 +646,10 @@ void EmuThread::handleMessages()
                 break;
 
             msgResult = 1;
+
+            // hot-swapped cart while running: switch achievement sets
+            if (emuActive)
+                if (RA::Manager* ra = raFor(emuInstance)) ra->onROMStarted();
             break;
 
         case msg_EjectCart:

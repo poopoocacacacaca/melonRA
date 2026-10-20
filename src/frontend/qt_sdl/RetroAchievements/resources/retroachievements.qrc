@@ -1,0 +1,7 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/retroachievements">
+    <file>unlock.wav</file>
+    <file>mastery.wav</file>
+    <file>leaderboard.wav</file>
+</qresource>
+</RCC>

@@ -112,6 +112,15 @@ DefaultList<bool> DefaultBools =
 #endif
     {"DSi.DSP.HLE", true},
     {"Instance*.RTC.SyncToHost", true},
+
+    {"RetroAchievements.Enabled", true},
+    {"RetroAchievements.Hardcore", true},
+    {"RetroAchievements.Notifications", true},
+    {"RetroAchievements.LeaderboardNotifications", true},
+    {"RetroAchievements.ChallengeIndicators", true},
+    {"RetroAchievements.ProgressIndicators", true},
+    {"RetroAchievements.LeaderboardTrackers", true},
+    {"RetroAchievements.Sounds", true},
 };
 
 DefaultList<std::string> DefaultStrings =

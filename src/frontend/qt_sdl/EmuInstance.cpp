@@ -47,6 +47,7 @@
 #include "DSi_I2C.h"
 #include "FreeBIOS.h"
 #include "main.h"
+#include "RetroAchievements/RAClient.h"
 
 #include "NDSCart/CartSD.h"
 
@@ -133,6 +134,10 @@ EmuInstance::EmuInstance(int inst) : deleting(false),
 
     emuThread = new EmuThread(this);
 
+    // RetroAchievements only runs on the first instance
+    if (inst == 0 && RA::Manager::get())
+        RA::Manager::get()->attachInstance(this);
+
     numWindows = 0;
     mainWindow = nullptr;
     for (int i = 0; i < kMaxWindows; i++)
@@ -162,6 +167,9 @@ EmuInstance::~EmuInstance()
     emuThread->wait();
     delete emuThread;
     emuThread = nullptr;
+
+    if (RA::Manager::get())
+        RA::Manager::get()->detachInstance(this);
 
     net.UnregisterInstance(instanceID);
 
@@ -715,8 +723,27 @@ bool EmuInstance::savestateExists(int slot)
     return Platform::FileExists(ssfile);
 }
 
+// RetroAchievements runtime state is appended to savestate files as
+//   [rcheevos progress][u32 length]["RCHV"]
+// so that hit counts and leaderboard progress survive a load.
+static const char kRAStateMagic[4] = {'R', 'C', 'H', 'V'};
+
+static RA::Manager* raFor(EmuInstance* inst)
+{
+    RA::Manager* m = RA::Manager::get();
+    return (m && m->isAttached(inst)) ? m : nullptr;
+}
+
 bool EmuInstance::loadState(const std::string& filename)
 {
+    RA::Manager* ra = raFor(this);
+    if (ra && ra->hardcoreActive())
+    {
+        // always blocked in hardcore; the UI offers to switch to casual first
+        ra->notifyBlocked("Loading save states");
+        return false;
+    }
+
     Platform::FileHandle* file = Platform::OpenFile(filename, Platform::FileMode::Read);
     if (file == nullptr)
     { // If we couldn't open the state file...
@@ -754,6 +781,21 @@ bool EmuInstance::loadState(const std::string& filename)
     }
     Platform::CloseFile(file); // done with the file now
 
+    // split off the RetroAchievements block, if present
+    const u8* raData = nullptr;
+    size_t raLen = 0;
+    if (size >= 8 && memcmp(&buffer[size - 4], kRAStateMagic, 4) == 0)
+    {
+        u32 len;
+        memcpy(&len, &buffer[size - 8], 4);
+        if (len <= size - 8)
+        {
+            size -= 8 + len;
+            raData = &buffer[size];
+            raLen = len;
+        }
+    }
+
     // Get ready to load the state from the buffer into the emulator
     std::unique_ptr<Savestate> state = std::make_unique<Savestate>(buffer.data(), size, false);
 
@@ -768,6 +810,9 @@ bool EmuInstance::loadState(const std::string& filename)
     assert(backup == nullptr);
 
     savestateLoaded = true;
+
+    if (ra)
+        ra->deserializeProgress(raData, raLen);
 
     return true;
 }
@@ -808,6 +853,19 @@ bool EmuInstance::saveState(const std::string& filename)
         return false;
     }
 
+    // saving is allowed in hardcore too; the RA runtime state rides along
+    if (RA::Manager* ra = raFor(this))
+    {
+        std::vector<u8> progress = ra->serializeProgress();
+        if (!progress.empty())
+        {
+            u32 len = (u32)progress.size();
+            Platform::FileWrite(progress.data(), progress.size(), 1, file);
+            Platform::FileWrite(&len, 4, 1, file);
+            Platform::FileWrite(kRAStateMagic, 4, 1, file);
+        }
+    }
+
     Platform::CloseFile(file);
 
     return true;
@@ -817,6 +875,13 @@ void EmuInstance::undoStateLoad()
 {
     if (!savestateLoaded || !backupState) return;
 
+    RA::Manager* ra = raFor(this);
+    if (ra && ra->hardcoreActive())
+    {
+        ra->notifyBlocked("Undoing a state load");
+        return;
+    }
+
     // Rewind the backup state and put it in load mode
     backupState->Rewind(false);
 
@@ -824,6 +889,9 @@ void EmuInstance::undoStateLoad()
     // what do we do if it doesn't???
     // but it should work.
     nds->DoSavestate(backupState.get());
+
+    // the in-memory backup has no achievement state: start the runtime over
+    if (ra) ra->deserializeProgress(nullptr, 0);
 }
 
 
@@ -842,7 +910,8 @@ void EmuInstance::loadCheats()
     // TODO: check for error (malformed cheat file, ...)
     cheatFile = std::make_unique<ARCodeFile>(filename);
 
-    if (cheatsOn)
+    RA::Manager* ra = raFor(this);
+    if (cheatsOn && !(ra && ra->hardcoreActive()))
     {
         nds->AREngine.Cheats = cheatFile->GetCodes();
     }
@@ -1153,6 +1222,13 @@ std::optional<FATStorage> EmuInstance::loadSDCard(const string& key) noexcept
 
 void EmuInstance::enableCheats(bool enable)
 {
+    RA::Manager* ra = raFor(this);
+    if (enable && ra && ra->hardcoreActive())
+    {
+        ra->notifyBlocked("Cheats");
+        enable = false;
+    }
+
     cheatsOn = enable;
     if (cheatsOn && cheatFile)
         nds->AREngine.Cheats = cheatFile->GetCodes();
@@ -1292,6 +1368,17 @@ bool EmuInstance::updateConsole() noexcept
             gdbopt.GetBool("ARM9.BreakOnStartup"),
     };
     auto gdbargs = gdbopt.GetBool("Enabled") ? std::make_optional(_gdbargs) : std::nullopt;
+
+    // debuggers are not allowed in RetroAchievements hardcore mode
+    if (gdbargs.has_value())
+    {
+        RA::Manager* ra = raFor(this);
+        if (ra && ra->hardcoreActive())
+        {
+            gdbargs = std::nullopt;
+            ra->notifyBlocked("The GDB stub");
+        }
+    }
 #else
     std::optional<GDBArgs> gdbargs = std::nullopt;
 #endif
@@ -1874,6 +1961,10 @@ bool EmuInstance::loadROM(QStringList filepath, bool reset, QString& errorstr)
         return false;
     }
 
+    // hash the ROM for RetroAchievements while we still own the raw image
+    if (RA::Manager* ra = raFor(this))
+        ra->identifyROM(filedata.get(), filelen, romname);
+
     ndsSave = nullptr;
 
     baseROMDir = basepath;
@@ -1976,6 +2067,12 @@ bool EmuInstance::loadROM(QStringList filepath, bool reset, QString& errorstr)
 void EmuInstance::ejectCart()
 {
     ndsSave = nullptr;
+
+    if (RA::Manager* ra = raFor(this))
+    {
+        ra->identifyROM(nullptr, 0);
+        ra->onGameUnloaded();
+    }
 
     if (emuIsActive())
     {

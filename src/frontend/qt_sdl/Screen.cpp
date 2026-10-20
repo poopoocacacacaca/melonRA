@@ -41,6 +41,8 @@
 
 #include "main_shaders.h"
 #include "OSD_shaders.h"
+#include "RetroAchievements/RAClient.h"
+#include "RetroAchievements/RAOverlay.h"
 #include "font.h"
 #include "version.h"
 
@@ -56,6 +58,14 @@ using namespace QNativeInterface;
 
 
 const u32 kOSDMargin = 6;
+
+// RetroAchievements overlay for the given instance, if it has one
+static RA::Overlay* raOverlayFor(EmuInstance* inst)
+{
+    RA::Manager* m = RA::Manager::get();
+    if (!m || !m->isAttached(inst)) return nullptr;
+    return &m->overlay();
+}
 const int kLogoWidth = 192;
 
 
@@ -861,6 +871,13 @@ void ScreenPanelNative::paintEvent(QPaintEvent* event)
 
         osdMutex.unlock();
     }
+
+    // RetroAchievements notifications, indicators and trackers
+    if (RA::Overlay* ra = raOverlayFor(emuInstance); ra && ra->hasContent())
+    {
+        painter.resetTransform();
+        ra->paint(painter, width(), height());
+    }
 }
 
 
@@ -1020,6 +1037,14 @@ void ScreenPanelGL::initOpenGL()
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, logo.width(), logo.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, logo.bits());
     logoTexture = tex;
 
+    glGenTextures(1, &raOverlayTexture);
+    glBindTexture(GL_TEXTURE_2D, raOverlayTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    raOverlayImage = QImage(); // force a re-upload into the new texture
+
     transferLayout();
     glInited = true;
 }
@@ -1049,6 +1074,8 @@ void ScreenPanelGL::deinitOpenGL()
     glDeleteBuffers(1, &osdVertexBuffer);
 
     glDeleteTextures(1, &logoTexture);
+    glDeleteTextures(1, &raOverlayTexture);
+    raOverlayImage = QImage();
 
     glDeleteProgram(osdShader);
 
@@ -1258,6 +1285,43 @@ void ScreenPanelGL::drawScreen()
         glUseProgram(0);
 
         osdMutex.unlock();
+    }
+
+    // RetroAchievements overlay: painted with QPainter into an image, then
+    // drawn as one full-window textured quad with the OSD shader
+    if (RA::Overlay* ra = raOverlayFor(emuInstance); ra && ra->hasContent())
+    {
+        if (ra->renderToImage(raOverlayImage, raOverlayVersion, w, h, factor))
+        {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, raOverlayTexture);
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, raOverlayImage.bytesPerLine() / 4);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, raOverlayImage.width(), raOverlayImage.height(), 0,
+                         GL_RGBA, GL_UNSIGNED_BYTE, raOverlayImage.constBits());
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        }
+
+        glUseProgram(osdShader);
+        glUniform2f(osdScreenSizeULoc, w, h);
+        glUniform1f(osdScaleFactorULoc, factor);
+        // the image is in device pixels, the quad in logical pixels
+        glUniform1f(osdTexScaleULoc, factor);
+
+        glBindBuffer(GL_ARRAY_BUFFER, osdVertexBuffer);
+        glBindVertexArray(osdVertexArray);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, raOverlayTexture);
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+        glUniform2i(osdPosULoc, 0, 0);
+        glUniform2i(osdSizeULoc, (int)(w / factor), (int)(h / factor));
+        glDrawArrays(GL_TRIANGLES, 0, 2*3);
+
+        glDisable(GL_BLEND);
+        glUseProgram(0);
     }
 
     glContext->SwapBuffers();

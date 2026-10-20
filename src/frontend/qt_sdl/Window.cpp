@@ -74,6 +74,8 @@
 #include "CameraManager.h"
 #include "Window.h"
 #include "AboutDialog.h"
+#include "RetroAchievements/RAClient.h"
+#include "RetroAchievements/RADialogs.h"
 
 using namespace melonDS;
 
@@ -624,6 +626,42 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             actAudioSync->setCheckable(true);
             connect(actAudioSync, &QAction::triggered, this, &MainWindow::onChangeAudioSync);
         }
+        if (emuInstance->instanceID == 0 && RA::Manager::get())
+        {
+            QMenu * menu = menubar->addMenu("RetroAchievements");
+
+            actRAStatus = menu->addAction("Not logged in");
+            actRAStatus->setEnabled(false);
+            menu->addSeparator();
+
+            actRAAchievements = menu->addAction("Achievements...");
+            connect(actRAAchievements, &QAction::triggered, this, [this]() { RA::AchievementsDialog::open(this, false); });
+
+            actRALeaderboards = menu->addAction("Leaderboards...");
+            connect(actRALeaderboards, &QAction::triggered, this, [this]() { RA::AchievementsDialog::open(this, true); });
+
+            menu->addSeparator();
+
+            actRAHardcore = menu->addAction("Hardcore mode");
+            actRAHardcore->setCheckable(true);
+            connect(actRAHardcore, &QAction::triggered, this, &MainWindow::onRAToggleHardcore);
+
+            menu->addSeparator();
+
+            actRALogin = menu->addAction("Log in...");
+            connect(actRALogin, &QAction::triggered, this, [this]() { RA::LoginDialog::open(this); });
+
+            actRALogout = menu->addAction("Log out");
+            connect(actRALogout, &QAction::triggered, this, []() { RA::Manager::get()->logout(); });
+
+            actRASettings = menu->addAction("Settings...");
+            actRASettings->setMenuRole(QAction::NoRole);
+            connect(actRASettings, &QAction::triggered, this, [this]() { RA::SettingsDialog::open(this); });
+
+            // filled with the RAIntegration menu once the toolkit DLL loads
+            raToolkitMenu = menu->addMenu("Developer toolkit");
+            raToolkitMenu->menuAction()->setVisible(false);
+        }
         {
             QMenu * menu = menubar->addMenu("Help");
             actAbout = menu->addAction("About...");
@@ -752,6 +790,42 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
 
     QObject::connect(qApp, &QApplication::applicationStateChanged, this, &MainWindow::onAppStateChanged);
     onUpdateInterfaceSettings();
+
+    if (RA::Manager* ra = RA::Manager::get(); ra && emuInstance->instanceID == 0)
+    {
+        connect(ra, &RA::Manager::stateChanged, this, &MainWindow::onRAStateChanged);
+
+        connect(ra, &RA::Manager::toolkitMenuChanged, this, &MainWindow::onRAToolkitMenuChanged);
+
+        // only the first window acts on reset/pause requests, so they happen once
+        if (windowID == 0)
+        {
+            // queued: the request can arrive from inside an rc_client call
+            connect(ra, &RA::Manager::resetRequested, this, [this]()
+            {
+                if (emuThread->emuIsActive())
+                    emuThread->emuReset();
+            }, Qt::QueuedConnection);
+            connect(ra, &RA::Manager::pauseRequested, this, [this]()
+            {
+                if (emuThread->emuIsActive() && emuThread->emuIsRunning())
+                {
+                    emuThread->emuPause();
+                    pausedManually = true;
+                }
+            }, Qt::QueuedConnection);
+
+            // RAIntegration needs a native window handle, so do this once
+            // the window is up (it also performs the startup login)
+            QTimer::singleShot(0, this, [this]()
+            {
+                if (RA::Manager* ra = RA::Manager::get())
+                    ra->initRAIntegration(this);
+            });
+        }
+
+        onRAStateChanged();
+    }
 
     updateMPInterface(MPInterface::GetType());
 }
@@ -1553,6 +1627,10 @@ void MainWindow::onLoadState()
 {
     int slot = ((QAction*)sender())->data().toInt();
 
+    if (RA::Manager* ra = RA::Manager::get(); ra && ra->isAttached(emuInstance))
+        if (!ra->requestHardcoreExemption(this, "Loading save states"))
+            return;
+
     QString filename;
     if (slot > 0)
     {
@@ -1594,6 +1672,10 @@ void MainWindow::onLoadState()
 
 void MainWindow::onUndoStateLoad()
 {
+    if (RA::Manager* ra = RA::Manager::get(); ra && ra->isAttached(emuInstance))
+        if (!ra->requestHardcoreExemption(this, "Undoing a state load"))
+            return;
+
     emuThread->undoStateLoad();
 
     emuInstance->osdAddMessage(0, "State load undone");
@@ -1645,6 +1727,12 @@ void MainWindow::onPause(bool checked)
 
     if (checked)
     {
+        if (RA::Manager* ra = RA::Manager::get(); ra && ra->isAttached(emuInstance) && !ra->canPause())
+        {
+            actPause->setChecked(false);
+            return;
+        }
+
         emuThread->emuPause();
         pausedManually = true;
     }
@@ -1673,6 +1761,10 @@ void MainWindow::onFrameStep()
 {
     if (!emuThread->emuIsActive()) return;
 
+    if (RA::Manager* ra = RA::Manager::get(); ra && ra->isAttached(emuInstance))
+        if (!ra->requestHardcoreExemption(this, "Frame advance"))
+            return;
+
     emuThread->emuFrameStep();
 }
 
@@ -1697,6 +1789,18 @@ void MainWindow::onOpenPowerManagement()
 
 void MainWindow::onEnableCheats(bool checked)
 {
+    if (checked)
+    {
+        if (RA::Manager* ra = RA::Manager::get(); ra && ra->isAttached(emuInstance))
+        {
+            if (!ra->requestHardcoreExemption(this, "Cheats"))
+            {
+                actEnableCheats->setChecked(false);
+                return;
+            }
+        }
+    }
+
     localCfg.SetBool("EnableCheats", checked);
     emuThread->enableCheats(checked);
 
@@ -1728,7 +1832,113 @@ void MainWindow::onROMInfo()
 
 void MainWindow::onRAMInfo()
 {
+    // memory viewers/editors are not allowed in hardcore
+    if (RA::Manager* ra = RA::Manager::get(); ra && ra->isAttached(emuInstance))
+        if (!ra->requestHardcoreExemption(this, "RAM search"))
+            return;
+
     RAMInfoDialog* dlg = RAMInfoDialog::openDlg(this);
+}
+
+void MainWindow::onRAToggleHardcore(bool checked)
+{
+    RA::Manager* ra = RA::Manager::get();
+    if (!ra) return;
+
+    if (checked && ra->isGameLoaded() && emuThread->emuIsActive())
+    {
+        auto res = QMessageBox::question(this, "Enable Hardcore mode",
+            "Enabling Hardcore mode resets the running game. Continue?",
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+        if (res != QMessageBox::Yes)
+        {
+            actRAHardcore->setChecked(false);
+            return;
+        }
+    }
+
+    ra->setHardcorePreferred(checked);
+}
+
+void MainWindow::onRAToolkitMenuChanged()
+{
+    RA::Manager* ra = RA::Manager::get();
+    if (!ra || !hasMenu || !raToolkitMenu) return;
+
+    raToolkitMenu->clear();
+    std::vector<RA::Manager::ToolkitMenuItem> items = ra->toolkitMenu();
+    for (const auto& item : items)
+    {
+        if (item.id == 0)
+        {
+            raToolkitMenu->addSeparator();
+            continue;
+        }
+        QAction* act = raToolkitMenu->addAction(item.label);
+        act->setEnabled(item.enabled);
+        if (item.checked)
+        {
+            act->setCheckable(true);
+            act->setChecked(true);
+        }
+        uint32_t id = item.id;
+        connect(act, &QAction::triggered, this, [id]()
+        {
+            if (RA::Manager* ra = RA::Manager::get())
+                ra->activateToolkitMenuItem(id);
+        });
+    }
+    raToolkitMenu->menuAction()->setVisible(!items.empty());
+}
+
+void MainWindow::onRAStateChanged()
+{
+    RA::Manager* ra = RA::Manager::get();
+    if (!ra) return;
+
+    if (hasMenu && actRAStatus)
+    {
+        QString status;
+        if (!ra->isEnabled())
+            status = "RetroAchievements disabled";
+        else if (ra->isLoggedIn())
+            status = QString("Logged in as %1 (%2 points)").arg(ra->userDisplayName()).arg(ra->userScore());
+        else if (ra->isLoginPending())
+            status = "Logging in...";
+        else
+            status = "Not logged in";
+        if (ra->isGameLoaded())
+            status += " - " + ra->gameTitle();
+        actRAStatus->setText(status);
+
+        actRAHardcore->setChecked(ra->isHardcorePreferred());
+        actRAHardcore->setEnabled(ra->isEnabled());
+        actRALogin->setEnabled(ra->isEnabled());
+        actRALogin->setText(ra->isLoggedIn() ? "Switch account..." : "Log in...");
+        actRALogout->setEnabled(ra->isLoggedIn());
+        actRAAchievements->setEnabled(ra->isEnabled());
+        actRALeaderboards->setEnabled(ra->isEnabled());
+    }
+
+    // entering hardcore: shut off anything that isn't allowed
+    if (windowID == 0 && ra->hardcoreActive())
+    {
+        if (localCfg.GetBool("EnableCheats"))
+        {
+            localCfg.SetBool("EnableCheats", false);
+            if (emuThread->emuIsActive())
+                emuThread->enableCheats(false);
+            emuInstance->doOnAllWindows([](MainWindow* win)
+            {
+                if (win->hasMenu) win->actEnableCheats->setChecked(false);
+            });
+        }
+
+        if (RAMInfoDialog::currentDlg)
+            RAMInfoDialog::currentDlg->close();
+
+        emuInstance->slowmoToggled = false;
+    }
 }
 
 void MainWindow::onOpenTitleManager()

@@ -1,3 +1,7 @@
+> **melonDS-RA** — this fork adds native [RetroAchievements](https://retroachievements.org) support:
+> login, multi-set (subsets), Hardcore mode, on-screen unlock notifications, challenge/progress indicators,
+> leaderboard trackers and an achievements/leaderboards browser. See [RETROACHIEVEMENTS.md](RETROACHIEVEMENTS.md).
+
 <p align="center"><img src="https://raw.githubusercontent.com/melonDS-emu/melonDS/master/res/icon/melon_128x128.png"></p>
 <h2 align="center"><b>melonDS</b></h2>
 <p align="center">
