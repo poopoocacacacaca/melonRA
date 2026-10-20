@@ -25,6 +25,7 @@ The following components are included in, or linked into, melonRA builds.
 | DuckStation GL context code (portions) | OpenGL context handling (`src/frontend/duckstation`) | GPL-3.0, from when DuckStation was GPL-licensed (as included in upstream melonDS) | https://github.com/stenzek/duckstation |
 | toml11 | config file parsing (`src/frontend/qt_sdl/toml`) | MIT | https://github.com/ToruNiina/toml11 |
 | gif-h | GIF writing (`src/frontend/qt_sdl/gif-h`) | Public domain | https://github.com/charlietangora/gif-h |
+| famfamfam flag icons | region flags in the game list (`src/frontend/qt_sdl/GameList/flags`) | Public domain | http://www.famfamfam.com/lab/icons/flags/ |
 
 ## Linked libraries (provided by the build environment)
 

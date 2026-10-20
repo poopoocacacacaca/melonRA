@@ -125,6 +125,8 @@ DefaultList<bool> DefaultBools =
     {"RetroAchievements.LeaderboardTrackers", true},
     {"RetroAchievements.Sounds", true},
     {"RetroAchievements.ShowAccountOnStart", true},
+    {"GameList.Enabled", true},
+    {"GameList.SearchSubfolders", true},
     {"RetroAchievements.NotificationsBold", true},
     {"RetroAchievements.LeaderboardNotificationsBold", true},
     {"RetroAchievements.ChallengeIndicatorsBold", true},

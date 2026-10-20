@@ -904,8 +904,10 @@ bool ScreenPanelGL::createContext()
 
     // if our parent window is parented to another window, we will
     // share our OpenGL context with that window
-    MainWindow* ourwin = (MainWindow*)parentWidget();
-    MainWindow* parentwin = (MainWindow*)parentWidget()->parentWidget();
+    // (the panel may sit in a stack with the game list, so don't assume it's
+    // the window's direct child)
+    MainWindow* ourwin = mainWindow;
+    MainWindow* parentwin = (MainWindow*)mainWindow->parentWidget();
     //if (parentwin)
     if (ourwin->getWindowID() != 0)
     {

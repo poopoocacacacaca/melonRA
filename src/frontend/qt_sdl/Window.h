@@ -43,6 +43,9 @@ class EmuThread;
 
 const int kMaxRecentROMs = 10;
 
+class QStackedWidget;
+namespace GameList { class Widget; }
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -100,9 +103,19 @@ protected:
 
     void changeEvent(QEvent* event) override;
 
+public:
+    // boots a ROM file (from the game list or the recent files)
+    bool bootROMPath(const QString& path);
+
 private:
     void updateMenuBarStyle();
     QStyle* menuBarStyle = nullptr;
+
+    // the main window of the first instance shows the game list in place of
+    // the screens while no game is running
+    void updateCentralView();
+    QStackedWidget* centralStack = nullptr;
+    GameList::Widget* gameList = nullptr;
 
 signals:
     void screenLayoutChange();
@@ -285,6 +298,9 @@ public:
     QAction* actPathSettings;
     QAction* actInterfaceSettings;
     QAction* actUpdateSettings;
+    QAction* actGameListSettings;
+    QAction* actShowGameList;
+    QAction* actRefreshGameList;
     QAction* actScreenSize[4];
     QActionGroup* grpScreenRotation;
     QAction* actScreenRotation[screenRot_MAX];

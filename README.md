@@ -40,6 +40,8 @@ regular melonDS desktop app.
   - sound effects
   - savestates that remember achievement progress
 - **Optional RAIntegration** developer toolkit on Windows, for achievement creators.
+- **Game list.** Point melonRA at your game folders and it lists every DS game with its icon, title,
+  developer, region flag, game code and size. Sort by any column, search, and double-click to play.
 - **Built-in updater** with a Stable and a Nightly channel.
 
 ## Getting started
@@ -50,6 +52,8 @@ regular melonDS desktop app.
    [nightly build](https://github.com/poopoocacacacaca/melonRA/releases/tag/nightly) (Windows and Linux),
    or build it yourself (see below).
 2. Set up melonDS as usual (BIOS/firmware are optional, see the original README below).
+   Click **Add Folder...** on the main screen (or use **Config → Game List Settings**) to list your
+   games there.
 3. Open **RetroAchievements → Log In…** and sign in with your
    [RetroAchievements.org](https://retroachievements.org) account.
 4. Load a game. A popup shows the game and your progress. **RetroAchievements → Achievements…** opens

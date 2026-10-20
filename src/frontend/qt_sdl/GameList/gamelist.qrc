@@ -1,0 +1,19 @@
+<RCC>
+  <qresource prefix="/flags">
+    <file alias="au.png">flags/au.png</file>
+    <file alias="cn.png">flags/cn.png</file>
+    <file alias="de.png">flags/de.png</file>
+    <file alias="dk.png">flags/dk.png</file>
+    <file alias="es.png">flags/es.png</file>
+    <file alias="eu.png">flags/eu.png</file>
+    <file alias="fr.png">flags/fr.png</file>
+    <file alias="it.png">flags/it.png</file>
+    <file alias="jp.png">flags/jp.png</file>
+    <file alias="kr.png">flags/kr.png</file>
+    <file alias="nl.png">flags/nl.png</file>
+    <file alias="no.png">flags/no.png</file>
+    <file alias="ru.png">flags/ru.png</file>
+    <file alias="se.png">flags/se.png</file>
+    <file alias="us.png">flags/us.png</file>
+  </qresource>
+</RCC>

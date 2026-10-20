@@ -42,6 +42,7 @@
 #include <QCommandLineParser>
 #include <QDesktopServices>
 #include <QProxyStyle>
+#include <QStackedWidget>
 #include <QStyleFactory>
 #include <QStyleOption>
 
@@ -80,6 +81,7 @@
 #include "RetroAchievements/RAClient.h"
 #include "RetroAchievements/RADialogs.h"
 #include "Updater/UpdaterDialogs.h"
+#include "GameList/GameList.h"
 
 using namespace melonDS;
 
@@ -639,6 +641,24 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             actScreenFiltering->setCheckable(true);
             connect(actScreenFiltering, &QAction::triggered, this, &MainWindow::onChangeScreenFiltering);
 
+            actShowGameList = menu->addAction("Show Game List");
+            actShowGameList->setCheckable(true);
+            actShowGameList->setChecked(GameList::isEnabled());
+            connect(actShowGameList, &QAction::toggled, this, [this](bool on)
+            {
+                GameList::setEnabled(on);
+                Config::Save();
+                updateCentralView();
+            });
+
+            actRefreshGameList = menu->addAction("Refresh Game List");
+            connect(actRefreshGameList, &QAction::triggered, this, [this]()
+            {
+                if (gameList) gameList->refresh();
+            });
+
+            menu->addSeparator();
+
             actShowOSD = menu->addAction("Show OSD");
             actShowOSD->setCheckable(true);
             connect(actShowOSD, &QAction::triggered, this, &MainWindow::onChangeShowOSD);
@@ -681,6 +701,16 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
 
             actPathSettings = menu->addAction("Path Settings");
             connect(actPathSettings, &QAction::triggered, this, &MainWindow::onOpenPathSettings);
+
+            actGameListSettings = menu->addAction("Game List Settings");
+            actGameListSettings->setMenuRole(QAction::NoRole);
+            connect(actGameListSettings, &QAction::triggered, this, [this]()
+            {
+                if (gameList) gameList->openSettings();
+                else GameList::SettingsDialog::edit(this);
+                if (actShowGameList) actShowGameList->setChecked(GameList::isEnabled());
+                updateCentralView();
+            });
 
             actUpdateSettings = menu->addAction("Update Settings");
             // keep macOS from moving it to the application menu as "Preferences"
@@ -771,10 +801,25 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
         // if the window was closed in fullscreen do not restore this
         setWindowState(windowState() & ~Qt::WindowFullScreen);
     }
+    // the first instance's main window lists the games while none is running
+    if (hasMenu && emuInstance->getInstanceID() == 0 && windowID == 0)
+    {
+        centralStack = new QStackedWidget(this);
+        setCentralWidget(centralStack);
+        gameList = new GameList::Widget(centralStack);
+        centralStack->addWidget(gameList);
+        connect(gameList, &GameList::Widget::bootRequested, this, &MainWindow::bootROMPath);
+    }
+
     show();
 
     panel = nullptr;
     createScreenPanel();
+
+    // a list needs more room than the screens at 1x
+    if (centralStack && centralStack->currentWidget() == gameList &&
+        (width() < 640 || height() < 420))
+        resize(std::max(width(), 640), std::max(height(), 480));
 
     if (hasMenu)
     {
@@ -855,6 +900,9 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             actWifiSettings->setEnabled(false);
             actInterfaceSettings->setEnabled(false);
             actUpdateSettings->setEnabled(false);
+            actGameListSettings->setEnabled(false);
+            actShowGameList->setEnabled(false);
+            actRefreshGameList->setEnabled(false);
 
 #ifdef __APPLE__
             actPreferences->setEnabled(false);
@@ -968,9 +1016,13 @@ void MainWindow::createScreenPanel()
     hasOGL = globalCfg.GetBool("Screen.UseGL") ||
             (globalCfg.GetInt("3D.Renderer") != renderer3D_Software);
 
+    // with the game list, the screens are the other page of a stack
+    QWidget* host = centralStack ? (QWidget*)centralStack : (QWidget*)this;
+
     if (hasOGL)
     {
-        ScreenPanelGL* panelGL = new ScreenPanelGL(this);
+        ScreenPanelGL* panelGL = new ScreenPanelGL(host);
+        if (centralStack) centralStack->insertWidget(0, panelGL);
         panelGL->show();
 
         // make sure no GL context is in use by the emu thread
@@ -999,11 +1051,15 @@ void MainWindow::createScreenPanel()
 
     if (!hasOGL)
     {
-        ScreenPanelNative* panelNative = new ScreenPanelNative(this);
+        ScreenPanelNative* panelNative = new ScreenPanelNative(host);
+        if (centralStack) centralStack->insertWidget(0, panelNative);
         panel = panelNative;
         panel->show();
     }
-    setCentralWidget(panel);
+    if (centralStack)
+        updateCentralView();
+    else
+        setCentralWidget(panel);
 
     if (hasMenu)
         actScreenFiltering->setEnabled(hasOGL);
@@ -1601,20 +1657,23 @@ void MainWindow::updateRecentFilesMenu()
 void MainWindow::onClickRecentFile()
 {
     QAction *act = (QAction *)sender();
-    QString filename = act->data().toString();
+    bootROMPath(act->data().toString());
+}
 
+bool MainWindow::bootROMPath(const QString& filename)
+{
     if (!verifySetup())
-        return;
+        return false;
 
     const QStringList file = splitArchivePath(filename, true);
     if (file.isEmpty())
-        return;
+        return false;
 
     QString errorstr;
     if (!emuThread->bootROM(file, errorstr))
     {
         QMessageBox::critical(this, "melonRA", errorstr);
-        return;
+        return false;
     }
 
     recentFileList.removeAll(filename);
@@ -1622,6 +1681,25 @@ void MainWindow::onClickRecentFile()
     updateRecentFilesMenu();
 
     updateCartInserted(false);
+    return true;
+}
+
+void MainWindow::updateCentralView()
+{
+    if (!centralStack || !panel) return;
+
+    // the list while nothing runs (if it's turned on), the screens otherwise
+    bool showList = GameList::isEnabled() && !emuThread->emuIsActive();
+    QWidget* want = showList ? (QWidget*)gameList : (QWidget*)panel;
+    if (centralStack->currentWidget() != want)
+    {
+        centralStack->setCurrentWidget(want);
+        if (!showList) panel->setFocus();
+    }
+    // a new panel is shown while it's being set up (its OpenGL context needs
+    // a window); make sure it doesn't cover the list
+    if (showList && panel->isVisible())
+        panel->hide();
 }
 
 void MainWindow::onBootFirmware()
@@ -2540,6 +2618,8 @@ void MainWindow::onEmuStart()
     actPowerManagement->setEnabled(true);
 
     actTitleManager->setEnabled(false);
+
+    updateCentralView();
 }
 
 void MainWindow::onEmuStop()
@@ -2562,6 +2642,8 @@ void MainWindow::onEmuStop()
     actPowerManagement->setEnabled(false);
 
     actTitleManager->setEnabled(!globalCfg.GetString("DSi.NANDPath").empty());
+
+    updateCentralView();
 }
 
 void MainWindow::onEmuPause(bool pause)
