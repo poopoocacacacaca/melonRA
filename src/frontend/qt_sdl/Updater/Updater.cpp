@@ -70,6 +70,10 @@ const QString kNewSuffix = ".melonRA-new";
 const QString kOldSuffix = ".melonRA-old";
 
 bool relaunchFlag = false;
+QString relaunchVersion;
+
+// set for the restarted program, so it can say it was updated
+constexpr const char* kUpdatedEnv = "MELONRA_UPDATED_TO";
 
 QString repo()
 {
@@ -899,9 +903,26 @@ void cleanUpAfterUpdate()
 #endif
 }
 
-void requestRelaunch(bool relaunch)
+void requestRelaunch(bool relaunch, const QString& version)
 {
     relaunchFlag = relaunch;
+    relaunchVersion = relaunch ? version : QString();
+}
+
+void allowForegroundHandoff()
+{
+#ifdef _WIN32
+    // Windows only lets the foreground process hand the foreground on;
+    // without this the new window can open behind everything else
+    AllowSetForegroundWindow(ASFW_ANY);
+#endif
+}
+
+QString takeUpdatedVersion()
+{
+    QString v = qEnvironmentVariable(kUpdatedEnv);
+    qunsetenv(kUpdatedEnv);
+    return v;
 }
 
 bool relaunchRequested()
@@ -925,15 +946,26 @@ bool relaunch()
     }
 #endif
 
+    env.insert(kUpdatedEnv, relaunchVersion.isEmpty() ? QString("1") : relaunchVersion);
+
+    allowForegroundHandoff();
+
     QProcess proc;
     proc.setProgram(program);
     proc.setArguments(QCoreApplication::arguments().mid(1));
     proc.setWorkingDirectory(QDir::currentPath());
     proc.setProcessEnvironment(env);
-    bool ok = proc.startDetached();
+    qint64 pid = 0;
+    bool ok = proc.startDetached(&pid);
     if (!ok)
-        printf("Updater: couldn't restart %s\n", qPrintable(program));
-    return ok;
+    {
+        printf("Updater: couldn't restart %s: %s\n", qPrintable(program), qPrintable(proc.errorString()));
+        return false;
+    }
+#ifdef _WIN32
+    AllowSetForegroundWindow((DWORD)pid);
+#endif
+    return true;
 }
 
 }

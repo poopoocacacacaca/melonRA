@@ -176,7 +176,8 @@ void askToRestart(QWidget* parent, const Release& rel)
         return;
 
     // main() starts the new version once everything has shut down normally
-    requestRelaunch();
+    requestRelaunch(true, rel.version);
+    allowForegroundHandoff();
     QApplication::closeAllWindows();
 
     // a window refused to close, so we're not exiting after all
@@ -267,7 +268,29 @@ bool runAutoUpdate()
     if (res.status != CheckResult::Available || res.release.assetUrl.isEmpty())
         return false;
 
-    return downloadAndInstall(nullptr, res.release);
+    if (!downloadAndInstall(nullptr, res.release))
+        return false;
+
+    // start the new version right away, while this one still has a window in
+    // front, so the new window opens in front too
+    QProgressDialog starting("Starting melonRA " + res.release.version + "...", QString(), 0, 0);
+    starting.setWindowTitle("melonRA Update");
+    starting.setMinimumWidth(380);
+    starting.setMinimumDuration(0);
+    starting.show();
+    starting.raise();
+    starting.activateWindow();
+    QCoreApplication::processEvents();
+
+    requestRelaunch(true, res.release.version);
+    if (!relaunch())
+    {
+        QMessageBox::warning(&starting, "melonRA Update",
+                             "melonRA " + res.release.version + " is installed, but couldn't be started "
+                             "automatically. Open melonRA again to use it.");
+    }
+    requestRelaunch(false);
+    return true;
 }
 
 void startupCheck(QWidget* window)

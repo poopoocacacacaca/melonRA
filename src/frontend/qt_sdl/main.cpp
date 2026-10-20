@@ -388,14 +388,13 @@ int main(int argc, char** argv)
     }
 
     // with "Always update to the latest version" on, a newer build is
-    // installed before anything opens, and then started in place of this one
+    // installed before anything opens, and started in place of this one
     if (Updater::runAutoUpdate())
     {
         delete camManager[0];
         delete camManager[1];
         Config::Save();
         SDL_Quit();
-        Updater::relaunch();
         return 0;
     }
 
@@ -443,6 +442,16 @@ int main(int argc, char** argv)
 
         if (options->fullscreen)
             win->toggleFullscreen();
+
+        // just restarted after an update: come to the front and say so
+        QString updatedTo = Updater::takeUpdatedVersion();
+        if (!updatedTo.isEmpty())
+        {
+            win->raise();
+            win->activateWindow();
+            if (updatedTo != "1")
+                win->osdAddMessage(0, qPrintable("melonRA updated to " + updatedTo));
+        }
 
         Updater::startupCheck(win);
     }

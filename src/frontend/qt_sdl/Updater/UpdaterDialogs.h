@@ -31,8 +31,8 @@ namespace Updater
 {
 
 // Runs at startup, before any window opens. With "Always update to the latest
-// version" on, downloads and installs a newer build if there is one. Returns
-// true if it did, in which case melonRA should restart instead of opening.
+// version" on, downloads and installs a newer build if there is one, and
+// starts it. Returns true if it did, in which case this copy should exit.
 bool runAutoUpdate();
 
 // Runs once the main window is open: checks in the background and asks the

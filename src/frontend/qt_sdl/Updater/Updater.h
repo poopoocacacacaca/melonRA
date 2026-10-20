@@ -100,10 +100,18 @@ bool install(const QByteArray& package, QString& error);
 void cleanUpAfterUpdate();
 
 // Starts the (updated) program again once this one has exited.
-void requestRelaunch(bool relaunch = true);
+// `version` is what it was updated to, shown when the new one opens.
+void requestRelaunch(bool relaunch = true, const QString& version = QString());
 bool relaunchRequested();
-// Starts the program again with the same arguments. Returns false on failure.
+// Starts the program again with the same arguments, letting its window come
+// to the front. Returns false on failure.
 bool relaunch();
+// Lets the next program started take the foreground. Call while one of our
+// windows is still in front (Windows only; elsewhere it does nothing).
+void allowForegroundHandoff();
+// In the restarted program: the version it was updated to, or empty if it
+// wasn't just updated. Reading it clears it.
+QString takeUpdatedVersion();
 
 }
 
