@@ -226,7 +226,20 @@
         <bool>true</bool>
        </property>
        <property name="text">
-        <string>View on &amp;GitHub</string>
+        <string>View melonDS on &amp;GitHub</string>
+       </property>
+       <property name="flat">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnOpenMelonRAGitHub">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="text">
+        <string>View melon&amp;RA on GitHub</string>
        </property>
        <property name="flat">
         <bool>true</bool>
@@ -302,9 +315,16 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>btnOpenMelonRAGitHub</sender>
+   <signal>clicked()</signal>
+   <receiver>AboutDialog</receiver>
+   <slot>openMelonRAGitHub()</slot>
+  </connection>
  </connections>
  <slots>
   <slot>openWebsite()</slot>
   <slot>openGitHub()</slot>
+  <slot>openMelonRAGitHub()</slot>
  </slots>
 </ui>

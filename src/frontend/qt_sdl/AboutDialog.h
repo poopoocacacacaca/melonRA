@@ -41,6 +41,7 @@ public:
 private slots:
     static void openWebsite();
     static void openGitHub();
+    static void openMelonRAGitHub();
 
 private:
     Ui::AboutDialog *ui;
