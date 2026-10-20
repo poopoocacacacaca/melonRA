@@ -46,6 +46,7 @@
 #include <QShortcut>
 #include <QSortFilterProxyModel>
 #include <QStackedWidget>
+#include <QStyledItemDelegate>
 #include <QThread>
 #include <QTreeView>
 #include <QUrl>
@@ -377,6 +378,16 @@ void setEnabled(bool enabled)
     globalConfig().SetBool("GameList.Enabled", enabled);
 }
 
+bool showSearchBar()
+{
+    return globalConfig().GetBool("GameList.SearchBar");
+}
+
+void setShowSearchBar(bool show)
+{
+    globalConfig().SetBool("GameList.SearchBar", show);
+}
+
 bool showRegionNames()
 {
     return globalConfig().GetBool("GameList.RegionNames");
@@ -497,17 +508,20 @@ QVariant Model::data(const QModelIndex& index, int role) const
             return (regionNames || g.regionFlag.isEmpty()) ? g.region : QString();
         if (role == SortRole) return g.region;
         if (role == Qt::DecorationRole) return flagIcon(g.regionFlag);
+        if (role == Qt::TextAlignmentRole) return int(Qt::AlignCenter);
         break;
     case Col_GameCode:
         if (role == Qt::DisplayRole || role == SortRole) return g.gameCode;
+        if (role == Qt::TextAlignmentRole) return int(Qt::AlignCenter);
         break;
     case Col_Platform:
         if (role == Qt::DisplayRole || role == SortRole) return g.platform;
+        if (role == Qt::TextAlignmentRole) return int(Qt::AlignCenter);
         break;
     case Col_Size:
         if (role == Qt::DisplayRole) return QLocale().formattedDataSize(g.size);
         if (role == SortRole) return g.size;
-        if (role == Qt::TextAlignmentRole) return int(Qt::AlignRight | Qt::AlignVCenter);
+        if (role == Qt::TextAlignmentRole) return int(Qt::AlignCenter);
         break;
     case Col_FileName:
         if (role == Qt::DisplayRole) return g.fileName;
@@ -573,6 +587,56 @@ private:
 
 }
 
+// Qt keeps an item's icon at the left even when its text is centered; this
+// centers the flag and region name together
+class CenteredDelegate : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    void paint(QPainter* p, const QStyleOptionViewItem& option, const QModelIndex& index) const override
+    {
+        QStyleOptionViewItem opt = option;
+        initStyleOption(&opt, index);
+        const QIcon icon = opt.icon;
+        const QString text = opt.text;
+
+        // background, selection and focus as usual, without the content
+        opt.icon = QIcon();
+        opt.text.clear();
+        opt.features &= ~QStyleOptionViewItem::HasDecoration;
+        const QWidget* w = option.widget;
+        QStyle* style = w ? w->style() : QApplication::style();
+        style->drawControl(QStyle::CE_ItemViewItem, &opt, p, w);
+
+        QSize iconSize;
+        if (!icon.isNull())
+            // at full width: combined flags (USA/Europe) are wider than they're tall
+            iconSize = icon.actualSize(QSize(256, option.decorationSize.height()));
+        const int gap = (!icon.isNull() && !text.isEmpty()) ? 6 : 0;
+        const int textW = text.isEmpty() ? 0 : option.fontMetrics.horizontalAdvance(text);
+        const QRect r = option.rect;
+        int x = r.left() + std::max(4, (r.width() - iconSize.width() - gap - textW) / 2);
+
+        if (!icon.isNull())
+        {
+            icon.paint(p, QRect(QPoint(x, r.top() + (r.height() - iconSize.height()) / 2), iconSize));
+            x += iconSize.width() + gap;
+        }
+        if (!text.isEmpty())
+        {
+            const bool selected = option.state & QStyle::State_Selected;
+            p->save();
+            p->setPen(option.palette.color(selected ? QPalette::HighlightedText : QPalette::Text));
+            p->setFont(option.font);
+            QRect tr(x, r.top(), r.right() - x - 2, r.height());
+            p->drawText(tr, Qt::AlignLeft | Qt::AlignVCenter,
+                        option.fontMetrics.elidedText(text, Qt::ElideRight, tr.width()));
+            p->restore();
+        }
+    }
+};
+
 Widget::Widget(QWidget* parent) : QWidget(parent)
 {
     auto* layout = new QVBoxLayout(this);
@@ -585,14 +649,17 @@ Widget::Widget(QWidget* parent) : QWidget(parent)
     listPage = new QWidget();
     auto* listLayout = new QVBoxLayout(listPage);
     listLayout->setContentsMargins(6, 6, 6, 6);
-    auto* top = new QHBoxLayout();
+    searchRow = new QWidget();
+    auto* top = new QHBoxLayout(searchRow);
+    top->setContentsMargins(0, 0, 0, 0);
     search = new QLineEdit();
     search->setPlaceholderText("Search");
     search->setClearButtonEnabled(true);
     top->addWidget(search, 1);
     status = new QLabel();
     top->addWidget(status);
-    listLayout->addLayout(top);
+    listLayout->addWidget(searchRow);
+    searchRow->setVisible(showSearchBar());
 
     model = new Model(this);
     proxy = new ProxyModel(this);
@@ -617,6 +684,7 @@ Widget::Widget(QWidget* parent) : QWidget(parent)
     view->header()->setFirstSectionMovable(true);
     // centered column titles; the cells keep their own alignment
     view->header()->setDefaultAlignment(Qt::AlignCenter);
+    view->setItemDelegateForColumn(Model::Col_Region, new CenteredDelegate(view));
     model->setShowRegionNames(showRegionNames());
     view->header()->setStretchLastSection(false);
     view->header()->setSectionResizeMode(Model::Col_Title, QHeaderView::Stretch);
@@ -665,6 +733,15 @@ Widget::Widget(QWidget* parent) : QWidget(parent)
     auto* refreshKey = new QShortcut(QKeySequence::Refresh, this);
     refreshKey->setContext(Qt::WidgetWithChildrenShortcut);
     connect(refreshKey, &QShortcut::activated, this, &Widget::refresh);
+
+    auto* findKey = new QShortcut(QKeySequence::Find, this);
+    findKey->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(findKey, &QShortcut::activated, this, [this]()
+    {
+        setSearchBarVisible(true);
+        search->setFocus();
+        search->selectAll();
+    });
 
     restoreHeader();
     refresh();
@@ -784,9 +861,32 @@ void Widget::showContextMenu(const QPoint& pos)
         });
         menu.addSeparator();
     }
+    addViewOptions(menu);
+    menu.addSeparator();
     connect(menu.addAction("Refresh"), &QAction::triggered, this, &Widget::refresh);
     connect(menu.addAction("Game List Settings..."), &QAction::triggered, this, &Widget::openSettings);
     menu.exec(view->viewport()->mapToGlobal(pos));
+}
+
+void Widget::addViewOptions(QMenu& menu)
+{
+    QAction* act = menu.addAction("Show Search Bar");
+    act->setCheckable(true);
+    act->setChecked(searchRow->isVisible());
+    act->setShortcut(QKeySequence::Find);
+    connect(act, &QAction::toggled, this, [this](bool on)
+    {
+        setSearchBarVisible(on);
+        if (on) search->setFocus();
+    });
+}
+
+void Widget::setSearchBarVisible(bool visible)
+{
+    if (!visible)
+        search->clear(); // a hidden filter would only be confusing
+    searchRow->setVisible(visible);
+    setShowSearchBar(visible);
 }
 
 void Widget::showHeaderMenu(const QPoint& pos)
@@ -823,9 +923,12 @@ void Widget::showHeaderMenu(const QPoint& pos)
         model->setShowRegionNames(on);
         setShowRegionNames(on);
         // fit the column to just the flags, or to the names again
-        header->resizeSection(Model::Col_Region, on ? 140 : 80);
+        header->resizeSection(Model::Col_Region, on ? 170 : 80);
         saveHeader();
     });
+
+    menu.addSeparator();
+    addViewOptions(menu);
 
     menu.addSeparator();
     QAction* reset = menu.addAction("Reset Columns");
@@ -881,7 +984,7 @@ void Widget::defaultColumns()
     header->setSectionHidden(Model::Col_Platform, true);
     header->setSectionHidden(Model::Col_FileName, true);
     header->resizeSection(Model::Col_Developer, 160);
-    header->resizeSection(Model::Col_Region, 140);
+    header->resizeSection(Model::Col_Region, 170);
     header->resizeSection(Model::Col_GameCode, 90);
     header->resizeSection(Model::Col_Platform, 110);
     header->resizeSection(Model::Col_Size, 90);

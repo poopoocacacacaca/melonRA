@@ -37,6 +37,7 @@ class QCheckBox;
 class QLabel;
 class QLineEdit;
 class QListWidget;
+class QMenu;
 class QSortFilterProxyModel;
 class QStackedWidget;
 class QThread;
@@ -78,6 +79,8 @@ bool isEnabled();
 void setEnabled(bool enabled);
 bool showRegionNames();
 void setShowRegionNames(bool show);
+bool showSearchBar();
+void setShowSearchBar(bool show);
 
 
 class Model : public QAbstractTableModel
@@ -152,7 +155,11 @@ private:
     void restoreHeader();
     void defaultColumns();
 
+    void setSearchBarVisible(bool visible);
+    void addViewOptions(QMenu& menu);
+
     QStackedWidget* pages;
+    QWidget* searchRow;
     QWidget* listPage;
     QWidget* emptyPage;
     QLabel* emptyText;
