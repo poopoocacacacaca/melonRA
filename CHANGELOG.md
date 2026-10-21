@@ -13,6 +13,10 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   be reached. Unlocks earned offline stay unlocked in later offline sessions and are submitted once
   you're back online. A notification says when you're playing offline. Can be turned off in
   RetroAchievements Settings.
+- **Screen layout hotkeys.** Two new hotkeys (Config → Input and Hotkeys → General) step through the
+  screen layouts (Natural, Vertical, Horizontal, Hybrid) and the screen sizings (Even, Emphasize Top,
+  Emphasize Bottom, Auto, Top Only, Bottom Only), with an on-screen message naming the new one.
+  They're unassigned until you pick a key or button.
 
 ## 0.2.0
 

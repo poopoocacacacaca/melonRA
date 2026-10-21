@@ -157,6 +157,8 @@ signals:
 
     void swapScreensToggle();
     void screenEmphasisToggle();
+    void screenLayoutCycle();
+    void screenSizingCycle();
 
     void syncVolumeLevel();
 

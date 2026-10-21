@@ -56,6 +56,8 @@ enum
     HK_GuitarGripRed,
     HK_GuitarGripYellow,
     HK_GuitarGripBlue,
+    HK_CycleScreenLayout,
+    HK_CycleScreenSizing,
     HK_MAX
 };
 

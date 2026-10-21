@@ -28,6 +28,7 @@ regular melonDS desktop app.
   - Rich Presence, sound effects, savestates that keep achievement progress
   - optional RAIntegration developer toolkit (Windows)
 - **Game list** with icons, region flags, search and sorting, plus a grid view with box art
+- **Screen layout hotkeys** to cycle through layouts and sizings while playing
 - **Built-in updater** with Stable and Nightly channels
 
 ## Getting started

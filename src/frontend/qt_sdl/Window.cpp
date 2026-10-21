@@ -2690,6 +2690,31 @@ void MainWindow::onScreenEmphasisToggled()
     emit screenLayoutChange();
 }
 
+// hotkeys that step through the layouts and sizings of the View menu
+static const char* const kLayoutNames[screenLayout_MAX] = {"Natural", "Vertical", "Horizontal", "Hybrid"};
+static const char* const kSizingNames[screenSizing_MAX] = {"Even", "Emphasize Top", "Emphasize Bottom", "Auto",
+                                                           "Top Only", "Bottom Only"};
+
+void MainWindow::onScreenLayoutCycled()
+{
+    const int layout = (windowCfg.GetInt("ScreenLayout") + 1) % screenLayout_MAX;
+    windowCfg.SetInt("ScreenLayout", layout);
+    if (hasMenu) actScreenLayout[layout]->setChecked(true);
+    osdAddMessage(0, QString("Screen layout: %1").arg(kLayoutNames[layout]).toUtf8().constData());
+
+    emit screenLayoutChange();
+}
+
+void MainWindow::onScreenSizingCycled()
+{
+    const int sizing = (windowCfg.GetInt("ScreenSizing") + 1) % screenSizing_MAX;
+    windowCfg.SetInt("ScreenSizing", sizing);
+    if (hasMenu) actScreenSizing[sizing]->setChecked(true);
+    osdAddMessage(0, QString("Screen sizing: %1").arg(kSizingNames[sizing]).toUtf8().constData());
+
+    emit screenLayoutChange();
+}
+
 void MainWindow::onEmuStart()
 {
     if (!hasMenu) return;
