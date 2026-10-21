@@ -17,6 +17,9 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   screen layouts (Natural, Vertical, Horizontal, Hybrid) and the screen sizings (Even, Emphasize Top,
   Emphasize Bottom, Auto, Top Only, Bottom Only), with an on-screen message naming the new one.
   They're unassigned until you pick a key or button.
+- **The game list remembers your games.** It shows up instantly from the last scan, then checks the
+  folders in the background and only reads ROMs that are new or have changed. If nothing changed, the
+  list isn't touched, so your selection and scroll position stay put.
 
 ## 0.2.0
 

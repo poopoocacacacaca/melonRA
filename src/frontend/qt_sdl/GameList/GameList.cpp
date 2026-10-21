@@ -17,6 +17,7 @@
 */
 
 #include "GameList.h"
+#include "Platform.h"
 
 #include <algorithm>
 #include <mutex>
@@ -29,6 +30,9 @@
 #include <QDesktopServices>
 #include <QDialogButtonBox>
 #include <QGridLayout>
+#include <QDataStream>
+#include <QSaveFile>
+#include <QDateTime>
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
@@ -252,6 +256,7 @@ bool readGame(const QString& path, Game& game)
     game.path = info.absoluteFilePath();
     game.fileName = info.fileName();
     game.size = size;
+    game.modified = info.lastModified().toMSecsSinceEpoch();
 
     const QString code = latin(header, kHdrGameCode, 4);
     game.gameCode = code;
@@ -339,10 +344,13 @@ bool readGame(const QString& path, Game& game)
     return true;
 }
 
-std::vector<Game> scanFolders(const QStringList& dirs, bool recursive, const std::atomic<bool>& cancel)
+std::vector<Game> scanFolders(const QStringList& dirs, bool recursive, const std::atomic<bool>& cancel,
+                              const std::map<QString, Game>* known, int* read, std::vector<Game>* rejected)
 {
     std::vector<Game> games;
     std::set<QString> seen;
+    if (read) *read = 0;
+    if (rejected) rejected->clear();
 
     const QStringList filters = {"*.nds", "*.dsi", "*.srl", "*.ids"};
     for (const QString& dir : dirs)
@@ -354,13 +362,38 @@ std::vector<Game> scanFolders(const QStringList& dirs, bool recursive, const std
         {
             if (cancel) return {};
 
-            QString path = QFileInfo(it.next()).canonicalFilePath();
+            it.next();
+            const QFileInfo info = it.fileInfo();
+            QString path = info.canonicalFilePath();
             if (path.isEmpty() || !seen.insert(path).second)
                 continue;
 
+            // unchanged since the last scan: nothing to read
+            if (known)
+            {
+                auto k = known->find(path);
+                if (k != known->end() && k->second.size == info.size() &&
+                    k->second.modified == info.lastModified().toMSecsSinceEpoch())
+                {
+                    if (k->second.notRom) { if (rejected) rejected->push_back(k->second); }
+                    else games.push_back(k->second);
+                    continue;
+                }
+            }
+
             Game game;
+            if (read) ++*read;
             if (readGame(path, game))
                 games.push_back(std::move(game));
+            else if (rejected)
+            {
+                Game skip;
+                skip.path = path;
+                skip.size = info.size();
+                skip.modified = info.lastModified().toMSecsSinceEpoch();
+                skip.notRom = true;
+                rejected->push_back(std::move(skip));
+            }
         }
     }
     return games;
@@ -370,6 +403,87 @@ namespace
 {
 std::mutex scannedLock;
 std::vector<Game> scanned;
+}
+
+// The last scan's games, so the list shows at once on the next start and
+// only new or changed ROMs have to be read.
+namespace
+{
+constexpr quint32 kSavedMagic = 0x4D52474C; // "MRGL"
+constexpr quint32 kSavedVersion = 1;
+
+QString savedListPath()
+{
+    return QString::fromStdString(melonDS::Platform::GetLocalFilePath("gamelist.cache"));
+}
+
+// what the saved list was made for; titles depend on the system language
+struct SavedHeader
+{
+    QStringList folders;
+    bool recursive = false;
+    int language = 0;
+};
+
+void saveList(const SavedHeader& h, const std::vector<Game>& games)
+{
+    QSaveFile f(savedListPath());
+    if (!f.open(QIODevice::WriteOnly)) return;
+    QDataStream out(&f);
+    out.setVersion(QDataStream::Qt_6_0);
+    out << kSavedMagic << kSavedVersion << h.folders << h.recursive << (qint32)h.language << (quint32)games.size();
+    for (const Game& g : games)
+        out << g.path << g.fileName << g.size << g.modified << g.title << g.subtitle << g.developer
+            << g.gameCode << g.region << g.regionFlag << g.platform << g.icon << g.notRom;
+    if (out.status() == QDataStream::Ok) f.commit();
+}
+
+bool loadList(const SavedHeader& want, std::vector<Game>& games, std::vector<Game>& rejected)
+{
+    QFile f(savedListPath());
+    if (!f.open(QIODevice::ReadOnly)) return false;
+    QDataStream in(&f);
+    in.setVersion(QDataStream::Qt_6_0);
+
+    quint32 magic = 0, version = 0, count = 0;
+    SavedHeader h;
+    qint32 language = 0;
+    in >> magic >> version;
+    if (magic != kSavedMagic || version != kSavedVersion) return false;
+    in >> h.folders >> h.recursive >> language >> count;
+    if (in.status() != QDataStream::Ok || h.folders != want.folders || h.recursive != want.recursive ||
+        language != want.language || count > 1000000)
+        return false;
+
+    games.clear();
+    rejected.clear();
+    games.reserve(count);
+    for (quint32 i = 0; i < count && in.status() == QDataStream::Ok; i++)
+    {
+        Game g;
+        in >> g.path >> g.fileName >> g.size >> g.modified >> g.title >> g.subtitle >> g.developer
+           >> g.gameCode >> g.region >> g.regionFlag >> g.platform >> g.icon >> g.notRom;
+        (g.notRom ? rejected : games).push_back(std::move(g));
+    }
+    return in.status() == QDataStream::Ok;
+}
+
+SavedHeader currentHeader()
+{
+    return {folders(), searchSubfolders(), (int)QLocale::system().language()};
+}
+
+// same files, same sizes and dates, in any order
+bool sameFiles(const std::vector<Game>& a, const std::map<QString, Game>& b)
+{
+    if (a.size() != b.size()) return false;
+    for (const Game& g : a)
+    {
+        auto it = b.find(g.path);
+        if (it == b.end() || it->second.size != g.size || it->second.modified != g.modified) return false;
+    }
+    return true;
+}
 }
 
 std::vector<Game> scannedGames()
@@ -1247,14 +1361,37 @@ void Widget::refresh()
         return;
     }
 
-    QPointer<Widget> self(this);
-    QThread* thread = QThread::create([self, dirs, recursive, serial, cancel]()
+    // on the first scan, show the saved list right away
+    if (!savedListShown)
     {
-        std::vector<Game> games = scanFolders(dirs, recursive, *cancel);
+        savedListShown = true;
+        showSavedList();
+    }
+
+    // what's on screen now is what the scan checks against
+    auto known = std::make_shared<std::map<QString, Game>>();
+    for (const Game& g : model->games()) known->emplace(g.path, g);
+    for (const Game& g : rejectedFiles) known->emplace(g.path, g);
+    const SavedHeader header = currentHeader();
+
+    QPointer<Widget> self(this);
+    QThread* thread = QThread::create([self, dirs, recursive, serial, cancel, known, header]()
+    {
+        int read = 0;
+        std::vector<Game> rejected;
+        std::vector<Game> games = scanFolders(dirs, recursive, *cancel, known.get(), &read, &rejected);
         if (*cancel) return;
-        QMetaObject::invokeMethod(qApp, [self, serial, games = std::move(games)]() mutable
+        std::vector<Game> all = games;
+        all.insert(all.end(), rejected.begin(), rejected.end());
+        const bool changed = read > 0 || !sameFiles(all, *known);
+        if (changed || !QFile::exists(savedListPath()))
+            saveList(header, all);
+        QMetaObject::invokeMethod(qApp, [self, serial, changed, games = std::move(games),
+                                         rejected = std::move(rejected)]() mutable
         {
-            if (self) self->scanFinished(serial, std::move(games));
+            if (!self) return;
+            self->rejectedFiles = std::move(rejected);
+            self->scanFinished(serial, std::move(games), changed);
         }, Qt::QueuedConnection);
     });
     connect(thread, &QThread::finished, thread, &QObject::deleteLater);
@@ -1262,11 +1399,11 @@ void Widget::refresh()
     thread->start(QThread::LowPriority);
 }
 
-void Widget::scanFinished(int serial, std::vector<Game> games)
+bool Widget::showSavedList()
 {
-    if (serial != scanSerial) return; // a newer scan is running
+    std::vector<Game> games;
+    if (!loadList(currentHeader(), games, rejectedFiles) || games.empty()) return false;
 
-    scanning = false;
     {
         std::lock_guard<std::mutex> guard(scannedLock);
         scanned = games;
@@ -1274,6 +1411,26 @@ void Widget::scanFinished(int serial, std::vector<Game> games)
     model->setGames(std::move(games));
     emit notifier()->gamesChanged();
     view->sortByColumn(view->header()->sortIndicatorSection(), view->header()->sortIndicatorOrder());
+    updatePage();
+    return true;
+}
+
+void Widget::scanFinished(int serial, std::vector<Game> games, bool changed)
+{
+    if (serial != scanSerial) return; // a newer scan is running
+
+    scanning = false;
+    // nothing new: leave the list (and the selection and scrolling) alone
+    if (changed)
+    {
+        {
+            std::lock_guard<std::mutex> guard(scannedLock);
+            scanned = games;
+        }
+        model->setGames(std::move(games));
+        emit notifier()->gamesChanged();
+        view->sortByColumn(view->header()->sortIndicatorSection(), view->header()->sortIndicatorOrder());
+    }
     updatePage();
     // after the list is up, so the question (if any) shows over it
     QTimer::singleShot(0, this, &Widget::maybeDownloadCovers);

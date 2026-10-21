@@ -68,6 +68,9 @@ connect when you use them.
 - `melonRA.toml` in the melonRA folder holds your RetroAchievements username,
   your login token and your settings. Your password is **never** stored. Log
   out to delete the token.
+- `gamelist.cache` holds the game list from the last scan (each ROM's path,
+  size, date, title, icon, game code and region), so the list shows up at
+  once. You can delete it at any time.
 - `retroachievements/cache/` holds downloaded badge and avatar images. You can
   delete this folder at any time.
 - `retroachievements/library_hashes.json` holds the fingerprints of the ROMs in

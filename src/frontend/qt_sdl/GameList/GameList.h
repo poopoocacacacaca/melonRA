@@ -20,6 +20,7 @@
 #define GAMELIST_H
 
 #include <atomic>
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -58,6 +59,8 @@ struct Game
     QString path;
     QString fileName;
     qint64 size = 0;
+    qint64 modified = 0; // last modification, ms since the epoch
+    bool notRom = false; // a file that looked like a ROM but isn't one (only kept to skip it next time)
 
     QString title;      // from the ROM's banner, in the system language if it has one
     QString subtitle;   // middle line of a three-line banner title
@@ -72,8 +75,14 @@ struct Game
 // Reads a DS ROM's header and banner. Returns false if it isn't one.
 bool readGame(const QString& path, Game& game);
 
-// Finds every DS ROM in the given folders.
-std::vector<Game> scanFolders(const QStringList& folders, bool recursive, const std::atomic<bool>& cancel);
+// Finds every DS ROM in the given folders. Entries in `known` whose file
+// hasn't changed (same size and modification time) are reused instead of
+// being read again; `read` receives how many files had to be read. Files
+// that turned out not to be ROMs go to `rejected` (with notRom set), so they
+// can be passed back in `known` and skipped next time.
+std::vector<Game> scanFolders(const QStringList& folders, bool recursive, const std::atomic<bool>& cancel,
+                              const std::map<QString, Game>* known = nullptr, int* read = nullptr,
+                              std::vector<Game>* rejected = nullptr);
 
 // The games found by the main window's last scan, for other windows (the
 // RetroAchievements list uses them). notifier() signals when they change.
@@ -185,7 +194,7 @@ public slots:
     void openSettings();
 
 private:
-    void scanFinished(int serial, std::vector<Game> games);
+    void scanFinished(int serial, std::vector<Game> games, bool changed);
     void updatePage();
     void showContextMenu(QAbstractItemView* from, const QPoint& pos);
     void setGridMode(bool grid);
@@ -221,6 +230,12 @@ private:
     bool askedAboutCovers = false;
     Model* model;
     QSortFilterProxyModel* proxy;
+
+    // shows the list saved by the last scan, while the folders are checked
+    bool showSavedList();
+    bool savedListShown = false;
+    // files in the game folders that aren't ROMs, from the last scan
+    std::vector<Game> rejectedFiles;
 
     QPointer<QThread> scanThread;
     std::shared_ptr<std::atomic<bool>> scanCancel;
