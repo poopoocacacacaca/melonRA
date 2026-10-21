@@ -69,6 +69,8 @@ set(SOURCES_QT_SDL
     RetroAchievements/RAHttp.h
     RetroAchievements/RAImageCache.cpp
     RetroAchievements/RAImageCache.h
+    RetroAchievements/RALibrary.cpp
+    RetroAchievements/RALibrary.h
     RetroAchievements/RAOverlay.cpp
     RetroAchievements/RAOverlay.h
     RetroAchievements/RAPendingQueue.cpp

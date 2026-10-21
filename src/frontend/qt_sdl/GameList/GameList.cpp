@@ -19,6 +19,7 @@
 #include "GameList.h"
 
 #include <algorithm>
+#include <mutex>
 #include <set>
 
 #include <QAction>
@@ -355,6 +356,24 @@ std::vector<Game> scanFolders(const QStringList& dirs, bool recursive, const std
         }
     }
     return games;
+}
+
+namespace
+{
+std::mutex scannedLock;
+std::vector<Game> scanned;
+}
+
+std::vector<Game> scannedGames()
+{
+    std::lock_guard<std::mutex> guard(scannedLock);
+    return scanned;
+}
+
+Notifier* notifier()
+{
+    static Notifier* n = new Notifier();
+    return n;
 }
 
 QStringList folders()
@@ -890,7 +909,12 @@ void Widget::scanFinished(int serial, std::vector<Game> games)
     if (serial != scanSerial) return; // a newer scan is running
 
     scanning = false;
+    {
+        std::lock_guard<std::mutex> guard(scannedLock);
+        scanned = games;
+    }
     model->setGames(std::move(games));
+    emit notifier()->gamesChanged();
     view->sortByColumn(view->header()->sortIndicatorSection(), view->header()->sortIndicatorOrder());
     updatePage();
 }

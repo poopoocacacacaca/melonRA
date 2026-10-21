@@ -19,6 +19,7 @@
 #include "RAClient.h"
 #include "RAHttp.h"
 #include "RAImageCache.h"
+#include "RALibrary.h"
 #include "RAOverlay.h"
 #include "RAPendingQueue.h"
 
@@ -425,6 +426,8 @@ Manager::Manager()
     applyClientSettings();
     reloadDisplayOptions();
 
+    lib = std::make_unique<Library>(*this);
+
     // With RAIntegration enabled, logging in waits until the DLL has been
     // loaded (see initRAIntegration), since it takes over the server calls.
     if (isEnabled() && !isRAIntegrationEnabled())
@@ -433,6 +436,8 @@ Manager::Manager()
 
 Manager::~Manager()
 {
+    lib.reset();
+
     // Stop the network first: any request still queued completes with a
     // non-retryable error while rc_client is still alive.
     http->shutdown();
@@ -953,6 +958,12 @@ size_t Manager::pendingSubmissions() const
 {
     std::string user = userName().toStdString();
     return user.empty() ? 0 : pending->count(user);
+}
+
+void Manager::sendRequest(const std::string& url, const std::string& post, const std::string& contentType,
+                          std::function<void(const HttpResponse&)> callback)
+{
+    http->request(url, post, contentType, std::move(callback));
 }
 
 void Manager::submitSavedQueue()

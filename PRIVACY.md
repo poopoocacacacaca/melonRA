@@ -27,6 +27,12 @@ logged in. All of it goes over HTTPS to **RetroAchievements.org** (`retroachieve
 melonRA also downloads achievement badges, game icons and user avatars from
 `media.retroachievements.org`.
 
+When you open the Achievements window, melonRA downloads RetroAchievements'
+list of DS game fingerprints and matches the games in your game list against
+it on your computer (the fingerprints of your ROMs aren't uploaded), and
+fetches your progress for DS games. Selecting a game fetches its achievements
+and which of them you've unlocked.
+
 If you enable the RAIntegration developer toolkit, the toolkit is downloaded
 from retroachievements.org and runs under RetroAchievements' own terms.
 
@@ -57,6 +63,9 @@ connect when you use them.
   out to delete the token.
 - `retroachievements/cache/` holds downloaded badge and avatar images. You can
   delete this folder at any time.
+- `retroachievements/library_hashes.json` holds the fingerprints of the ROMs in
+  your game list, so they don't have to be read again. You can delete it at any
+  time.
 - `retroachievements/pending_submissions.json` exists only while there are
   unlocks or leaderboard entries that couldn't reach the server yet. It holds
   your username, the achievement or leaderboard IDs, the score, a game hash and

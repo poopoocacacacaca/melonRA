@@ -36,6 +36,7 @@ class QCheckBox;
 class QComboBox;
 class QLabel;
 class QLineEdit;
+class QListWidget;
 class QProgressBar;
 class QPushButton;
 class QSoundEffect;
@@ -183,6 +184,21 @@ private:
     void fillAchievements();
     void fillLeaderboards();
     QIcon badgeIcon(const std::string& url, bool locked);
+
+    // the sidebar: the game being played, then the game list's games
+    void onStateChanged();
+    void rebuildSidebar();
+    void onSidebarSelection();
+    void showLibraryGame(uint32_t gameId);
+    void fillLibraryDetails(uint32_t gameId);
+    void clearGameView(const QString& title, const QString& info);
+
+    QListWidget* sidebar;
+    QLabel* sidebarStatus;
+    // true while the right side shows a game from the list rather than the one being played
+    bool showingLibrary = false;
+    uint32_t shownLibraryGame = 0;
+    bool rebuilding = false;
 
     QLabel* gameIcon;
     QLabel* gameTitle;

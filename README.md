@@ -34,6 +34,8 @@ regular melonDS desktop app.
   with rounded or square corners, bold text and borders, colored or black and white, at four sizes, with
   a live preview and a test button.
 - **Achievements and leaderboards browser** with badges, unlock dates, rarity and the rankings around you.
+  Its sidebar lists every game in your game list that's on RetroAchievements, with your progress, so
+  you can browse any game's achievements without starting it.
 - **Rich Presence.** Your RetroAchievements profile shows what you're doing in the game.
 - **Extras:**
   - encore mode, spectator mode and unofficial achievements

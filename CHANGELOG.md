@@ -8,6 +8,12 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 
 ## Unreleased
 
+- **All your games in the achievements window.** RetroAchievements → Achievements... has a sidebar
+  with the game being played and every game from the game list that's on RetroAchievements, each with
+  your progress ("12 / 50 achievements"). Picking one shows its achievements (locked, unlocked in
+  hardcore or casual, rarity) and leaderboards with rankings, without starting it. Games that aren't
+  on RetroAchievements are listed separately. Each ROM is fingerprinted once and matched on your
+  computer against RetroAchievements' list of DS games.
 - **Game list.** While no game is running, the main window lists the DS games in your game folders
   (Config → Path Settings, or Add Folder... on the main screen). Each game shows the icon and
   title from its ROM, the developer, a region flag (USA, Europe, Japan, Spain, Germany and more), the

@@ -70,6 +70,17 @@ bool readGame(const QString& path, Game& game);
 // Finds every DS ROM in the given folders.
 std::vector<Game> scanFolders(const QStringList& folders, bool recursive, const std::atomic<bool>& cancel);
 
+// The games found by the main window's last scan, for other windows (the
+// RetroAchievements list uses them). notifier() signals when they change.
+std::vector<Game> scannedGames();
+class Notifier : public QObject
+{
+    Q_OBJECT
+signals:
+    void gamesChanged();
+};
+Notifier* notifier();
+
 // settings, in the global config
 QStringList folders();
 void setFolders(const QStringList& folders);

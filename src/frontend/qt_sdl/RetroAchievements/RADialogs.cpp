@@ -19,13 +19,17 @@
 #include "RADialogs.h"
 #include "RAClient.h"
 #include "RAImageCache.h"
+#include "RALibrary.h"
 
+#include <algorithm>
+#include <set>
 #include <vector>
 
 #include <QApplication>
 #include <QCheckBox>
 #include <QDateTime>
 #include <QDialogButtonBox>
+#include <QDir>
 #include <QFileInfo>
 #include <QComboBox>
 #include <QFormLayout>
@@ -37,6 +41,7 @@
 #include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
 #include <QMessageBox>
 #include <QPainter>
 #include <QPainterPath>
@@ -741,10 +746,37 @@ AchievementsDialog::AchievementsDialog(QWidget* parent) : QDialog(parent)
 {
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle("RetroAchievements");
-    resize(720, 600);
+    resize(980, 620);
     connect(this, &QObject::destroyed, []() { current = nullptr; });
 
-    auto* layout = new QVBoxLayout(this);
+    auto* outer = new QVBoxLayout(this);
+    auto* split = new QSplitter(Qt::Horizontal);
+    outer->addWidget(split, 1);
+
+    // sidebar: the game being played, then the games from the game list
+    auto* side = new QWidget();
+    auto* sideLayout = new QVBoxLayout(side);
+    sideLayout->setContentsMargins(0, 0, 0, 0);
+    sidebar = new QListWidget();
+    sidebar->setIconSize(QSize(32, 32));
+    sidebar->setUniformItemSizes(false);
+    sidebar->setTextElideMode(Qt::ElideRight);
+    sidebar->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    sidebar->setSpacing(1);
+    sideLayout->addWidget(sidebar, 1);
+    sidebarStatus = new QLabel();
+    sidebarStatus->setWordWrap(true);
+    sidebarStatus->setEnabled(false);
+    sideLayout->addWidget(sidebarStatus);
+    split->addWidget(side);
+
+    auto* main = new QWidget();
+    auto* layout = new QVBoxLayout(main);
+    layout->setContentsMargins(0, 0, 0, 0);
+    split->addWidget(main);
+    split->setStretchFactor(0, 0);
+    split->setStretchFactor(1, 1);
+    split->setSizes({280, 700});
 
     // header: game badge, title, summary
     auto* header = new QHBoxLayout();
@@ -812,14 +844,344 @@ AchievementsDialog::AchievementsDialog(QWidget* parent) : QDialog(parent)
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::close);
-    layout->addWidget(buttons);
+    outer->addWidget(buttons);
 
     Manager* m = Manager::get();
-    connect(m, &Manager::stateChanged, this, &AchievementsDialog::refresh);
+    connect(m, &Manager::stateChanged, this, &AchievementsDialog::onStateChanged);
     connect(m, &Manager::imagesUpdated, this, &AchievementsDialog::refreshIcons);
     connect(leaderboardTree, &QTreeWidget::itemSelectionChanged, this, &AchievementsDialog::onLeaderboardSelected);
+    connect(sidebar, &QListWidget::currentItemChanged, this, &AchievementsDialog::onSidebarSelection);
 
-    refresh();
+    Library& lib = m->library();
+    connect(&lib, &Library::changed, this, &AchievementsDialog::rebuildSidebar);
+    connect(&lib, &Library::detailsChanged, this, [this](uint32_t id)
+    {
+        if (showingLibrary && id == shownLibraryGame)
+            fillLibraryDetails(id);
+    });
+
+    rebuildSidebar();
+    if (!showingLibrary) refresh();
+    lib.activate();
+}
+
+void AchievementsDialog::onStateChanged()
+{
+    // just logged in: now the other games can be looked up
+    Library& lib = Manager::get()->library();
+    if (lib.needsLogin() && Manager::get()->isLoggedIn())
+        lib.refresh();
+
+    rebuildSidebar();
+    if (!showingLibrary)
+        refresh();
+}
+
+void AchievementsDialog::rebuildSidebar()
+{
+    Manager* m = Manager::get();
+    Library& lib = m->library();
+    const bool hardcore = m->isHardcorePreferred();
+
+    // what's selected now, to select it again
+    bool wasCurrent = !showingLibrary;
+    uint32_t wasGame = shownLibraryGame;
+
+    rebuilding = true;
+    sidebar->clear();
+
+    auto icon = [](const QImage& img)
+    {
+        return img.isNull() ? QIcon(roundedPixmap(QImage(), 32)) : QIcon(QPixmap::fromImage(img));
+    };
+    auto progressText = [hardcore](const Library::Game& g)
+    {
+        if (!g.hasProgress) return QString();
+        if (g.numAchievements == 0) return QString("No achievements yet");
+        uint32_t got = hardcore ? g.numUnlockedHardcore : std::max(g.numUnlocked, g.numUnlockedHardcore);
+        return QString("%1 / %2 achievements").arg(got).arg(g.numAchievements);
+    };
+
+    QListWidgetItem* toSelect = nullptr;
+
+    // the game being played
+    uint32_t playingId = 0;
+    if (m->isGameLoaded())
+    {
+        const rc_client_game_t* game = rc_client_get_game_info(m->client());
+        playingId = game ? game->id : 0;
+        QImage img;
+        for (const Library::Game& g : lib.games())
+            if (g.gameId == playingId && !g.icon.isNull()) { img = g.icon; break; }
+        if (img.isNull()) img = m->images().get(m->gameBadgeUrl());
+
+        auto* item = new QListWidgetItem(icon(img), m->gameTitle() + "\nNow playing");
+        QFont f = item->font();
+        f.setBold(true);
+        item->setFont(f);
+        item->setData(Qt::UserRole, 0u);
+        item->setData(Qt::UserRole + 1, true);
+        sidebar->addItem(item);
+        if (wasCurrent) toSelect = item;
+    }
+
+    // the game list's games on RetroAchievements, one entry per game
+    std::vector<const Library::Game*> matched, others;
+    std::set<uint32_t> seen;
+    for (const Library::Game& g : lib.games())
+    {
+        if (g.gameId)
+        {
+            if (seen.insert(g.gameId).second) matched.push_back(&g);
+        }
+        else if (!g.hash.empty() || lib.status().isEmpty())
+            others.push_back(&g);
+    }
+    auto byTitle = [](const Library::Game* a, const Library::Game* b)
+    {
+        QString ta = a->raTitle.isEmpty() ? a->title : a->raTitle;
+        QString tb = b->raTitle.isEmpty() ? b->title : b->raTitle;
+        return QString::localeAwareCompare(ta, tb) < 0;
+    };
+    std::sort(matched.begin(), matched.end(), byTitle);
+    std::sort(others.begin(), others.end(), byTitle);
+
+    for (const Library::Game* g : matched)
+    {
+        QString title = g->raTitle.isEmpty() ? g->title : g->raTitle;
+        QString sub = progressText(*g);
+        auto* item = new QListWidgetItem(icon(g->icon), sub.isEmpty() ? title : title + "\n" + sub);
+        item->setToolTip(title + "\n" + QDir::toNativeSeparators(g->path));
+        item->setData(Qt::UserRole, g->gameId);
+        item->setData(Qt::UserRole + 1, false);
+        sidebar->addItem(item);
+        if (!wasCurrent && g->gameId == wasGame) toSelect = item;
+    }
+
+    if (!others.empty() && lib.status().isEmpty())
+    {
+        auto* header = new QListWidgetItem("Not on RetroAchievements");
+        QFont f = header->font();
+        f.setBold(true);
+        header->setFont(f);
+        header->setFlags(Qt::NoItemFlags);
+        sidebar->addItem(header);
+        for (const Library::Game* g : others)
+        {
+            auto* item = new QListWidgetItem(icon(g->icon), g->title);
+            item->setToolTip(QDir::toNativeSeparators(g->path));
+            item->setFlags(Qt::NoItemFlags); // nothing to show for these
+            sidebar->addItem(item);
+        }
+    }
+
+    QString status = lib.status();
+    if (status.isEmpty() && lib.games().empty())
+        status = "Add game folders in Config → Path Settings to see all your games here.";
+    sidebarStatus->setText(status);
+    sidebarStatus->setVisible(!status.isEmpty());
+
+    // keep the selection; otherwise the game being played, or the first game
+    if (!toSelect)
+    {
+        for (int i = 0; i < sidebar->count() && !toSelect; i++)
+            if (sidebar->item(i)->flags() & Qt::ItemIsSelectable) toSelect = sidebar->item(i);
+    }
+    rebuilding = false;
+
+    if (toSelect)
+    {
+        bool same = (toSelect->data(Qt::UserRole + 1).toBool() == wasCurrent) &&
+                    (wasCurrent || toSelect->data(Qt::UserRole).toUInt() == wasGame);
+        // the same game as before: just mark it, without reloading it
+        sidebar->blockSignals(same);
+        sidebar->setCurrentItem(toSelect);
+        sidebar->blockSignals(false);
+    }
+    else if (showingLibrary)
+    {
+        showingLibrary = false;
+        refresh();
+    }
+}
+
+void AchievementsDialog::onSidebarSelection()
+{
+    if (rebuilding) return;
+    QListWidgetItem* item = sidebar->currentItem();
+    if (!item) return;
+
+    if (item->data(Qt::UserRole + 1).toBool())
+    {
+        showingLibrary = false;
+        shownLibraryGame = 0;
+        refresh();
+    }
+    else
+    {
+        showingLibrary = true;
+        shownLibraryGame = item->data(Qt::UserRole).toUInt();
+        showLibraryGame(shownLibraryGame);
+    }
+}
+
+void AchievementsDialog::clearGameView(const QString& title, const QString& info)
+{
+    pendingIcons.clear();
+    gameTitle->setText(title);
+    gameInfo->setText(info);
+    presence->clear();
+    progress->hide();
+    gameIconUrl.clear();
+    gameIcon->setPixmap(roundedPixmap(QImage(), 64));
+    achievementTree->clear();
+    leaderboardTree->clear();
+    entries->setRowCount(0);
+    entriesStatus->setText("Select a leaderboard to see its rankings.");
+}
+
+void AchievementsDialog::showLibraryGame(uint32_t gameId)
+{
+    Library& lib = Manager::get()->library();
+    QString title;
+    for (const Library::Game& g : lib.games())
+        if (g.gameId == gameId) { title = g.raTitle.isEmpty() ? g.title : g.raTitle; break; }
+
+    clearGameView(title, "Loading achievements...");
+    lib.fetchDetails(gameId);
+}
+
+void AchievementsDialog::fillLibraryDetails(uint32_t gameId)
+{
+    Manager* m = Manager::get();
+    const Library::Details* d = m->library().details(gameId);
+    if (!d || d->loading) return;
+
+    pendingIcons.clear();
+    achievementTree->clear();
+    leaderboardTree->clear();
+
+    if (!d->error.isEmpty())
+    {
+        gameInfo->setText("Couldn't load the achievements: " + d->error);
+        return;
+    }
+
+    gameTitle->setText(d->title);
+    gameIconUrl = d->badgeUrl;
+    gameIcon->setPixmap(roundedPixmap(m->images().get(gameIconUrl), 64));
+    presence->clear();
+
+    const bool hardcore = m->isHardcorePreferred();
+    const bool showUnofficial = m->isUnpromotedEnabled();
+
+    uint32_t total = 0, got = 0, points = 0, pointsGot = 0;
+    std::vector<const Library::Achievement*> locked, unlocked, unofficial;
+    for (const Library::Achievement& a : d->achievements)
+    {
+        if (a.unofficial)
+        {
+            if (showUnofficial) unofficial.push_back(&a);
+            continue;
+        }
+        bool have = hardcore ? a.unlockedHardcore : a.unlocked;
+        total++;
+        points += a.points;
+        if (have) { got++; pointsGot += a.points; unlocked.push_back(&a); }
+        else locked.push_back(&a);
+    }
+
+    gameInfo->setText(QString("%1 - %2 of %3 points - not running")
+                          .arg(m->hardcoreStatusText()).arg(pointsGot).arg(points));
+    if (total)
+    {
+        progress->show();
+        progress->setRange(0, (int)total);
+        progress->setValue((int)got);
+        progress->setFormat(QString("%1 / %2 achievements").arg(got).arg(total));
+    }
+    else
+        progress->hide();
+
+    auto addBucket = [&](const QString& label, const std::vector<const Library::Achievement*>& achs, bool expand)
+    {
+        if (achs.empty()) return;
+        auto* bucketItem = new QTreeWidgetItem();
+        bucketItem->setText(0, QString("%1 (%2)").arg(label).arg(achs.size()));
+        QFont f = bucketItem->font(0);
+        f.setBold(true);
+        bucketItem->setFont(0, f);
+        bucketItem->setFirstColumnSpanned(true);
+        achievementTree->addTopLevelItem(bucketItem);
+
+        for (const Library::Achievement* a : achs)
+        {
+            bool have = hardcore ? a->unlockedHardcore : a->unlocked;
+            const std::string& url = have ? a->badgeUrl : a->lockedBadgeUrl;
+
+            auto* item = new QTreeWidgetItem();
+            item->setText(0, a->title + "\n" + a->description);
+            item->setToolTip(0, a->description);
+            item->setIcon(0, badgeIcon(url, !have));
+            item->setText(1, QString::number(a->points));
+            item->setTextAlignment(1, Qt::AlignCenter);
+
+            QString status;
+            if (a->unlockedHardcore) status = "Unlocked (hardcore)";
+            else if (a->unlocked) status = "Unlocked (casual)";
+            else status = "Locked";
+            float rarity = hardcore ? a->rarityHardcore : a->rarity;
+            if (rarity > 0.f)
+                status += QString("\n%1% of players").arg(rarity, 0, 'f', 1);
+            item->setText(2, status);
+            if (have)
+                for (int c = 0; c < 3; c++) item->setForeground(c, QColor(0xD4, 0xA7, 0x2C));
+
+            bucketItem->addChild(item);
+            pendingIcons.emplace(url, item);
+        }
+        bucketItem->setExpanded(expand);
+    };
+    addBucket("Locked", locked, true);
+    addBucket("Unlocked", unlocked, unlocked.size() < 30);
+    addBucket("Unofficial", unofficial, true);
+
+    if (achievementTree->topLevelItemCount() == 0)
+    {
+        auto* item = new QTreeWidgetItem();
+        item->setText(0, "This game has no achievements.");
+        achievementTree->addTopLevelItem(item);
+    }
+
+    // leaderboards; picking one loads its rankings as usual
+    leaderboardTree->blockSignals(true);
+    if (!d->leaderboards.empty())
+    {
+        auto* bucketItem = new QTreeWidgetItem();
+        bucketItem->setText(0, QString("Leaderboards (%1)").arg(d->leaderboards.size()));
+        QFont f = bucketItem->font(0);
+        f.setBold(true);
+        bucketItem->setFont(0, f);
+        bucketItem->setFirstColumnSpanned(true);
+        bucketItem->setFlags(Qt::ItemIsEnabled);
+        leaderboardTree->addTopLevelItem(bucketItem);
+        for (const Library::Leaderboard& lb : d->leaderboards)
+        {
+            auto* item = new QTreeWidgetItem();
+            item->setText(0, lb.title + "\n" + lb.description);
+            item->setData(0, Qt::UserRole, (uint)lb.id);
+            bucketItem->addChild(item);
+        }
+        bucketItem->setExpanded(true);
+    }
+    else
+    {
+        auto* item = new QTreeWidgetItem();
+        item->setText(0, "This game has no leaderboards.");
+        item->setFlags(Qt::ItemIsEnabled);
+        leaderboardTree->addTopLevelItem(item);
+    }
+    leaderboardTree->blockSignals(false);
 }
 
 QIcon AchievementsDialog::badgeIcon(const std::string& url, bool)
@@ -835,6 +1197,9 @@ void AchievementsDialog::refresh()
 
     pendingIcons.clear();
 
+    if (showingLibrary)
+        return; // a game from the sidebar is shown
+
     if (!m->isGameLoaded())
     {
         gameTitle->setText("No game loaded");
@@ -843,7 +1208,7 @@ void AchievementsDialog::refresh()
         else if (!m->isLoggedIn())
             gameInfo->setText("Log in to RetroAchievements to earn achievements.");
         else
-            gameInfo->setText("Start a game to see its achievements.");
+            gameInfo->setText("Start a game, or pick one on the left, to see its achievements.");
         presence->clear();
         progress->hide();
         gameIcon->setPixmap(roundedPixmap(QImage(), 64));

@@ -52,6 +52,8 @@ namespace RA
 class Http;
 class ImageCache;
 class PendingQueue;
+class Library;
+struct HttpResponse;
 
 // Owns the rc_client instance and connects it to melonDS.
 //
@@ -178,6 +180,13 @@ public:
     rc_client_t* client() const { return rcClient; }
     ImageCache& images() { return *imageCache; }
     Overlay& overlay() { return *ovl; }
+    // the game list's games on RetroAchievements
+    Library& library() { return *lib; }
+
+    // a plain request to the RetroAchievements server (not for unlocks or
+    // leaderboard entries, which go through rc_client and the saved queue)
+    void sendRequest(const std::string& url, const std::string& post, const std::string& contentType,
+                     std::function<void(const HttpResponse&)> callback);
 
     bool isGameLoaded() const;
     QString gameTitle() const;
@@ -235,6 +244,7 @@ private:
     std::unique_ptr<ImageCache> imageCache;
     std::unique_ptr<Overlay> ovl;
     std::unique_ptr<PendingQueue> pending;
+    std::unique_ptr<Library> lib;
 
     EmuInstance* emuInstance = nullptr;
 
