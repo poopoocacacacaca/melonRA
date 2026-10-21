@@ -702,16 +702,6 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             actPathSettings = menu->addAction("Path Settings");
             connect(actPathSettings, &QAction::triggered, this, &MainWindow::onOpenPathSettings);
 
-            actGameListSettings = menu->addAction("Game List Settings");
-            actGameListSettings->setMenuRole(QAction::NoRole);
-            connect(actGameListSettings, &QAction::triggered, this, [this]()
-            {
-                if (gameList) gameList->openSettings();
-                else GameList::SettingsDialog::edit(this);
-                if (actShowGameList) actShowGameList->setChecked(GameList::isEnabled());
-                updateCentralView();
-            });
-
             actUpdateSettings = menu->addAction("Update Settings");
             // keep macOS from moving it to the application menu as "Preferences"
             actUpdateSettings->setMenuRole(QAction::NoRole);
@@ -809,6 +799,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
         gameList = new GameList::Widget(centralStack);
         centralStack->addWidget(gameList);
         connect(gameList, &GameList::Widget::bootRequested, this, &MainWindow::bootROMPath);
+        connect(gameList, &GameList::Widget::settingsRequested, this, &MainWindow::onOpenPathSettings);
     }
 
     show();
@@ -900,7 +891,6 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             actWifiSettings->setEnabled(false);
             actInterfaceSettings->setEnabled(false);
             actUpdateSettings->setEnabled(false);
-            actGameListSettings->setEnabled(false);
             actShowGameList->setEnabled(false);
             actRefreshGameList->setEnabled(false);
 
@@ -2312,6 +2302,9 @@ void MainWindow::onOpenPathSettings()
 
 void MainWindow::onPathSettingsFinished(int res)
 {
+    if (PathSettingsDialog::gameFoldersChanged && gameList)
+        gameList->refresh();
+
     if (PathSettingsDialog::needsReset)
         onReset();
 

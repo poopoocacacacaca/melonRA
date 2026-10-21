@@ -28,6 +28,9 @@
 
 #include "PathSettingsDialog.h"
 #include "ui_PathSettingsDialog.h"
+#include "GameList/GameList.h"
+#include <QGridLayout>
+#include <QLabel>
 
 using namespace melonDS::Platform;
 namespace Platform = melonDS::Platform;
@@ -35,6 +38,7 @@ namespace Platform = melonDS::Platform;
 PathSettingsDialog* PathSettingsDialog::currentDlg = nullptr;
 
 bool PathSettingsDialog::needsReset = false;
+bool PathSettingsDialog::gameFoldersChanged = false;
 
 constexpr char errordialog[] = "melonRA cannot write to that directory.";
 
@@ -55,6 +59,31 @@ PathSettingsDialog::PathSettingsDialog(QWidget* parent) : QDialog(parent), ui(ne
         ui->lblInstanceNum->setText(QString("Configuring paths for instance %1").arg(inst+1));
     else
         ui->lblInstanceNum->hide();
+
+    // game folders for the game list, below the other paths (the game list
+    // belongs to the first instance)
+    if (inst == 0)
+    {
+        QGridLayout* grid = ui->gridLayout;
+        grid->removeWidget(ui->label);
+        grid->removeWidget(ui->label_5);
+        grid->removeWidget(ui->buttonBox);
+
+        auto* gamesLabel = new QLabel("Game folders:");
+        gamesLabel->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+        gamesLabel->setContentsMargins(0, 4, 0, 0);
+        gameFolders = new GameList::FoldersEditor();
+        grid->addWidget(gamesLabel, 4, 0);
+        grid->addWidget(gameFolders, 4, 1, 1, 2);
+
+        grid->addWidget(ui->label, 5, 0, 1, 3);
+        grid->addWidget(ui->label_5, 6, 0, 1, 3);
+        grid->addWidget(ui->buttonBox, 7, 0, 1, 3);
+        ui->label->setText("Leave a save file, savestate or cheat file path blank to use the ROM's folder. "
+                           "Games in the game folders are listed on the main screen.");
+        ui->label->setWordWrap(true);
+        resize(520, 360);
+    }
 
 #define SET_ORIGVAL(type, val) \
     for (type* w : findChildren<type*>(nullptr)) \
@@ -80,9 +109,17 @@ void PathSettingsDialog::done(int r)
     }
     
     needsReset = false;
+    gameFoldersChanged = false;
 
     if (r == QDialog::Accepted)
     {
+        // the game folders don't need the emulation reset
+        if (gameFolders && gameFolders->save())
+        {
+            gameFoldersChanged = true;
+            Config::Save();
+        }
+
         bool modified = false;
 
 #define CHECK_ORIGVAL(type, val) \

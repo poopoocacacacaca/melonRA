@@ -44,7 +44,7 @@ class QThread;
 class QTreeView;
 
 // The list of games shown in the main window while nothing is running, built
-// from the folders chosen in Game List Settings.
+// from the game folders chosen in Path Settings.
 namespace GameList
 {
 
@@ -152,6 +152,8 @@ protected:
 
 signals:
     void bootRequested(const QString& path);
+    // the game folders are set in Path Settings, which the window opens
+    void settingsRequested();
 
 public slots:
     void openSettings();
@@ -188,24 +190,22 @@ private:
 };
 
 
-// Config → Game List Settings
-class SettingsDialog : public QDialog
+// The game folders list with Add/Remove and "Search subfolders", shown in
+// Path Settings
+class FoldersEditor : public QWidget
 {
     Q_OBJECT
 public:
-    explicit SettingsDialog(QWidget* parent);
+    explicit FoldersEditor(QWidget* parent = nullptr);
 
-    // shows the dialog; returns true if the settings were changed
-    static bool edit(QWidget* parent);
+    // stores the folders; returns true if anything changed
+    bool save();
 
 private:
     void addFolder();
-    void removeFolder();
-    void save();
 
     QListWidget* folderList;
     QCheckBox* cbRecursive;
-    QCheckBox* cbEnabled;
 };
 
 }

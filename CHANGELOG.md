@@ -9,7 +9,7 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 ## Unreleased
 
 - **Game list.** While no game is running, the main window lists the DS games in your game folders
-  (Config → Game List Settings, or Add Folder... on the main screen). Each game shows the icon and
+  (Config → Path Settings, or Add Folder... on the main screen). Each game shows the icon and
   title from its ROM, the developer, a region flag (USA, Europe, Japan, Spain, Germany and more), the
   game code and the size. Columns can be sorted, hidden and rearranged, there's a search box, and
   double-clicking a game starts it. View → Show Game List turns it off.

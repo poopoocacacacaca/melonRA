@@ -26,6 +26,7 @@ namespace Ui { class PathSettingsDialog; }
 class PathSettingsDialog;
 
 class EmuInstance;
+namespace GameList { class FoldersEditor; }
 
 class PathSettingsDialog : public QDialog
 {
@@ -54,6 +55,7 @@ public:
     }
 
     static bool needsReset;
+    static bool gameFoldersChanged;
 
 private slots:
     void done(int r);
@@ -65,6 +67,7 @@ private slots:
 private:
     Ui::PathSettingsDialog* ui;
     EmuInstance* emuInstance;
+    GameList::FoldersEditor* gameFolders = nullptr;
 };
 
 #endif // PATHSETTINGSDIALOG_H

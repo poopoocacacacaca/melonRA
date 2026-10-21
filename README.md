@@ -52,7 +52,7 @@ regular melonDS desktop app.
    [nightly build](https://github.com/poopoocacacacaca/melonRA/releases/tag/nightly) (Windows and Linux),
    or build it yourself (see below).
 2. Set up melonDS as usual (BIOS/firmware are optional, see the original README below).
-   Click **Add Folder...** on the main screen (or use **Config → Game List Settings**) to list your
+   Click **Add Folder...** on the main screen (or the **Game folders** list in **Config → Path Settings**) to list your
    games there.
 3. Open **RetroAchievements → Log In…** and sign in with your
    [RetroAchievements.org](https://retroachievements.org) account.

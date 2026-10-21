@@ -27,6 +27,7 @@
 #include <QClipboard>
 #include <QDesktopServices>
 #include <QDialogButtonBox>
+#include <QGridLayout>
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
@@ -770,7 +771,7 @@ Widget::Widget(QWidget* parent) : QWidget(parent)
     auto* emptyButtons = new QHBoxLayout();
     emptyButtons->addStretch(1);
     auto* addButton = new QPushButton("Add Folder...");
-    auto* settingsButton = new QPushButton("Game List Settings...");
+    auto* settingsButton = new QPushButton("Path Settings...");
     emptyButtons->addWidget(addButton);
     emptyButtons->addWidget(settingsButton);
     emptyButtons->addStretch(1);
@@ -953,7 +954,7 @@ void Widget::showContextMenu(const QPoint& pos)
     addViewOptions(menu);
     menu.addSeparator();
     connect(menu.addAction("Refresh"), &QAction::triggered, this, &Widget::refresh);
-    connect(menu.addAction("Game List Settings..."), &QAction::triggered, this, &Widget::openSettings);
+    connect(menu.addAction("Game Folders..."), &QAction::triggered, this, &Widget::openSettings);
     menu.exec(view->viewport()->mapToGlobal(pos));
 }
 
@@ -1037,8 +1038,7 @@ void Widget::showHeaderMenu(const QPoint& pos)
 
 void Widget::openSettings()
 {
-    if (SettingsDialog::edit(this))
-        refresh();
+    emit settingsRequested();
 }
 
 void Widget::saveHeader()
@@ -1097,73 +1097,40 @@ void Widget::defaultColumns()
 
 
 // ---------------------------------------------------------------------------
-// SettingsDialog
+// FoldersEditor
 
-SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent)
+FoldersEditor::FoldersEditor(QWidget* parent) : QWidget(parent)
 {
-    setWindowTitle("Game List Settings - melonRA");
-    setMinimumWidth(460);
+    auto* layout = new QGridLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
 
-    auto* layout = new QVBoxLayout(this);
-
-    auto* foldersBox = new QGroupBox("Game Folders");
-    auto* foldersLayout = new QVBoxLayout(foldersBox);
-    auto* row = new QHBoxLayout();
     folderList = new QListWidget();
     folderList->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    folderList->setMinimumHeight(90);
     for (const QString& dir : folders())
         folderList->addItem(QDir::toNativeSeparators(dir));
-    row->addWidget(folderList, 1);
-    auto* buttons = new QVBoxLayout();
+    layout->addWidget(folderList, 0, 0, 3, 1);
+
     auto* addButton = new QPushButton("Add...");
     auto* removeButton = new QPushButton("Remove");
-    buttons->addWidget(addButton);
-    buttons->addWidget(removeButton);
-    buttons->addStretch(1);
-    row->addLayout(buttons);
-    foldersLayout->addLayout(row);
+    layout->addWidget(addButton, 0, 1);
+    layout->addWidget(removeButton, 1, 1);
+    layout->setRowStretch(2, 1);
+
     cbRecursive = new QCheckBox("Search subfolders");
     cbRecursive->setChecked(searchSubfolders());
-    foldersLayout->addWidget(cbRecursive);
-    layout->addWidget(foldersBox);
+    layout->addWidget(cbRecursive, 3, 0, 1, 2);
 
-    cbEnabled = new QCheckBox("Show the game list when no game is running");
-    cbEnabled->setChecked(GameList::isEnabled());
-    layout->addWidget(cbEnabled);
-
-    auto* note = new QLabel("Lists .nds, .dsi, .srl and .ids files. Double-click a game to start it.");
-    note->setWordWrap(true);
-    note->setEnabled(false);
-    layout->addWidget(note);
-
-    auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-    layout->addWidget(box);
-
-    connect(addButton, &QPushButton::clicked, this, &SettingsDialog::addFolder);
-    connect(removeButton, &QPushButton::clicked, this, &SettingsDialog::removeFolder);
+    connect(addButton, &QPushButton::clicked, this, &FoldersEditor::addFolder);
+    connect(removeButton, &QPushButton::clicked, this, [this]() { qDeleteAll(folderList->selectedItems()); });
     connect(folderList, &QListWidget::itemSelectionChanged, this, [this, removeButton]()
     {
         removeButton->setEnabled(!folderList->selectedItems().isEmpty());
     });
     removeButton->setEnabled(false);
-    connect(box, &QDialogButtonBox::accepted, this, [this]() { save(); accept(); });
-    connect(box, &QDialogButtonBox::rejected, this, &QDialog::reject);
 }
 
-bool SettingsDialog::edit(QWidget* parent)
-{
-    const QStringList before = folders();
-    const bool recursiveBefore = searchSubfolders();
-    const bool enabledBefore = GameList::isEnabled();
-
-    SettingsDialog dlg(parent);
-    if (dlg.exec() != QDialog::Accepted)
-        return false;
-
-    return folders() != before || searchSubfolders() != recursiveBefore || GameList::isEnabled() != enabledBefore;
-}
-
-void SettingsDialog::addFolder()
+void FoldersEditor::addFolder()
 {
     QString dir = QFileDialog::getExistingDirectory(this, "Add Game Folder");
     if (dir.isEmpty()) return;
@@ -1172,20 +1139,16 @@ void SettingsDialog::addFolder()
         folderList->addItem(shown);
 }
 
-void SettingsDialog::removeFolder()
-{
-    qDeleteAll(folderList->selectedItems());
-}
-
-void SettingsDialog::save()
+bool FoldersEditor::save()
 {
     QStringList list;
     for (int i = 0; i < folderList->count(); i++)
         list << QDir::fromNativeSeparators(folderList->item(i)->text());
+
+    bool changed = list != folders() || cbRecursive->isChecked() != searchSubfolders();
     setFolders(list);
     setSearchSubfolders(cbRecursive->isChecked());
-    GameList::setEnabled(cbEnabled->isChecked());
-    Config::Save();
+    return changed;
 }
 
 }

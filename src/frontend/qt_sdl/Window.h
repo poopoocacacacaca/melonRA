@@ -298,7 +298,6 @@ public:
     QAction* actPathSettings;
     QAction* actInterfaceSettings;
     QAction* actUpdateSettings;
-    QAction* actGameListSettings;
     QAction* actShowGameList;
     QAction* actRefreshGameList;
     QAction* actScreenSize[4];
