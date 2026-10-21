@@ -22,6 +22,7 @@
 #include "RALibrary.h"
 #include "RAOverlay.h"
 #include "RAPendingQueue.h"
+#include "RAOfflineCache.h"
 
 #include <cstring>
 
@@ -82,6 +83,7 @@ static std::atomic<bool> optProgress{true};
 static std::atomic<bool> optTrackers{true};
 static std::atomic<bool> optSounds{true};
 static std::atomic<bool> optAccountOnStart{true};
+static std::atomic<bool> optOfflineSessions{true};
 static std::atomic<bool> optEnabled{true};
 
 
@@ -126,15 +128,8 @@ struct ClientCallbacks
         std::string post = request->post_data ? request->post_data : "";
         std::string ctype = request->content_type ? request->content_type : "";
 
-        // unlocks and leaderboard entries are saved to disk until the server
-        // has accepted (or definitively rejected) them
-        uint64_t handle = m->pending->track(post);
-        PendingQueue* queue = m->pending.get();
-
-        m->http->request(url, post, ctype, [callback, callbackData, handle, queue](const HttpResponse& r)
+        m->send(url, post, ctype, [callback, callbackData](const HttpResponse& r)
         {
-            queue->resolve(handle, r);
-
             rc_api_server_response_t resp;
             memset(&resp, 0, sizeof(resp));
 
@@ -405,6 +400,7 @@ Manager::Manager()
         }
         pending = std::make_unique<PendingQueue>(*http,
             Platform::GetLocalFilePath("retroachievements/pending_submissions.json"), key);
+        offlineCache = std::make_unique<OfflineCache>(Platform::GetLocalFilePath("retroachievements/offline"));
     }
 
     imageCache->setLoadedCallback([this]()
@@ -493,6 +489,7 @@ void Manager::reloadDisplayOptions()
     optTrackers = cfg.GetBool("LeaderboardTrackers");
     optSounds = cfg.GetBool("Sounds");
     optAccountOnStart = cfg.GetBool("ShowAccountOnStart");
+    optOfflineSessions = cfg.GetBool("OfflineSessions");
 
     // Leaderboards can't be turned off in hardcore; keep their trackers
     // visible there so players always see what is being submitted.
@@ -957,7 +954,68 @@ void Manager::loginWithStoredToken()
 void Manager::sendRequest(const std::string& url, const std::string& post, const std::string& contentType,
                           std::function<void(const HttpResponse&)> callback)
 {
-    http->request(url, post, contentType, std::move(callback));
+    send(url, post, contentType, std::move(callback));
+}
+
+void Manager::send(const std::string& url, const std::string& post, const std::string& contentType,
+                   std::function<void(const HttpResponse&)> callback)
+{
+    // unlocks and leaderboard entries are saved to disk until the server
+    // has accepted (or definitively rejected) them
+    const uint64_t handle = pending->track(post);
+    offlineCache->noteRequest(post);
+    const std::string key = OfflineCache::keyFor(post);
+
+    http->request(url, post, contentType, [this, handle, key, post, callback](const HttpResponse& r)
+    {
+        pending->resolve(handle, r);
+
+        // no answer, or the server is down: use the saved answer if there is one
+        const bool unreachable = (r.status == 0 && !r.cancelled) || r.status >= 500;
+        if (!unreachable)
+        {
+            if (r.status == 200) offlineCache->store(key, post, r.body);
+            if (r.status > 0) setOffline(false);
+            callback(r);
+            return;
+        }
+
+        std::string saved;
+        if (optOfflineSessions && offlineCache->lookup(key, post, saved))
+        {
+            setOffline(true);
+            HttpResponse cached;
+            cached.status = 200;
+            cached.body = std::move(saved);
+            callback(cached);
+            return;
+        }
+        callback(r);
+    });
+}
+
+void Manager::setOffline(bool on)
+{
+    if (offline.exchange(on) == on) return;
+
+    // called from HTTP worker threads
+    QMetaObject::invokeMethod(this, [this, on]()
+    {
+        if (on)
+        {
+            osd(kColorWarn, "RetroAchievements: offline, using saved achievement data. "
+                            "Unlocks will be submitted when you're back online.");
+            ovl->addPopup(Overlay::PopupKind::Info, "", "Playing offline",
+                          "Achievements work as usual.",
+                          "Unlocks are saved and sent once you're back online.", 6000);
+        }
+        else
+        {
+            osd(kColorInfo, "RetroAchievements: back online");
+            submitSavedQueue();
+        }
+        emit stateChanged();
+    }, Qt::QueuedConnection);
 }
 
 void Manager::submitSavedQueue()
@@ -965,6 +1023,8 @@ void Manager::submitSavedQueue()
     const rc_client_user_t* user = rc_client_get_user_info(rcClient);
     if (!user || !user->username || !user->token) return;
     if (rc_client_get_spectator_mode_enabled(rcClient)) return;
+    // nothing can be delivered yet; this runs again once the server answers
+    if (offline) return;
 
     std::string name = user->username;
     size_t n = pending->count(name);

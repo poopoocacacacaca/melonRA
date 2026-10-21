@@ -52,6 +52,7 @@ namespace RA
 class Http;
 class ImageCache;
 class PendingQueue;
+class OfflineCache;
 class Library;
 struct HttpResponse;
 
@@ -224,6 +225,11 @@ private:
     void loginWithStoredToken();
     // re-submits unlocks/leaderboard entries saved from earlier sessions
     void submitSavedQueue();
+    // every request to the server: unlocks are saved until delivered, and
+    // saved answers stand in while the server can't be reached
+    void send(const std::string& url, const std::string& post, const std::string& contentType,
+              std::function<void(const HttpResponse&)> callback);
+    void setOffline(bool offline);
     std::string buildUserAgent() const;
     void osd(unsigned int color, const QString& text);
 
@@ -242,7 +248,10 @@ private:
     std::unique_ptr<ImageCache> imageCache;
     std::unique_ptr<Overlay> ovl;
     std::unique_ptr<PendingQueue> pending;
+    std::unique_ptr<OfflineCache> offlineCache;
     std::unique_ptr<Library> lib;
+    // answers are coming from the offline cache
+    std::atomic<bool> offline{false};
 
     EmuInstance* emuInstance = nullptr;
 

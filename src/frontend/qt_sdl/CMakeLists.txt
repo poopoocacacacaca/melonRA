@@ -75,6 +75,8 @@ set(SOURCES_QT_SDL
     RetroAchievements/RAOverlay.h
     RetroAchievements/RAPendingQueue.cpp
     RetroAchievements/RAPendingQueue.h
+    RetroAchievements/RAOfflineCache.cpp
+    RetroAchievements/RAOfflineCache.h
     RetroAchievements/resources/retroachievements.qrc
 
     GameList/Covers.cpp

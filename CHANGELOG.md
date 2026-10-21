@@ -6,6 +6,14 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 - **MINOR** goes up for feature releases.
 - **PATCH** goes up for small updates and bug fixes.
 
+## Unreleased
+
+- **Play offline.** Games you've played online once keep their achievements without an internet
+  connection: melonRA saves what the RetroAchievements server sends and uses it when the server can't
+  be reached. Unlocks earned offline stay unlocked in later offline sessions and are submitted once
+  you're back online. A notification says when you're playing offline. Can be turned off in
+  RetroAchievements Settings.
+
 ## 0.2.0
 
 - **Grid view with box art.** The bar at the bottom of the game list switches between List and Grid;

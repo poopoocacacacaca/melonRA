@@ -140,6 +140,7 @@ private:
     QCheckBox* cbEncore;
     QCheckBox* cbUnpromoted;
     QCheckBox* cbSpectator;
+    QCheckBox* cbOffline;
     QCheckBox* cbToolkit;
     QPushButton* toolkitDownload;
     QLabel* toolkitStatus;

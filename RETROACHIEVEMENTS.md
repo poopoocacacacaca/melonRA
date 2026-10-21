@@ -16,6 +16,7 @@ local-multiplayer instances play without them.
 | HTTP: WinHTTP on Windows, Qt Network elsewhere | `RetroAchievements/RAHttp.*` |
 | Badge/avatar download and disk cache | `RetroAchievements/RAImageCache.*` |
 | Saved (offline) submission queue | `RetroAchievements/RAPendingQueue.*` |
+| Saved server answers for offline sessions | `RetroAchievements/RAOfflineCache.*` |
 | Overlay widgets (popups, indicators, trackers) | `RetroAchievements/RAOverlay.*` |
 | Login, settings, achievements/leaderboards windows | `RetroAchievements/RADialogs.*` |
 
@@ -67,8 +68,30 @@ persistent queue on top, in `retroachievements/pending_submissions.json`:
   (`RetroAchievements.QueueKey` in `melonRA.toml`). Corrupted or edited entries
   are discarded instead of submitted.
 
-Playing while offline from the very start still isn't possible:
-RetroAchievements needs a login to load the achievement set.
+## Offline sessions
+
+Games played online once can start their achievements without a connection
+(Settings → "Play offline with saved achievement data", on by default).
+Every request goes through `Manager::send`, which hands it to
+`OfflineCache` in `retroachievements/offline/`:
+
+- Successful answers to read-only requests are saved: `login2` (token logins
+  only), `gameid`, `achievementsets`, `patch`, `startsession`, and the
+  achievements window's `hashlibrary`, `allprogress`, `gameinfolist` and
+  `lbinfo`. The key is the request minus the token, password and client
+  version (and, for `startsession`, the hardcore flag and ROM hash).
+- When a request gets no answer or an HTTP 5xx, the saved answer is returned to
+  rcheevos as if the server had sent it, and melonRA shows that it's playing
+  offline. Unlocks, pings and leaderboard entries are never answered from the
+  cache; they fail as before and go to the offline queue.
+- A saved `login2` is only used for a token login with the same token. A
+  password login always needs the server.
+- Unlocks sent while offline are also recorded per user and merged into the
+  saved `startsession` answer, with `ServerNow` set to the current time, so
+  they stay unlocked in later offline sessions instead of triggering again.
+  They're dropped from this record once an online `startsession` lists them.
+- The first live answer after an offline stretch switches back to online and
+  submits the offline queue.
 
 ## Hardcore compliance
 
@@ -95,7 +118,7 @@ applying.
 | A. Achievement list accessible in-emulator | ✅ RetroAchievements → Achievements… |
 | A. Triggers, measured progress, challenge indicators | ✅ |
 | A. Rich Presence and leaderboards | ✅ |
-| A. Offline queueing | ✅ Unlocks and leaderboard entries are saved to disk before sending. If the app closes before they're delivered, they're resubmitted (re-signed) at the next login or reconnect; see [Offline queue](#offline-queue). |
+| A. Offline queueing | ✅ Unlocks and leaderboard entries are saved to disk before sending. If the app closes before they're delivered, they're resubmitted (re-signed) at the next login or reconnect; see [Offline queue](#offline-queue). Sessions can also start offline from saved data; see [Offline sessions](#offline-sessions). |
 | A. Hit counts in savestates | ✅ |
 | A. Toolkit (RAIntegration) support | ✅ Windows x86/x64; includes downloader/updater |
 | A. Standard save file formats | ✅ unchanged melonDS `.sav` |

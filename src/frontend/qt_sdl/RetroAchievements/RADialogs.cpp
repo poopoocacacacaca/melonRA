@@ -273,11 +273,15 @@ QWidget* SettingsDialog::createGeneralTab()
     cbEncore = new QCheckBox("Encore mode (re-trigger achievements you already unlocked)");
     cbUnpromoted = new QCheckBox("Show unofficial/unpromoted achievements");
     cbSpectator = new QCheckBox("Spectator mode (don't submit unlocks or leaderboard entries)");
+    cbOffline = new QCheckBox("Play offline with saved achievement data when the server can't be reached");
+    cbOffline->setToolTip("Games you have played online before keep their achievements without a connection.\n"
+                          "Unlocks are saved and submitted once you're back online.");
     general->addWidget(cbEnabled);
     general->addWidget(cbHardcore);
     general->addWidget(cbEncore);
     general->addWidget(cbUnpromoted);
     general->addWidget(cbSpectator);
+    general->addWidget(cbOffline);
     cbToolkit = new QCheckBox("Load the RAIntegration developer toolkit at startup (restart required)");
     general->addWidget(cbToolkit);
     auto* toolkitRow = new QHBoxLayout();
@@ -373,6 +377,7 @@ QWidget* SettingsDialog::createGeneralTab()
     bindDisplay(cbProgress, "ProgressIndicators");
     bindDisplay(cbTrackers, "LeaderboardTrackers");
     bindDisplay(cbSounds, "Sounds");
+    bindDisplay(cbOffline, "OfflineSessions");
 
     return page;
 }
@@ -628,8 +633,9 @@ void SettingsDialog::refresh()
     cbProgress->setChecked(cfg.GetBool("ProgressIndicators"));
     cbTrackers->setChecked(cfg.GetBool("LeaderboardTrackers"));
     cbSounds->setChecked(cfg.GetBool("Sounds"));
+    cbOffline->setChecked(cfg.GetBool("OfflineSessions"));
 
-    for (QCheckBox* cb : {cbHardcore, cbEncore, cbUnpromoted, cbSpectator, cbNotifications,
+    for (QCheckBox* cb : {cbHardcore, cbEncore, cbUnpromoted, cbSpectator, cbOffline, cbNotifications,
                           cbLeaderboardNotifications, cbChallenges, cbProgress, cbTrackers, cbSounds})
         cb->setEnabled(m->isEnabled());
     cbAccountOnStart->setEnabled(m->isEnabled() && cbNotifications->isChecked());
