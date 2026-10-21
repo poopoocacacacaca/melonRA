@@ -70,6 +70,12 @@ private:
     bool haspcap;
 
     void updateAdapterControls();
+    // online play (Nintendo WFC replacement) server
+    class QComboBox* cbWfcServer = nullptr;
+    class QLineEdit* leWfcCustom = nullptr;
+    class QLabel* lblWfcAbout = nullptr;
+    void buildWfcControls();
+    void updateWfcControls();
     std::vector<melonDS::AdapterData> adapters;
 };
 

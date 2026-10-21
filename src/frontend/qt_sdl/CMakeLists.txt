@@ -8,6 +8,7 @@ set(SOURCES_QT_SDL
     Screen.cpp
     Window.cpp
     SettingsBackup.cpp
+    WfcServers.cpp
     EmuInstance.cpp
     EmuInstanceAudio.cpp
     EmuInstanceInput.cpp

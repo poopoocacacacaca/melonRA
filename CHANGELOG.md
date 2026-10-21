@@ -17,6 +17,10 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   screen layouts (Natural, Vertical, Horizontal, Hybrid) and the screen sizings (Even, Emphasize Top,
   Emphasize Bottom, Auto, Top Only, Bottom Only), with an on-screen message naming the new one.
   They're unassigned until you pick a key or button.
+- **Online play server picker.** Config → Wi-Fi Settings has an Online Play section to pick a
+  Nintendo Wi-Fi Connection replacement (Wiimmfi or Kaeru WFC) or any other service by its DNS
+  address. melonRA points the firmware's Wi-Fi connections at it when a game starts, so there's no
+  DNS to edit by hand. "Firmware settings (don't change)" keeps the old behavior.
 - **Settings backup.** Config → Back Up Settings... saves all of melonRA's settings to one file, and
   Restore Settings... brings them back (melonRA restarts to apply them), on the same computer or
   another one. File and folder locations can be left out, and your RetroAchievements login is only

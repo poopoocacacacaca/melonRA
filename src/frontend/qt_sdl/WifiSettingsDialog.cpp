@@ -22,6 +22,15 @@
 #include "types.h"
 #include "Platform.h"
 #include "Config.h"
+#include "WfcServers.h"
+
+#include <QComboBox>
+#include <QDialogButtonBox>
+#include <QGridLayout>
+#include <QGroupBox>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
 #include "main.h"
 
 #include "Net.h"
@@ -85,6 +94,69 @@ WifiSettingsDialog::WifiSettingsDialog(QWidget* parent) : QDialog(parent), ui(ne
     if (!haspcap) ui->rbDirectMode->setEnabled(false);
 
     updateAdapterControls();
+    buildWfcControls();
+}
+
+void WifiSettingsDialog::buildWfcControls()
+{
+    auto* box = new QGroupBox("Online Play");
+    auto* grid = new QGridLayout(box);
+
+    grid->addWidget(new QLabel("Server:"), 0, 0);
+    cbWfcServer = new QComboBox();
+    cbWfcServer->addItem("Firmware settings (don't change)", QString());
+    for (const WfcServers::Server& s : WfcServers::servers())
+        cbWfcServer->addItem(QString("%1 (%2)").arg(s.name, s.dns), QString(s.id));
+    cbWfcServer->addItem("Custom DNS server", QString("custom"));
+    grid->addWidget(cbWfcServer, 0, 1);
+
+    leWfcCustom = new QLineEdit();
+    leWfcCustom->setPlaceholderText("DNS server address, e.g. 1.2.3.4");
+    leWfcCustom->setText(WfcServers::customDns());
+    grid->addWidget(leWfcCustom, 1, 1);
+
+    lblWfcAbout = new QLabel();
+    lblWfcAbout->setWordWrap(true);
+    lblWfcAbout->setOpenExternalLinks(true);
+    grid->addWidget(lblWfcAbout, 2, 0, 1, 2);
+    grid->setColumnStretch(1, 1);
+
+    int index = cbWfcServer->findData(WfcServers::selected());
+    cbWfcServer->setCurrentIndex(index < 0 ? 0 : index);
+
+    connect(cbWfcServer, &QComboBox::currentIndexChanged, this, [this]() { updateWfcControls(); });
+    connect(leWfcCustom, &QLineEdit::textChanged, this, [this]() { updateWfcControls(); });
+
+    // above the OK/Cancel buttons
+    ui->verticalLayout->insertWidget(ui->verticalLayout->indexOf(ui->buttonBox), box);
+    updateWfcControls();
+}
+
+void WifiSettingsDialog::updateWfcControls()
+{
+    const QString id = cbWfcServer->currentData().toString();
+    const bool custom = id == "custom";
+    leWfcCustom->setVisible(custom);
+
+    QString text;
+    if (id.isEmpty())
+        text = "Games use the DNS server set in the firmware's Wi-Fi connections (or in the game's "
+               "Nintendo WFC settings). Nintendo's own servers closed in 2014.";
+    else if (custom)
+        text = WfcServers::isValidAddress(leWfcCustom->text())
+             ? "Games use this DNS server to find their online servers."
+             : "Enter the DNS server address given by the service you want to use.";
+    else
+    {
+        for (const WfcServers::Server& s : WfcServers::servers())
+            if (id == s.id) text = s.about;
+    }
+    if (!id.isEmpty())
+        text += "<br>Applies to DS games from the next time a game starts. Pick connection 1 in the game's "
+                "Nintendo WFC settings if it asks.";
+    lblWfcAbout->setText(text);
+
+    ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(!custom || WfcServers::isValidAddress(leWfcCustom->text()));
 }
 
 WifiSettingsDialog::~WifiSettingsDialog()
@@ -119,6 +191,8 @@ void WifiSettingsDialog::done(int r)
         {
             cfg.SetString("LAN.Device", adapters[sel].DeviceName);
         }
+
+        WfcServers::setSelection(cbWfcServer->currentData().toString(), leWfcCustom->text());
 
         Config::Save();
     }

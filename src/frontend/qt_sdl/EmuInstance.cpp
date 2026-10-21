@@ -35,6 +35,7 @@
 #include "ArchiveUtil.h"
 #endif
 #include "EmuInstance.h"
+#include "WfcServers.h"
 #include "Config.h"
 #include "Platform.h"
 #include "Net.h"
@@ -1852,6 +1853,9 @@ void EmuInstance::customizeFirmware(Firmware& firmware, bool overridesettings) n
     }
 
     firmware.UpdateChecksums();
+
+    // online play server chosen in Wi-Fi Settings
+    WfcServers::apply(firmware);
 }
 
 // Loads ROM data without parsing it. Works for GBA and NDS ROMs.

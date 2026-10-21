@@ -57,6 +57,14 @@ time), melonRA downloads box art for the games it shows from **GameTDB** (`art.g
 thumbnails** (`thumbnails.libretro.com`, by title). Both can be turned off in
 View → Game Covers. The covers are kept in the `covers` folder.
 
+### Online play servers
+
+If you pick an online play server in Config → Wi-Fi Settings (Wiimmfi, Kaeru
+WFC or a custom one), games that go online connect to that service instead of
+Nintendo's closed servers, exactly as a real DS set up for it would. melonRA
+itself sends nothing to these services; what the game sends is covered by the
+service's own terms.
+
 ### Other features
 
 Other melonDS features that use the network work exactly as in upstream
