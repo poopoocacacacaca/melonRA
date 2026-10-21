@@ -40,8 +40,12 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: ${{ github.workspace }}/vcpkg_cache
-        key: vcpkg-${{ matrix.arch.name }}-windows-${{ hashFiles('vcpkg.json') }}
-        restore-keys: vcpkg-${{ matrix.arch.name }}-windows-
+        # the newest cache for these dependencies (each run saves its own, so
+        # packages rebuilt after a runner image update get cached again)
+        key: vcpkg-${{ matrix.arch.name }}-windows-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}
+        restore-keys: |
+          vcpkg-${{ matrix.arch.name }}-windows-${{ hashFiles('vcpkg.json') }}-
+          vcpkg-${{ matrix.arch.name }}-windows-
     - name: Set up vcpkg
       uses: lukka/run-vcpkg@v11
       with:
@@ -60,7 +64,7 @@ jobs:
       uses: actions/cache/save@v4
       with:
         path: ${{ github.workspace }}/vcpkg_cache
-        key: vcpkg-${{ matrix.arch.name }}-windows-${{ hashFiles('vcpkg.json') }}
+        key: vcpkg-${{ matrix.arch.name }}-windows-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}
 
   # Publish builds: every master push replaces the public "nightly" pre-release,
   # and version tags (v0.1.0, ...) create the versioned melonRA release.

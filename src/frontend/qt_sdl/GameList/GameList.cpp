@@ -862,6 +862,39 @@ public:
     }
 };
 
+// the List and Grid buttons' icons, drawn in the theme's text color so they
+// suit light and dark themes
+QIcon viewIcon(bool grid, const QColor& color, qreal dpr)
+{
+    const int size = 16;
+    QPixmap pm(QSize(size, size) * dpr);
+    pm.setDevicePixelRatio(dpr);
+    pm.fill(Qt::transparent);
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setPen(Qt::NoPen);
+    p.setBrush(color);
+    if (grid)
+    {
+        // four squares
+        for (int y = 0; y < 2; y++)
+            for (int x = 0; x < 2; x++)
+                p.drawRoundedRect(QRectF(2 + x * 7, 2 + y * 7, 5, 5), 1, 1);
+    }
+    else
+    {
+        // three rows: a small square and a line
+        for (int i = 0; i < 3; i++)
+        {
+            qreal y = 2.5 + i * 4.5;
+            p.drawRoundedRect(QRectF(1.5, y, 3, 3), 0.6, 0.6);
+            p.drawRoundedRect(QRectF(6, y + 0.5, 8.5, 2), 0.6, 0.6);
+        }
+    }
+    p.end();
+    return QIcon(pm);
+}
+
 Widget::Widget(QWidget* parent) : QWidget(parent)
 {
     auto* layout = new QVBoxLayout(this);
@@ -940,12 +973,18 @@ Widget::Widget(QWidget* parent) : QWidget(parent)
     bar->setContentsMargins(0, 0, 0, 0);
     listButton = new QToolButton();
     listButton->setText("List");
-    listButton->setToolTip("Show the games as a list");
+    listButton->setToolTip("List");
     gridButton = new QToolButton();
     gridButton->setText("Grid");
-    gridButton->setToolTip("Show the games' box art");
+    gridButton->setToolTip("Grid");
+    const QColor iconColor = palette().color(QPalette::ButtonText);
+    const qreal dpr = devicePixelRatioF() > 1 ? devicePixelRatioF() : 2.0; // sharp when moved to a high-DPI screen
+    listButton->setIcon(viewIcon(false, iconColor, dpr));
+    gridButton->setIcon(viewIcon(true, iconColor, dpr));
     for (QToolButton* b : {listButton, gridButton})
     {
+        b->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        b->setIconSize(QSize(16, 16));
         b->setCheckable(true);
         b->setAutoExclusive(true);
         b->setAutoRaise(true);
