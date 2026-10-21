@@ -17,6 +17,9 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   screen layouts (Natural, Vertical, Horizontal, Hybrid) and the screen sizings (Even, Emphasize Top,
   Emphasize Bottom, Auto, Top Only, Bottom Only), with an on-screen message naming the new one.
   They're unassigned until you pick a key or button.
+- **DSiWare in the game list.** DSiWare titles show "DSiWare" as their platform. Double-clicking one
+  explains how to install and play it on an emulated DSi (it can't be started like a cartridge), with
+  a button to open Manage DSi Titles when a DSi NAND is set up.
 - **Online play server picker.** Config → Wi-Fi Settings has an Online Play section to pick a
   Nintendo Wi-Fi Connection replacement (Wiimmfi or Kaeru WFC) or any other service by its DNS
   address. melonRA points the firmware's Wi-Fi connections at it when a game starts, so there's no

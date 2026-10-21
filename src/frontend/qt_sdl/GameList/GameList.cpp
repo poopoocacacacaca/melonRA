@@ -82,7 +82,8 @@ namespace
 {
 
 // offsets in the cartridge header
-constexpr int kHeaderSize = 0x200;
+constexpr int kHeaderSize = 0x240;
+constexpr int kHdrDSiTitleIdHigh = 0x234; // 0x00030004 for DSiWare
 constexpr int kHdrTitle = 0x000;       // 12 chars
 constexpr int kHdrGameCode = 0x00C;    // 4 chars
 constexpr int kHdrMakerCode = 0x010;   // 2 chars
@@ -267,6 +268,13 @@ bool readGame(const QString& path, Game& game)
     case 0x03: game.platform = "DSi"; break;
     default:   game.platform = "DS"; break;
     }
+    // sold on the DSi Shop rather than on a cartridge
+    if ((uint8_t)header[kHdrUnitCode] & 0x02)
+    {
+        const auto* p = reinterpret_cast<const uint8_t*>(header.constData()) + kHdrDSiTitleIdHigh;
+        const uint32_t high = p[0] | (p[1] << 8) | (p[2] << 16) | ((uint32_t)p[3] << 24);
+        if (high == 0x00030004) game.platform = "DSiWare";
+    }
 
     // region, from the last letter of the game code
     bool validCode = code.size() == 4;
@@ -300,7 +308,7 @@ bool readGame(const QString& path, Game& game)
     // title, publisher and icon from the banner
     QString title;
     uint32_t bannerOffset = read32(header, kHdrBannerOffset);
-    if (bannerOffset >= (uint32_t)kHeaderSize && bannerOffset + kBnrTitles + kBnrTitleSize <= (quint64)size &&
+    if (bannerOffset >= 0x200u && bannerOffset + kBnrTitles + kBnrTitleSize <= (quint64)size &&
         f.seek(bannerOffset))
     {
         QByteArray banner = f.read(kBnrReadSize);
@@ -410,7 +418,7 @@ std::vector<Game> scanned;
 namespace
 {
 constexpr quint32 kSavedMagic = 0x4D52474C; // "MRGL"
-constexpr quint32 kSavedVersion = 1;
+constexpr quint32 kSavedVersion = 2; // 2: DSiWare recognized
 
 QString savedListPath()
 {
@@ -1464,8 +1472,16 @@ void Widget::bootIndex(const QModelIndex& index)
 {
     if (!index.isValid()) return;
     QString path = proxy->data(index, Model::PathRole).toString();
-    if (!path.isEmpty())
-        emit bootRequested(path);
+    if (path.isEmpty()) return;
+
+    // DSiWare has to be installed on an emulated DSi first
+    const int row = proxy->mapToSource(index).row();
+    if (row >= 0 && row < (int)model->games().size() && model->games()[row].platform == "DSiWare")
+    {
+        emit dsiWareRequested(path, model->games()[row].title);
+        return;
+    }
+    emit bootRequested(path);
 }
 
 void Widget::setGridMode(bool on)

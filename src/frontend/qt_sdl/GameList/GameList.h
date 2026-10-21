@@ -187,6 +187,8 @@ protected:
 
 signals:
     void bootRequested(const QString& path);
+    // a DSiWare title, which can't be started like a cartridge
+    void dsiWareRequested(const QString& path, const QString& title);
     // the game folders are set in Path Settings, which the window opens
     void settingsRequested();
 

@@ -149,6 +149,8 @@ private slots:
     void onROMInfo();
     void onRAMInfo();
     void onOpenTitleManager();
+    // how to play a DSiWare title picked in the game list
+    void explainDSiWare(const QString& path, const QString& title);
     void onMPNewInstance();
     void onLANStartHost();
     void onLANStartClient();

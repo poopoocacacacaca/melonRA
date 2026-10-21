@@ -29,6 +29,8 @@
 
 #include <QProcess>
 #include <QApplication>
+#include <QClipboard>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QMenuBar>
 #include <QMimeDatabase>
@@ -897,6 +899,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
         gameList = new GameList::Widget(centralStack);
         centralStack->addWidget(gameList);
         connect(gameList, &GameList::Widget::bootRequested, this, &MainWindow::bootROMPath);
+        connect(gameList, &GameList::Widget::dsiWareRequested, this, &MainWindow::explainDSiWare);
         connect(gameList, &GameList::Widget::settingsRequested, this, &MainWindow::onOpenPathSettings);
     }
 
@@ -2230,6 +2233,35 @@ void MainWindow::onRAStateChanged()
 
         emuInstance->slowmoToggled = false;
     }
+}
+
+void MainWindow::explainDSiWare(const QString& path, const QString& title)
+{
+    const bool nandSet = !globalCfg.GetString("DSi.NANDPath").empty();
+
+    QMessageBox box(QMessageBox::Information, "DSiWare - melonRA",
+                    QString("%1 is DSiWare").arg(title.isEmpty() ? QFileInfo(path).fileName() : title),
+                    QMessageBox::NoButton, this);
+    box.setInformativeText(
+        "DSiWare was sold on the DSi Shop, not on cartridges, so it can't be started from the game list. "
+        "It has to be installed on an emulated DSi first:\n\n"
+        "1. In Config → Emulation Settings, set the console type to DSi and, under DSi Mode, pick the "
+        "DSi BIOS, firmware and NAND files dumped from your own DSi.\n"
+        "2. In System → Manage DSi Titles, choose Import and select this file. melonRA can download "
+        "the matching metadata for you.\n"
+        "3. Use File → Boot Firmware to start the DSi menu, and open the title from there.\n\n"
+        "RetroAchievements doesn't support DSi titles, so they have no achievements.");
+    QPushButton* manager = nullptr;
+    if (nandSet)
+        manager = box.addButton("Open Manage DSi Titles", QMessageBox::AcceptRole);
+    QPushButton* copy = box.addButton("Copy File Path", QMessageBox::ActionRole);
+    box.addButton(QMessageBox::Close);
+    box.exec();
+
+    if (manager && box.clickedButton() == manager)
+        onOpenTitleManager();
+    else if (box.clickedButton() == copy)
+        QApplication::clipboard()->setText(QDir::toNativeSeparators(path));
 }
 
 void MainWindow::onOpenTitleManager()
