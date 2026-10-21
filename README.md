@@ -18,34 +18,17 @@ regular melonDS desktop app.
 
 ## Features
 
-- **Log in** with your RetroAchievements account. Only a login token is saved, never your password.
-- **Automatic game detection.** Games are recognized from the `.nds` ROM itself.
-- **Multi-set support.** Bonus sets (subsets) load alongside the main set, each with its own progress and mastery notification.
-- (WIP) **Hardcore mode**, on by default, for full-credit unlocks.
-- **Offline-safe unlocks.** If the connection drops, unlocks and leaderboard entries are saved and submitted later, even after restarting melonRA.
-- **On-screen notifications:**
-  - your username and points when a game starts
-  - game start with your progress
-  - unlocks and mastery
-  - leaderboard attempts and your new rank
-- **Challenge and progress indicators**, so you know when an achievement is "armed" or how close you are.
-- **Leaderboard trackers**, which show the live timer or score while an attempt is running.
-- **Customizable overlay.** Put each kind of notification in any corner or at the top or bottom center,
-  with rounded or square corners, bold text and borders, colored or black and white, at four sizes, with
-  a live preview and a test button.
-- **Achievements and leaderboards browser** with badges, unlock dates, rarity and the rankings around you.
-  Its sidebar lists every game in your game list that's on RetroAchievements, with your progress, so
-  you can browse any game's achievements without starting it.
-- **Rich Presence.** Your RetroAchievements profile shows what you're doing in the game.
-- **Extras:**
-  - encore mode, spectator mode and unofficial achievements
-  - sound effects
-  - savestates that remember achievement progress
-- **Optional RAIntegration** developer toolkit on Windows, for achievement creators.
-- **Game list.** Point melonRA at your game folders and it lists every DS game with its icon, title,
-  developer, region flag, game code and size. Sort by any column, search, and double-click to play.
-  Switch to the **grid** at the bottom of the list to browse box art instead, with a size slider.
-- **Built-in updater** with a Stable and a Nightly channel.
+- **RetroAchievements**
+  - login with a saved token (never your password) and automatic game detection
+  - hardcore mode (WIP), subsets, encore, spectator and unofficial achievements
+  - offline-safe unlocks, submitted once you're back online
+  - notifications, challenge and progress indicators, leaderboard trackers
+  - customizable overlay: position, style, size, colored or black and white
+  - achievements and leaderboards browser for every game in your list
+  - Rich Presence, sound effects, savestates that keep achievement progress
+  - optional RAIntegration developer toolkit (Windows)
+- **Game list** with icons, region flags, search and sorting, plus a grid view with box art
+- **Built-in updater** with Stable and Nightly channels
 
 ## Getting started
 
@@ -161,14 +144,31 @@ is in `src/rcheevos/`. [RETROACHIEVEMENTS.md](./RETROACHIEVEMENTS.md) covers:
 
 ## Privacy and licenses
 
-melonRA has no telemetry. The only data it sends goes to RetroAchievements.org, and only when you're logged in. See
-[PRIVACY.md](./PRIVACY.md). Bundled and linked components are listed in [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md).
+melonRA has no telemetry. It only talks to RetroAchievements.org (when you're logged in), GitHub (update checks)
+and GameTDB and libretro (box art, if you allow it). See [PRIVACY.md](./PRIVACY.md). Bundled and linked components are listed in [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md).
 
 ## Credits
 
-- [melonDS](https://github.com/melonDS-emu/melonDS) by Arisotura and the melonDS team, which is all the actual emulation.
-- [RetroAchievements](https://retroachievements.org) and [rcheevos](https://github.com/RetroAchievements/rcheevos) (MIT).
-- melonRA is free software under the GPLv3, like melonDS. It is not affiliated with the melonDS team or RetroAchievements.
+melonRA is built on the work of these projects:
+
+- [melonDS](https://github.com/melonDS-emu/melonDS) by Arisotura and the melonDS team, which is all the actual emulation
+- [RetroAchievements](https://retroachievements.org), [rcheevos](https://github.com/RetroAchievements/rcheevos) and
+  [RAIntegration](https://github.com/RetroAchievements/RAIntegration)
+- [Qt](https://www.qt.io) and [SDL](https://www.libsdl.org)
+- [teakra](https://github.com/wwylele/teakra), [Dolphin](https://github.com/dolphin-emu/dolphin) (JIT emitter),
+  [DuckStation](https://github.com/stenzek/duckstation) (OpenGL context code), [libslirp](https://gitlab.freedesktop.org/slirp/libslirp),
+  [FatFs](http://elm-chan.org/fsw/ff/), [blip-buf](https://code.google.com/archive/p/blip-buf/),
+  [toml11](https://github.com/ToruNiina/toml11), [glad](https://github.com/Dav1dde/glad), [gif-h](https://github.com/charlietangora/gif-h),
+  [tiny-AES-c](https://github.com/kokke/tiny-AES-c), [xxHash](https://github.com/Cyan4973/xxHash),
+  [libarchive](https://www.libarchive.org), [zstd](https://github.com/facebook/zstd), [FAAD2](https://github.com/knik0/faad2)
+  and [ENet](http://enet.bespin.org)
+- [famfamfam flag icons](http://www.famfamfam.com/lab/icons/flags/) and [flag-icons](https://github.com/lipis/flag-icons) by lipis
+- Box art from [GameTDB](https://www.gametdb.com) and the [libretro thumbnails](https://github.com/libretro-thumbnails/libretro-thumbnails)
+- Ideas borrowed from [DuckStation](https://github.com/stenzek/duckstation), [Dolphin](https://github.com/dolphin-emu/dolphin),
+  [RetroArch](https://github.com/libretro/RetroArch) and WatermelonDS
+
+melonRA is free software under the GPLv3, like melonDS. It is not affiliated with the melonDS team or RetroAchievements.
+Licenses for everything above are in [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md).
 
 ## Ethos on AI Usage
 

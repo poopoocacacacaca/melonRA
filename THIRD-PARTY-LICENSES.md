@@ -44,6 +44,8 @@ The following components are included in, or linked into, melonRA builds.
 | Component | License | Upstream |
 |---|---|---|
 | RAIntegration (`RA_Integration-x64.dll`, Windows, optional) | see upstream | https://github.com/RetroAchievements/RAIntegration |
+| Box art from GameTDB (game list grid, optional) | see upstream | https://www.gametdb.com |
+| Box art from the libretro thumbnails (game list grid, optional) | see upstream | https://github.com/libretro-thumbnails/libretro-thumbnails |
 
 ## Assets
 
