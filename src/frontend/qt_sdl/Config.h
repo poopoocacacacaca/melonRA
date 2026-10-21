@@ -133,6 +133,17 @@ private:
 bool Load();
 void Save();
 
+// Settings backups: a copy of melonRA.toml that can be restored later or
+// on another computer. File and folder paths and the RetroAchievements login
+// can be left out; the key protecting saved unlocks never goes in.
+bool ExportBackup(const std::string& path, bool includePaths, bool includeLogin,
+                  const std::string& header, std::string& error);
+// Checks a backup file and writes it over the current settings (keeping
+// whatever the backup leaves out). The previous settings are kept as
+// melonRA.toml.bak. From then on Save() does nothing, so the restored file
+// isn't overwritten before melonRA restarts.
+bool RestoreBackup(const std::string& path, std::string& error);
+
 Table GetLocalTable(int instance);
 inline Table GetGlobalTable() { return GetLocalTable(-1); }
 

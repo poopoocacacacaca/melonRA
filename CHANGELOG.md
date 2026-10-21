@@ -17,6 +17,10 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   screen layouts (Natural, Vertical, Horizontal, Hybrid) and the screen sizings (Even, Emphasize Top,
   Emphasize Bottom, Auto, Top Only, Bottom Only), with an on-screen message naming the new one.
   They're unassigned until you pick a key or button.
+- **Settings backup.** Config → Back Up Settings... saves all of melonRA's settings to one file, and
+  Restore Settings... brings them back (melonRA restarts to apply them), on the same computer or
+  another one. File and folder locations can be left out, and your RetroAchievements login is only
+  included if you ask for it. Restoring keeps the previous settings as `melonRA.toml.bak`.
 - **Challenge details on hover.** Pointing the mouse at a challenge indicator shows the achievement's
   name, points and description, in a box that follows the indicators' style settings.
 - **The game list remembers your games.** It shows up instantly from the last scan, then checks the

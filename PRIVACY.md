@@ -68,6 +68,10 @@ connect when you use them.
 - `melonRA.toml` in the melonRA folder holds your RetroAchievements username,
   your login token and your settings. Your password is **never** stored. Log
   out to delete the token.
+- Settings backups (Config → Back Up Settings) are only written where you
+  choose. They hold your settings, and your RetroAchievements username and
+  login token only if you tick "Include my RetroAchievements login". Restoring
+  one keeps your previous settings as `melonRA.toml.bak`.
 - `gamelist.cache` holds the game list from the last scan (each ROM's path,
   size, date, title, icon, game code and region), so the list shows up at
   once. You can delete it at any time.

@@ -29,6 +29,7 @@ regular melonDS desktop app.
   - optional RAIntegration developer toolkit (Windows)
 - **Game list** with icons, region flags, search and sorting, plus a grid view with box art
 - **Screen layout hotkeys** to cycle through layouts and sizings while playing
+- **Settings backup and restore** in one file, for moving to another computer
 - **Built-in updater** with Stable and Nightly channels
 
 ## Getting started

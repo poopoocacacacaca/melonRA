@@ -837,8 +837,12 @@ bool Load()
     return true;
 }
 
+// set once a backup has been restored, until melonRA restarts
+static bool savingDisabled = false;
+
 void Save()
 {
+    if (savingDisabled) return;
     auto cfgpath = Platform::GetLocalFilePath(kConfigFile);
     if (!Platform::CheckFileWritable(cfgpath))
         return;
@@ -849,6 +853,151 @@ void Save()
     file.close();
 }
 
+
+// --- backups ---
+
+static const char* kBackupMarker = "melonRABackup";
+
+// settings that point at files or folders on this computer
+static bool isPathKey(const std::string& key)
+{
+    auto endsWith = [&](const char* s)
+    {
+        size_t n = strlen(s);
+        return key.size() >= n && key.compare(key.size() - n, n, s) == 0;
+    };
+    return endsWith("Path") || endsWith("Folder") || endsWith("Folders") || key == "RecentROM";
+}
+
+static void dropPaths(toml::value& v)
+{
+    if (!v.is_table()) return;
+    auto& tbl = v.as_table();
+    for (auto it = tbl.begin(); it != tbl.end();)
+    {
+        if (it->second.is_table())
+        {
+            dropPaths(it->second);
+            ++it;
+        }
+        else if (isPathKey(it->first) && (it->second.is_string() || it->second.is_array()))
+            it = tbl.erase(it);
+        else
+            ++it;
+    }
+}
+
+static void eraseKey(toml::value& root, const char* table, const char* key)
+{
+    if (!root.is_table() || !root.contains(table)) return;
+    toml::value& t = root.at(table);
+    if (t.is_table()) t.as_table().erase(key);
+}
+
+// `from`'s values over `into`, table by table
+static void mergeInto(toml::value& into, const toml::value& from)
+{
+    if (!into.is_table() || !from.is_table())
+    {
+        into = from;
+        return;
+    }
+    for (const auto& [key, val] : from.as_table())
+    {
+        auto& tbl = into.as_table();
+        auto it = tbl.find(key);
+        if (it != tbl.end() && it->second.is_table() && val.is_table())
+            mergeInto(it->second, val);
+        else
+            tbl[key] = val;
+    }
+}
+
+bool ExportBackup(const std::string& path, bool includePaths, bool includeLogin,
+                  const std::string& header, std::string& error)
+{
+    toml::value data = RootTable;
+    if (!data.is_table()) data = toml::table();
+
+    // unique to this installation: it signs the saved unlocks kept here
+    eraseKey(data, "RetroAchievements", "QueueKey");
+    if (!includeLogin)
+    {
+        eraseKey(data, "RetroAchievements", "Username");
+        eraseKey(data, "RetroAchievements", "Token");
+    }
+    if (!includePaths) dropPaths(data);
+
+    data.as_table()[kBackupMarker] = toml::table{
+        {"Paths", includePaths},
+        {"Login", includeLogin},
+    };
+
+    std::ofstream file(std::filesystem::u8path(path), std::ofstream::out | std::ofstream::trunc);
+    if (!file)
+    {
+        error = "The file couldn't be created.";
+        return false;
+    }
+    file << header << "\n" << data;
+    file.close();
+    if (!file)
+    {
+        error = "The file couldn't be written.";
+        return false;
+    }
+    return true;
+}
+
+bool RestoreBackup(const std::string& path, std::string& error)
+{
+    toml::value data;
+    try
+    {
+        data = toml::parse(std::filesystem::u8path(path));
+    }
+    catch (std::exception&)
+    {
+        error = "The file isn't a settings backup, or it's damaged.";
+        return false;
+    }
+    // a backup, or a plain melonRA.toml / melonDS.toml copied by hand
+    if (!data.is_table() || (!data.contains(kBackupMarker) && !data.contains("Instance0")))
+    {
+        error = "The file doesn't contain melonRA settings.";
+        return false;
+    }
+    data.as_table().erase(kBackupMarker);
+    eraseKey(data, "RetroAchievements", "QueueKey");
+
+    toml::value merged = RootTable;
+    if (!merged.is_table()) merged = toml::table();
+    mergeInto(merged, data);
+
+    auto cfgpath = Platform::GetLocalFilePath(kConfigFile);
+    if (!Platform::CheckFileWritable(cfgpath))
+    {
+        error = "melonRA can't write its settings file.";
+        return false;
+    }
+
+    // keep the current settings, just in case
+    std::error_code ec;
+    std::filesystem::copy_file(std::filesystem::u8path(cfgpath), std::filesystem::u8path(cfgpath + ".bak"),
+                               std::filesystem::copy_options::overwrite_existing, ec);
+
+    std::ofstream file(std::filesystem::u8path(cfgpath), std::ofstream::out | std::ofstream::trunc);
+    file << merged;
+    file.close();
+    if (!file)
+    {
+        error = "The settings file couldn't be written.";
+        return false;
+    }
+
+    savingDisabled = true;
+    return true;
+}
 
 Table GetLocalTable(int instance)
 {

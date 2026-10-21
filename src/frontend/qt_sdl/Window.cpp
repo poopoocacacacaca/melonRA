@@ -83,6 +83,7 @@
 #include "Updater/UpdaterDialogs.h"
 #include "GameList/GameList.h"
 #include "GameList/Covers.h"
+#include "SettingsBackup.h"
 
 using namespace melonDS;
 
@@ -805,6 +806,18 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             actAudioSync = menu->addAction("Audio Sync");
             actAudioSync->setCheckable(true);
             connect(actAudioSync, &QAction::triggered, this, &MainWindow::onChangeAudioSync);
+
+            // settings are shared by all instances; only the first one manages them
+            if (emuInstance->instanceID == 0)
+            {
+                menu->addSeparator();
+                QAction* backUp = menu->addAction("Back Up Settings...");
+                backUp->setMenuRole(QAction::NoRole);
+                connect(backUp, &QAction::triggered, this, [this]() { SettingsBackup::backUp(this); });
+                QAction* restore = menu->addAction("Restore Settings...");
+                restore->setMenuRole(QAction::NoRole);
+                connect(restore, &QAction::triggered, this, [this]() { SettingsBackup::restore(this); });
+            }
         }
         if (emuInstance->instanceID == 0 && RA::Manager::get())
         {
