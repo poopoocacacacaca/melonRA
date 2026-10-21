@@ -36,7 +36,11 @@
 class QCheckBox;
 class QLabel;
 class QLineEdit;
+class QListView;
 class QListWidget;
+class QSlider;
+class QToolButton;
+class QAbstractItemView;
 class QMenu;
 class QSortFilterProxyModel;
 class QStackedWidget;
@@ -92,6 +96,10 @@ bool showRegionNames();
 void setShowRegionNames(bool show);
 bool showSearchBar();
 void setShowSearchBar(bool show);
+bool gridMode();
+void setGridMode(bool grid);
+int tileSize();
+void setTileSize(int size);
 
 
 class Model : public QAbstractTableModel
@@ -113,6 +121,8 @@ public:
     static constexpr int SortRole = Qt::UserRole;
     // full path of the row's file
     static constexpr int PathRole = Qt::UserRole + 1;
+    // the box art (QImage; null until there is one), for the grid
+    static constexpr int CoverRole = Qt::UserRole + 2;
 
     explicit Model(QObject* parent = nullptr);
 
@@ -137,6 +147,7 @@ private:
 
     std::vector<Game> list;
     std::vector<QIcon> icons;
+    std::vector<QString> coverKeys;
     mutable QHash<QString, QPixmap> flags;
     bool regionNames = true;
     bool highResFlags = false;
@@ -160,6 +171,7 @@ public:
 protected:
     void resizeEvent(QResizeEvent* event) override;
     void showEvent(QShowEvent* event) override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
 
 signals:
     void bootRequested(const QString& path);
@@ -172,7 +184,9 @@ public slots:
 private:
     void scanFinished(int serial, std::vector<Game> games);
     void updatePage();
-    void showContextMenu(const QPoint& pos);
+    void showContextMenu(QAbstractItemView* from, const QPoint& pos);
+    void setGridMode(bool grid);
+    void setTileSize(int size);
     void showHeaderMenu(const QPoint& pos);
     void bootIndex(const QModelIndex& index);
     void saveHeader();
@@ -191,6 +205,12 @@ private:
     QLineEdit* search;
     QLabel* status;
     QTreeView* view;
+    QListView* grid;
+    QStackedWidget* views;
+    QToolButton* listButton;
+    QToolButton* gridButton;
+    QSlider* sizeSlider;
+    QLabel* sizeLabel;
     Model* model;
     QSortFilterProxyModel* proxy;
 

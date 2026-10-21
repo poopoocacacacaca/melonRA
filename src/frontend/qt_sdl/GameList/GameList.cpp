@@ -41,7 +41,11 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListView>
 #include <QListWidget>
+#include <QSlider>
+#include <QToolButton>
+#include <QWheelEvent>
 #include <QLocale>
 #include <QMenu>
 #include <QPainter>
@@ -59,6 +63,7 @@
 #include <QVBoxLayout>
 
 #include "Config.h"
+#include "Covers.h"
 
 namespace GameList
 {
@@ -406,6 +411,29 @@ void setEnabled(bool enabled)
     globalConfig().SetBool("GameList.Enabled", enabled);
 }
 
+bool gridMode()
+{
+    return globalConfig().GetString("GameList.View") == "grid";
+}
+
+void setGridMode(bool grid)
+{
+    globalConfig().SetString("GameList.View", grid ? "grid" : "list");
+}
+
+constexpr int kMinTile = 96, kMaxTile = 256, kDefaultTile = 144;
+
+int tileSize()
+{
+    int s = globalConfig().GetInt("GameList.TileSize");
+    return (s >= kMinTile && s <= kMaxTile) ? s : kDefaultTile;
+}
+
+void setTileSize(int size)
+{
+    globalConfig().SetInt("GameList.TileSize", size);
+}
+
 bool showSearchBar()
 {
     return globalConfig().GetBool("GameList.SearchBar");
@@ -432,6 +460,18 @@ void setShowRegionNames(bool show)
 
 Model::Model(QObject* parent) : QAbstractTableModel(parent)
 {
+    // a cover arrived: redraw the games that use it
+    connect(Covers::get(), &Covers::coverReady, this, [this](const QString& key)
+    {
+        for (size_t i = 0; i < coverKeys.size(); i++)
+            if (coverKeys[i] == key)
+                emit dataChanged(index((int)i, Col_Title), index((int)i, Col_Title), {CoverRole});
+    });
+    connect(Covers::get(), &Covers::coversReset, this, [this]()
+    {
+        if (!list.empty())
+            emit dataChanged(index(0, Col_Title), index((int)list.size() - 1, Col_Title), {CoverRole});
+    });
 }
 
 void Model::setGames(std::vector<Game> games)
@@ -440,8 +480,12 @@ void Model::setGames(std::vector<Game> games)
     list = std::move(games);
     icons.clear();
     icons.reserve(list.size());
+    coverKeys.clear();
     for (const Game& g : list)
+    {
         icons.push_back(g.icon.isNull() ? QIcon() : QIcon(QPixmap::fromImage(g.icon)));
+        coverKeys.push_back(Covers::keyFor(g));
+    }
     endResetModel();
 }
 
@@ -566,6 +610,8 @@ QVariant Model::data(const QModelIndex& index, int role) const
 
     if (role == PathRole)
         return g.path;
+    if (role == CoverRole)
+        return Covers::get()->cover(g);
 
     if (role == Qt::ToolTipRole)
     {
@@ -722,6 +768,100 @@ public:
     }
 };
 
+// a tile in the grid: the box art (or the game's icon until there is one)
+// with the title under it
+class GridDelegate : public QStyledItemDelegate
+{
+public:
+    explicit GridDelegate(QObject* parent) : QStyledItemDelegate(parent) {}
+
+    int tile = 144;
+
+    // DS boxes are a little wider than they're tall
+    static constexpr double kBoxRatio = 0.9;
+
+    QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex&) const override
+    {
+        int text = option.fontMetrics.lineSpacing() * 2;
+        return QSize(tile, (int)(tile * kBoxRatio) + text + 12);
+    }
+
+    void paint(QPainter* p, const QStyleOptionViewItem& option, const QModelIndex& index) const override
+    {
+        QStyleOptionViewItem opt = option;
+        initStyleOption(&opt, index);
+        const QString title = opt.text;
+        opt.text.clear();
+        opt.icon = QIcon();
+        opt.features &= ~QStyleOptionViewItem::HasDecoration;
+        const QWidget* w = option.widget;
+        QStyle* style = w ? w->style() : QApplication::style();
+        style->drawControl(QStyle::CE_ItemViewItem, &opt, p, w); // selection and hover
+
+        const QRect r = option.rect.adjusted(4, 4, -4, -4);
+        const QRect art(r.left(), r.top(), r.width(), (int)(r.width() * kBoxRatio));
+
+        p->save();
+        p->setRenderHint(QPainter::Antialiasing, true);
+        p->setRenderHint(QPainter::SmoothPixmapTransform, true);
+
+        const QImage cover = index.data(Model::CoverRole).value<QImage>();
+        if (!cover.isNull())
+        {
+            QSize s = cover.size().scaled(art.size(), Qt::KeepAspectRatio);
+            QRect target(QPoint(art.center().x() - s.width() / 2, art.bottom() - s.height() + 1), s);
+            p->drawImage(target, cover);
+            p->setPen(QPen(QColor(0, 0, 0, 60), 1));
+            p->setBrush(Qt::NoBrush);
+            p->drawRect(QRectF(target).adjusted(0.5, 0.5, -0.5, -0.5));
+        }
+        else
+        {
+            // a plain card with the game's own icon
+            const QPalette& pal = option.palette;
+            QRect card = art.adjusted(art.width() / 12, art.height() / 12, -art.width() / 12, 0);
+            p->setPen(QPen(pal.color(QPalette::Mid), 1));
+            p->setBrush(pal.color(QPalette::AlternateBase));
+            p->drawRoundedRect(QRectF(card).adjusted(0.5, 0.5, -0.5, -0.5), 6, 6);
+            QIcon icon = index.data(Qt::DecorationRole).value<QIcon>();
+            if (!icon.isNull())
+            {
+                int is = std::min(64, std::min(card.width(), card.height()) * 2 / 3);
+                QPixmap pm = icon.pixmap(32, 32);
+                p->setRenderHint(QPainter::SmoothPixmapTransform, false); // pixel art
+                p->drawPixmap(QRect(card.center().x() - is / 2, card.center().y() - is / 2, is, is), pm);
+            }
+        }
+        p->restore();
+
+        // two lines of title
+        const bool selected = option.state & QStyle::State_Selected;
+        p->save();
+        p->setPen(option.palette.color(selected ? QPalette::HighlightedText : QPalette::Text));
+        QRect textRect(r.left(), art.bottom() + 4, r.width(), r.bottom() - art.bottom() - 4);
+        QFontMetrics fm(option.font);
+        QString line1, rest;
+        // break at a word if the title doesn't fit on one line
+        if (fm.horizontalAdvance(title) <= textRect.width())
+            line1 = title;
+        else
+        {
+            int cut = title.size();
+            while (cut > 0 && fm.horizontalAdvance(title.left(cut)) > textRect.width()) cut--;
+            int space = title.lastIndexOf(' ', cut);
+            if (space > 0) cut = space;
+            line1 = title.left(cut).trimmed();
+            rest = title.mid(cut).trimmed();
+        }
+        p->drawText(QRect(textRect.left(), textRect.top(), textRect.width(), fm.lineSpacing()),
+                    Qt::AlignHCenter | Qt::AlignTop, line1);
+        if (!rest.isEmpty())
+            p->drawText(QRect(textRect.left(), textRect.top() + fm.lineSpacing(), textRect.width(), fm.lineSpacing()),
+                        Qt::AlignHCenter | Qt::AlignTop, fm.elidedText(rest, Qt::ElideRight, textRect.width()));
+        p->restore();
+    }
+};
+
 Widget::Widget(QWidget* parent) : QWidget(parent)
 {
     auto* layout = new QVBoxLayout(this);
@@ -741,8 +881,6 @@ Widget::Widget(QWidget* parent) : QWidget(parent)
     search->setPlaceholderText("Search");
     search->setClearButtonEnabled(true);
     top->addWidget(search, 1);
-    status = new QLabel();
-    top->addWidget(status);
     listLayout->addWidget(searchRow);
     searchRow->setVisible(showSearchBar());
 
@@ -776,7 +914,57 @@ Widget::Widget(QWidget* parent) : QWidget(parent)
     view->header()->setStretchLastSection(false);
     view->header()->setSectionResizeMode(QHeaderView::Interactive);
     view->header()->setMinimumSectionSize(40);
-    listLayout->addWidget(view, 1);
+
+    // the grid: box art tiles, same games, sorting and search
+    grid = new QListView();
+    grid->setModel(proxy);
+    grid->setModelColumn(Model::Col_Title);
+    grid->setViewMode(QListView::IconMode);
+    grid->setResizeMode(QListView::Adjust);
+    grid->setMovement(QListView::Static);
+    grid->setUniformItemSizes(true);
+    grid->setSelectionMode(QAbstractItemView::SingleSelection);
+    grid->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    grid->setSpacing(0);
+    grid->setContextMenuPolicy(Qt::CustomContextMenu);
+    grid->setItemDelegate(new GridDelegate(grid));
+    grid->viewport()->installEventFilter(this);
+
+    views = new QStackedWidget();
+    views->addWidget(view);
+    views->addWidget(grid);
+    listLayout->addWidget(views, 1);
+
+    // bottom bar: list or grid, the game count, and the tile size
+    auto* bar = new QHBoxLayout();
+    bar->setContentsMargins(0, 0, 0, 0);
+    listButton = new QToolButton();
+    listButton->setText("List");
+    listButton->setToolTip("Show the games as a list");
+    gridButton = new QToolButton();
+    gridButton->setText("Grid");
+    gridButton->setToolTip("Show the games' box art");
+    for (QToolButton* b : {listButton, gridButton})
+    {
+        b->setCheckable(true);
+        b->setAutoExclusive(true);
+        b->setAutoRaise(true);
+        bar->addWidget(b);
+    }
+    bar->addStretch(1);
+    status = new QLabel();
+    bar->addWidget(status);
+    bar->addStretch(1);
+    sizeLabel = new QLabel("Size:");
+    bar->addWidget(sizeLabel);
+    sizeSlider = new QSlider(Qt::Horizontal);
+    sizeSlider->setRange(kMinTile, kMaxTile);
+    sizeSlider->setSingleStep(8);
+    sizeSlider->setPageStep(32);
+    sizeSlider->setFixedWidth(140);
+    sizeSlider->setToolTip("Tile size (Ctrl + mouse wheel)");
+    bar->addWidget(sizeSlider);
+    listLayout->addLayout(bar);
     pages->addWidget(listPage);
 
     // shown when there's nothing to list
@@ -804,7 +992,27 @@ Widget::Widget(QWidget* parent) : QWidget(parent)
         updatePage();
     });
     connect(view, &QTreeView::activated, this, &Widget::bootIndex);
-    connect(view, &QWidget::customContextMenuRequested, this, &Widget::showContextMenu);
+    connect(grid, &QListView::activated, this, &Widget::bootIndex);
+    connect(view, &QWidget::customContextMenuRequested, this, [this](const QPoint& pos) { showContextMenu(view, pos); });
+    connect(grid, &QWidget::customContextMenuRequested, this, [this](const QPoint& pos) { showContextMenu(grid, pos); });
+    connect(listButton, &QToolButton::clicked, this, [this]() { setGridMode(false); });
+    connect(gridButton, &QToolButton::clicked, this, [this]() { setGridMode(true); });
+    connect(sizeSlider, &QSlider::valueChanged, this, &Widget::setTileSize);
+    // keep the same game selected in both views
+    connect(view->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex& cur)
+    {
+        if (cur.isValid() && views->currentWidget() == view)
+            grid->setCurrentIndex(proxy->index(cur.row(), Model::Col_Title));
+    });
+    connect(grid->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex& cur)
+    {
+        if (cur.isValid() && views->currentWidget() == grid)
+            view->setCurrentIndex(cur);
+    });
+
+    sizeSlider->setValue(tileSize());
+    setTileSize(tileSize());
+    setGridMode(gridMode());
     connect(view->header(), &QWidget::customContextMenuRequested, this, &Widget::showHeaderMenu);
     connect(addButton, &QPushButton::clicked, this, [this]()
     {
@@ -951,9 +1159,50 @@ void Widget::bootIndex(const QModelIndex& index)
         emit bootRequested(path);
 }
 
-void Widget::showContextMenu(const QPoint& pos)
+void Widget::setGridMode(bool on)
 {
-    QModelIndex index = view->indexAt(pos);
+    views->setCurrentWidget(on ? (QWidget*)grid : (QWidget*)view);
+    listButton->setChecked(!on);
+    gridButton->setChecked(on);
+    sizeSlider->setEnabled(on);
+    sizeLabel->setEnabled(on);
+    GameList::setGridMode(on);
+}
+
+void Widget::setTileSize(int size)
+{
+    size = std::clamp(size, kMinTile, kMaxTile);
+    auto* delegate = static_cast<GridDelegate*>(grid->itemDelegate());
+    delegate->tile = size;
+    // the delegate's size changed; have the view lay the tiles out again
+    QStyleOptionViewItem opt;
+    opt.initFrom(grid);
+    grid->setGridSize(delegate->sizeHint(opt, QModelIndex()) + QSize(8, 8));
+    grid->doItemsLayout();
+    GameList::setTileSize(size);
+    if (sizeSlider->value() != size)
+        sizeSlider->setValue(size);
+}
+
+bool Widget::eventFilter(QObject* watched, QEvent* event)
+{
+    // Ctrl + mouse wheel resizes the tiles
+    if (watched == grid->viewport() && event->type() == QEvent::Wheel)
+    {
+        auto* wheel = static_cast<QWheelEvent*>(event);
+        if (wheel->modifiers() & Qt::ControlModifier)
+        {
+            int steps = wheel->angleDelta().y() / 120;
+            if (steps) setTileSize(sizeSlider->value() + steps * 16);
+            return true;
+        }
+    }
+    return QWidget::eventFilter(watched, event);
+}
+
+void Widget::showContextMenu(QAbstractItemView* from, const QPoint& pos)
+{
+    QModelIndex index = from->indexAt(pos);
     QString path = index.isValid() ? proxy->data(index, Model::PathRole).toString() : QString();
 
     QMenu menu(this);
@@ -979,7 +1228,7 @@ void Widget::showContextMenu(const QPoint& pos)
     menu.addSeparator();
     connect(menu.addAction("Refresh"), &QAction::triggered, this, &Widget::refresh);
     connect(menu.addAction("Game Folders..."), &QAction::triggered, this, &Widget::openSettings);
-    menu.exec(view->viewport()->mapToGlobal(pos));
+    menu.exec(from->viewport()->mapToGlobal(pos));
 }
 
 void Widget::addViewOptions(QMenu& menu)

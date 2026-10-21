@@ -44,6 +44,7 @@ regular melonDS desktop app.
 - **Optional RAIntegration** developer toolkit on Windows, for achievement creators.
 - **Game list.** Point melonRA at your game folders and it lists every DS game with its icon, title,
   developer, region flag, game code and size. Sort by any column, search, and double-click to play.
+  Switch to the **grid** at the bottom of the list to browse box art instead, with a size slider.
 - **Built-in updater** with a Stable and a Nightly channel.
 
 ## Getting started

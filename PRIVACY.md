@@ -50,6 +50,13 @@ in the User-Agent header (like any website, GitHub sees your IP address).
 GitHub's handling of them is covered by the
 [GitHub privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
 
+### Game covers
+
+When the game list is in grid view, melonRA downloads box art for the games it
+shows from **GameTDB** (`art.gametdb.com`, by game code) and the **libretro
+thumbnails** (`thumbnails.libretro.com`, by title). Both can be turned off in
+View → Game Covers. The covers are kept in the `covers` folder.
+
 ### Other features
 
 Other melonDS features that use the network work exactly as in upstream

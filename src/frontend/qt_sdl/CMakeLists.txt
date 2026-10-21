@@ -77,6 +77,8 @@ set(SOURCES_QT_SDL
     RetroAchievements/RAPendingQueue.h
     RetroAchievements/resources/retroachievements.qrc
 
+    GameList/Covers.cpp
+    GameList/Covers.h
     GameList/GameList.cpp
     GameList/GameList.h
     GameList/gamelist.qrc

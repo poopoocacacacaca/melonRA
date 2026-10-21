@@ -82,6 +82,7 @@
 #include "RetroAchievements/RADialogs.h"
 #include "Updater/UpdaterDialogs.h"
 #include "GameList/GameList.h"
+#include "GameList/Covers.h"
 
 using namespace melonDS;
 
@@ -656,6 +657,65 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             {
                 if (gameList) gameList->refresh();
             });
+
+            // where the grid view's box art comes from
+            {
+                QMenu* covers = menu->addMenu("Game Covers");
+                auto* covers_ = GameList::Covers::get();
+
+                QAction* tdb = covers->addAction("Download from GameTDB");
+                tdb->setCheckable(true);
+                tdb->setChecked(GameList::Covers::useGameTDB());
+                tdb->setToolTip("Exact covers, found by the game code and region");
+                connect(tdb, &QAction::toggled, this, [covers_](bool on)
+                {
+                    GameList::Covers::setUseGameTDB(on);
+                    Config::Save();
+                    covers_->retryMissing();
+                });
+
+                QAction* libretro = covers->addAction("Download from libretro Thumbnails");
+                libretro->setCheckable(true);
+                libretro->setChecked(GameList::Covers::useLibretro());
+                libretro->setToolTip("Found by title; covers homebrew and games GameTDB doesn't have");
+                connect(libretro, &QAction::toggled, this, [covers_](bool on)
+                {
+                    GameList::Covers::setUseLibretro(on);
+                    Config::Save();
+                    covers_->retryMissing();
+                });
+
+                covers->addSeparator();
+                QAction* custom = covers->addAction("Use My Own Covers...");
+                custom->setToolTip("A folder of covers named by game code (ADAE.png) or after the ROM file");
+                QAction* clearCustom = covers->addAction("Stop Using My Own Covers");
+                clearCustom->setEnabled(!GameList::Covers::customFolder().isEmpty());
+                connect(custom, &QAction::triggered, this, [this, covers_, clearCustom]()
+                {
+                    QString dir = QFileDialog::getExistingDirectory(this, "Folder With Your Covers",
+                                                                    GameList::Covers::customFolder());
+                    if (dir.isEmpty()) return;
+                    GameList::Covers::setCustomFolder(dir);
+                    Config::Save();
+                    clearCustom->setEnabled(true);
+                    covers_->reset();
+                });
+                connect(clearCustom, &QAction::triggered, this, [covers_, clearCustom]()
+                {
+                    GameList::Covers::setCustomFolder({});
+                    Config::Save();
+                    clearCustom->setEnabled(false);
+                    covers_->reset();
+                });
+
+                covers->addSeparator();
+                connect(covers->addAction("Look Again for Missing Covers"), &QAction::triggered, this,
+                        [covers_]() { covers_->retryMissing(); });
+                connect(covers->addAction("Open Downloaded Covers Folder"), &QAction::triggered, this, [covers_]()
+                {
+                    QDesktopServices::openUrl(QUrl::fromLocalFile(covers_->cacheFolder()));
+                });
+            }
 
             menu->addSeparator();
 

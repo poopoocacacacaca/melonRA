@@ -8,6 +8,11 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 
 ## Unreleased
 
+- **Grid view with box art.** The bar at the bottom of the game list switches between List and Grid;
+  the grid shows each game's cover, with a size slider (or Ctrl + mouse wheel). Covers come from
+  GameTDB by game code and region, then from the libretro thumbnails by title, and are kept on disk
+  after the first download. View → Game Covers picks the sources, can use a folder of your own covers
+  (named by game code or after the ROM), and opens the downloaded covers folder.
 - **All your games in the achievements window.** RetroAchievements → Achievements... has a sidebar
   with the game being played and every game from the game list that's on RetroAchievements, each with
   your progress ("12 / 50 achievements"). Picking one shows its achievements (locked, unlocked in
