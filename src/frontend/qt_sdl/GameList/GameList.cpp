@@ -48,6 +48,7 @@
 #include <QStackedWidget>
 #include <QStyledItemDelegate>
 #include <QThread>
+#include <QTimer>
 #include <QTreeView>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -216,6 +217,10 @@ Config::Table globalConfig()
 {
     return Config::GetGlobalTable();
 }
+
+// column order, widths, visibility and sorting. (Renamed when the title
+// column stopped stretching, so layouts from before start over.)
+const char* const kColumnsKey = "GameList.ColumnLayout";
 
 }
 
@@ -686,8 +691,11 @@ Widget::Widget(QWidget* parent) : QWidget(parent)
     view->header()->setDefaultAlignment(Qt::AlignCenter);
     view->setItemDelegateForColumn(Model::Col_Region, new CenteredDelegate(view));
     model->setShowRegionNames(showRegionNames());
+    // every column keeps the width it's dragged to; the list scrolls sideways
+    // if they add up to more than the window
     view->header()->setStretchLastSection(false);
-    view->header()->setSectionResizeMode(Model::Col_Title, QHeaderView::Stretch);
+    view->header()->setSectionResizeMode(QHeaderView::Interactive);
+    view->header()->setMinimumSectionSize(40);
     listLayout->addWidget(view, 1);
     pages->addWidget(listPage);
 
@@ -955,16 +963,16 @@ void Widget::openSettings()
 void Widget::saveHeader()
 {
     QByteArray state = view->header()->saveState();
-    globalConfig().SetString("GameList.Columns", state.toBase64().toStdString());
+    globalConfig().SetString(kColumnsKey, state.toBase64().toStdString());
 }
 
 void Widget::restoreHeader()
 {
     QHeaderView* header = view->header();
-    QByteArray state = QByteArray::fromBase64(QByteArray::fromStdString(globalConfig().GetString("GameList.Columns")));
+    QByteArray state = QByteArray::fromBase64(QByteArray::fromStdString(globalConfig().GetString(kColumnsKey)));
     if (!state.isEmpty() && header->restoreState(state))
     {
-        header->setSectionResizeMode(Model::Col_Title, QHeaderView::Stretch);
+        header->setSectionResizeMode(QHeaderView::Interactive);
         return;
     }
 
@@ -989,7 +997,21 @@ void Widget::defaultColumns()
     header->resizeSection(Model::Col_Platform, 110);
     header->resizeSection(Model::Col_Size, 90);
     header->resizeSection(Model::Col_FileName, 200);
+    header->resizeSection(Model::Col_Title, 360);
     header->setSortIndicator(Model::Col_Title, Qt::AscendingOrder);
+
+    // give the title whatever room is left once the list has its real size
+    QTimer::singleShot(0, this, [this]()
+    {
+        QHeaderView* h = view->header();
+        int others = 0;
+        for (int c = 0; c < Model::NumColumns; c++)
+            if (c != Model::Col_Title && !h->isSectionHidden(c)) others += h->sectionSize(c);
+        int room = view->viewport()->width() - others;
+        if (room > h->sectionSize(Model::Col_Title))
+            h->resizeSection(Model::Col_Title, room);
+        saveHeader();
+    });
 }
 
 
