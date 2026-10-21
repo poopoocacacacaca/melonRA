@@ -6,7 +6,7 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 - **MINOR** goes up for feature releases.
 - **PATCH** goes up for small updates and bug fixes.
 
-## Unreleased
+## 0.2.0
 
 - **Grid view with box art.** The bar at the bottom of the game list switches between List and Grid;
   the grid shows each game's cover, with a size slider (or Ctrl + mouse wheel). Covers come from
@@ -38,12 +38,15 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   kind of notification (achievements, leaderboards, challenge indicators, progress, trackers) in a
   corner or in the middle of the top or bottom edge. Each one can have rounded or square
   corners, bold text and a border. There are four sizes, and popups can be colored by kind or
-  plain black and white. A live preview and a Test Notifications
+  black and white (plain translucent black, like RetroArch). A live preview and a Test Notifications
   button show the result.
 - **Your account at game start.** When a game starts, a notification shows your RetroAchievements
   username and points (can be turned off).
 - Notifications use the room a wider window has, and long achievement names and descriptions wrap
   onto more lines instead of being cut off.
+- The overlay is only redrawn while a notification slides in or fades out, instead of every frame
+  while one is on screen.
+- With the RAIntegration toolkit, quitting asks first if it has unsaved changes.
 - Menus, window titles and section headings use Title Case ("Emulation Settings", "Wi-Fi Settings", ...).
 - Fixed the menu bar's hover highlight being shorter than the menu name with the Windows 11 theme.
 

@@ -168,7 +168,6 @@ public:
 
     // scans the folders again
     void refresh();
-    int gameCount() const;
 
     QSize minimumSizeHint() const override { return QSize(200, 120); }
 

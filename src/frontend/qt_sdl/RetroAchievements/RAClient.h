@@ -193,8 +193,6 @@ public:
     std::string gameBadgeUrl() const;
     QString richPresence() const;
     QString hardcoreStatusText() const;
-    // unlocks/leaderboard entries saved because the server couldn't be reached
-    size_t pendingSubmissions() const;
 
 signals:
     // login/logout, game load/unload, hardcore toggled

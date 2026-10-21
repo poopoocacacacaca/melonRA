@@ -211,6 +211,15 @@ bool Overlay::hasContent()
            (showTrackers && !trackers.empty());
 }
 
+// Black and white mode: plain translucent black and neutral text, like
+// RetroArch's notifications. Colored mode keeps the slightly tinted boxes.
+static QColor boxFill(bool mono, int alpha)
+{
+    return mono ? QColor(0, 0, 0, 190) : QColor(18, 20, 26, alpha);
+}
+static QColor textColor(bool mono) { return mono ? QColor(255, 255, 255) : QColor(235, 237, 240); }
+static QColor dimTextColor(bool mono) { return mono ? QColor(170, 170, 170) : QColor(160, 166, 176); }
+
 QColor Overlay::accentColor(PopupKind kind)
 {
     switch (kind)
@@ -305,6 +314,7 @@ void Overlay::paint(QPainter& p, int width, int height)
 void Overlay::popupItems(std::deque<Popup>& queue, const ElementStyle& st, std::vector<Item>& out,
                          int width, float ui, int64_t now)
 {
+    const bool mono_ = !style.colored;
     // retire finished popups, promote queued ones
     for (auto it = queue.begin(); it != queue.end();)
     {
@@ -376,10 +386,10 @@ void Overlay::popupItems(std::deque<Popup>& queue, const ElementStyle& st, std::
         item.draw = [=](QPainter& p, const QRectF& box)
         {
             // the account popup is always plain, the rest unless color is off
-            const bool plain = pp->kind == PopupKind::Account || !style.colored;
-            QColor accent = plain ? accentColor(PopupKind::Account) : accentColor(pp->kind);
-            drawBox(p, box, st, ui, QColor(18, 20, 26, 232),
-                    plain ? QColor(255, 255, 255, 110) : accent, plain ? QColor() : accent);
+            const bool plain = mono_ || pp->kind == PopupKind::Account;
+            QColor accent = plain ? textColor(mono_) : accentColor(pp->kind);
+            drawBox(p, box, st, ui, boxFill(mono_, 232),
+                    plain ? QColor(255, 255, 255, mono_ ? 90 : 110) : accent, plain ? QColor() : accent);
 
             QRectF iconRect(box.left() + bar + pad, box.top() + (box.height() - icon) / 2, icon, icon);
             if (hasIcon)
@@ -393,14 +403,14 @@ void Overlay::popupItems(std::deque<Popup>& queue, const ElementStyle& st, std::
             p.drawText(QRectF(x, y, textW, th), wrap, pp->title);
             y += th;
 
-            p.setPen(QColor(235, 237, 240));
+            p.setPen(textColor(mono_));
             p.setFont(bodyFont);
             p.drawText(QRectF(x, y, textW, bh), wrap, pp->line1);
             y += bh;
 
             if (sh > 0)
             {
-                p.setPen(QColor(160, 166, 176));
+                p.setPen(dimTextColor(mono_));
                 p.setFont(smallFont);
                 p.drawText(QRectF(x, y, textW, sh), wrap, pp->line2);
             }
@@ -448,6 +458,7 @@ void Overlay::challengeItems(const ElementStyle& st, std::vector<Item>& out, int
 
 void Overlay::progressItems(const ElementStyle& st, std::vector<Item>& out, float ui, int64_t now)
 {
+    const bool mono_ = !style.colored;
     if (!progressVisible) return;
 
     int64_t age = now - progressShownAt;
@@ -476,10 +487,10 @@ void Overlay::progressItems(const ElementStyle& st, std::vector<Item>& out, floa
     const QString text = progressText;
     item.draw = [=](QPainter& p, const QRectF& box)
     {
-        drawBox(p, box, st, ui, QColor(18, 20, 26, 225), QColor(255, 255, 255, 110));
+        drawBox(p, box, st, ui, boxFill(mono_, 225), QColor(255, 255, 255, mono_ ? 90 : 110));
         drawIcon(p, iconUrl, QRectF(box.left() + pad, box.top() + pad, icon, icon), st.rounded);
         p.setFont(font);
-        p.setPen(QColor(235, 237, 240));
+        p.setPen(textColor(mono_));
         p.drawText(QRectF(box.left() + 2 * pad + icon, box.top(), textW + pad, box.height()),
                    Qt::AlignLeft | Qt::AlignVCenter, text);
     };
@@ -488,6 +499,7 @@ void Overlay::progressItems(const ElementStyle& st, std::vector<Item>& out, floa
 
 void Overlay::trackerItems(const ElementStyle& st, std::vector<Item>& out, float ui)
 {
+    const bool mono_ = !style.colored;
     if (trackers.empty()) return;
 
     // fixed-width font so timers don't jitter as digits change
@@ -509,9 +521,9 @@ void Overlay::trackerItems(const ElementStyle& st, std::vector<Item>& out, float
         item.size = QSizeF(fm.horizontalAdvance(text) + 2 * padX, fm.height() + 2 * padY);
         item.draw = [=](QPainter& p, const QRectF& box)
         {
-            drawBox(p, box, st, ui, QColor(18, 20, 26, 215), QColor(255, 255, 255, 110));
+            drawBox(p, box, st, ui, boxFill(mono_, 215), QColor(255, 255, 255, mono_ ? 90 : 110));
             p.setFont(font);
-            p.setPen(QColor(240, 242, 245));
+            p.setPen(textColor(mono_));
             p.drawText(box, Qt::AlignCenter, text);
         };
         out.push_back(std::move(item));
@@ -583,6 +595,28 @@ void Overlay::placeItems(QPainter& p, std::vector<Item> (&items)[kNumElements], 
     }
 }
 
+// Whether anything on screen is sliding in or fading out right now. Popups
+// that are just sitting there don't need the image redrawn and uploaded to the
+// GPU every frame.
+bool Overlay::isAnimating(int64_t now) const
+{
+    if (showPopups)
+    {
+        for (const std::deque<Popup>* queue : {&popups, &lbPopups})
+        {
+            int visible = 0;
+            for (const Popup& pop : *queue)
+            {
+                if (visible++ >= kMaxVisiblePopups) break;
+                if (pop.shownAt < 0) return true;  // about to appear
+                const int64_t age = now - pop.shownAt;
+                if (age < kSlideInMs || pop.durationMs - age < kFadeOutMs) return true;
+            }
+        }
+    }
+    return showProgressInd && progressVisible && now - progressShownAt > kProgressHoldMs;
+}
+
 bool Overlay::renderToImage(QImage& image, uint64_t& lastVersion, int deviceWidth, int deviceHeight, float scale)
 {
     if (deviceWidth <= 0 || deviceHeight <= 0) return false;
@@ -591,9 +625,10 @@ bool Overlay::renderToImage(QImage& image, uint64_t& lastVersion, int deviceWidt
     bool sizeOk = !image.isNull() && image.width() == deviceWidth && image.height() == deviceHeight;
     {
         std::lock_guard<std::mutex> guard(lock);
-        // popups and the progress indicator animate, so redraw every frame
-        bool animating = (showPopups && (!popups.empty() || !lbPopups.empty())) ||
-                         (showProgressInd && progressVisible);
+        // redraw while something moves, and once more when it settles
+        const bool animating = isAnimating(nowMs());
+        if (wasAnimating && !animating) version++;
+        wasAnimating = animating;
         if (!animating && sizeOk && version == lastVersion)
             return false;
         lastVersion = version;

@@ -21,7 +21,7 @@
 
       melonRA = pkgs.stdenv.mkDerivation {
         pname = "melonRA";
-        version = "0.1.0-${shortRevision}";
+        version = "0.2.0-${shortRevision}";
         src = ./.;
 
         nativeBuildInputs = with pkgs; [

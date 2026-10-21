@@ -1229,11 +1229,6 @@ void Widget::updateFlagStyle()
     model->setFlagStyle(highRes, dpr);
 }
 
-int Widget::gameCount() const
-{
-    return model->rowCount();
-}
-
 void Widget::refresh()
 {
     if (scanCancel) *scanCancel = true;

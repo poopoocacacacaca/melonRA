@@ -1054,6 +1054,23 @@ void MainWindow::saveEnabled(bool enabled)
 
 void MainWindow::closeEvent(QCloseEvent* event)
 {
+    // RAIntegration (the achievement developer toolkit) keeps its edits in
+    // memory until they are saved from its own windows
+    if (emuInstance && emuInstance->instanceID == 0 && windowID == 0)
+    {
+        if (RA::Manager* ra = RA::Manager::get(); ra && ra->toolkitHasModifications())
+        {
+            auto answer = QMessageBox::warning(this, "melonRA",
+                "The achievement development toolkit has unsaved changes.\n\nQuit anyway?",
+                QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+            if (answer != QMessageBox::Yes)
+            {
+                event->ignore();
+                return;
+            }
+        }
+    }
+
     if (emuInstance)
     {
         if (windowID == 0)

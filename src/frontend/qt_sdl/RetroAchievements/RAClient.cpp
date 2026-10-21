@@ -954,12 +954,6 @@ void Manager::loginWithStoredToken()
                                      ClientCallbacks::loginDone, (void*)1);
 }
 
-size_t Manager::pendingSubmissions() const
-{
-    std::string user = userName().toStdString();
-    return user.empty() ? 0 : pending->count(user);
-}
-
 void Manager::sendRequest(const std::string& url, const std::string& post, const std::string& contentType,
                           std::function<void(const HttpResponse&)> callback)
 {

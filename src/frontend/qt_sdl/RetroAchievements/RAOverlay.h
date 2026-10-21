@@ -219,6 +219,9 @@ private:
 
     // bumped on every visible change, for renderToImage
     uint64_t version = 1;
+    // whether the last rendered frame was mid-animation
+    bool wasAnimating = false;
+    bool isAnimating(int64_t now) const;
 };
 
 }
