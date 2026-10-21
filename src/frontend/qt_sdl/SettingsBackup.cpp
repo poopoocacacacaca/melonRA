@@ -30,10 +30,11 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
-#include <QStandardPaths>
+#include <QFileInfo>
 #include <QVBoxLayout>
 
 #include "Config.h"
+#include "Platform.h"
 #include "version.h"
 #include "Updater/Updater.h"
 
@@ -42,10 +43,12 @@ namespace SettingsBackup
 
 namespace
 {
+// where melonRA keeps its settings: next to melonRA.exe for the portable
+// version. The file dialogs open there; the user picks where the file goes.
 QString startFolder()
 {
-    QString docs = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
-    return docs.isEmpty() ? QDir::homePath() : docs;
+    QString dir = QFileInfo(QString::fromStdString(melonDS::Platform::GetLocalFilePath("melonRA.toml"))).absolutePath();
+    return QDir(dir).exists() ? dir : QDir::homePath();
 }
 }
 
