@@ -1,4 +1,5 @@
 <RCC>
+  <!-- famfamfam flags (public domain): 16x11 pixel art, for small windows -->
   <qresource prefix="/flags">
     <file alias="au.png">flags/au.png</file>
     <file alias="cn.png">flags/cn.png</file>
@@ -15,5 +16,23 @@
     <file alias="ru.png">flags/ru.png</file>
     <file alias="se.png">flags/se.png</file>
     <file alias="us.png">flags/us.png</file>
+  </qresource>
+  <!-- flag-icons by Panayiotis Lipiridis (MIT, flags-hd/LICENSE.txt): vector, for large windows and high-DPI screens -->
+  <qresource prefix="/flags-hd">
+    <file alias="au.svg">flags-hd/au.svg</file>
+    <file alias="cn.svg">flags-hd/cn.svg</file>
+    <file alias="de.svg">flags-hd/de.svg</file>
+    <file alias="dk.svg">flags-hd/dk.svg</file>
+    <file alias="es.svg">flags-hd/es.svg</file>
+    <file alias="eu.svg">flags-hd/eu.svg</file>
+    <file alias="fr.svg">flags-hd/fr.svg</file>
+    <file alias="it.svg">flags-hd/it.svg</file>
+    <file alias="jp.svg">flags-hd/jp.svg</file>
+    <file alias="kr.svg">flags-hd/kr.svg</file>
+    <file alias="nl.svg">flags-hd/nl.svg</file>
+    <file alias="no.svg">flags-hd/no.svg</file>
+    <file alias="ru.svg">flags-hd/ru.svg</file>
+    <file alias="se.svg">flags-hd/se.svg</file>
+    <file alias="us.svg">flags-hd/us.svg</file>
   </qresource>
 </RCC>

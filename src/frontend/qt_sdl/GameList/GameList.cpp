@@ -35,6 +35,7 @@
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QImageReader>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
@@ -43,7 +44,9 @@
 #include <QMenu>
 #include <QPainter>
 #include <QPushButton>
+#include <QResizeEvent>
 #include <QShortcut>
+#include <QShowEvent>
 #include <QSortFilterProxyModel>
 #include <QStackedWidget>
 #include <QStyledItemDelegate>
@@ -440,38 +443,96 @@ int Model::columnCount(const QModelIndex& parent) const
     return parent.isValid() ? 0 : NumColumns;
 }
 
-QIcon Model::flagIcon(const QString& key) const
+void Model::setFlagStyle(bool highRes, qreal scale)
+{
+    if (highRes == highResFlags && scale == flagScale) return;
+    highResFlags = highRes;
+    flagScale = scale;
+    flags.clear();
+    if (!list.empty())
+        emit dataChanged(index(0, Col_Region), index((int)list.size() - 1, Col_Region));
+}
+
+QPixmap Model::flagPixmap(const QString& code) const
+{
+    QPixmap pm;
+    if (highResFlags)
+    {
+        // drawn from the vector flag at the screen's real resolution
+        QImageReader reader(":/flags-hd/" + code + ".svg");
+        const QSize logical(32, 24);
+        reader.setScaledSize(logical * flagScale);
+        QImage img = reader.read();
+        if (!img.isNull())
+        {
+            pm = QPixmap::fromImage(img);
+            pm.setDevicePixelRatio(flagScale);
+        }
+    }
+    if (pm.isNull())
+    {
+        // the 16x11 pixel-art flags, doubled and kept sharp; also the
+        // fallback if the vector ones can't be drawn
+        QPixmap small(":/flags/" + code + ".png");
+        if (small.isNull()) return {};
+        pm = small.scaled(small.size() * 2, Qt::IgnoreAspectRatio, Qt::FastTransformation);
+        return pm;
+    }
+
+    // a hairline edge, so white flags (Japan, Korea) don't melt into the list
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing, false);
+    p.setPen(QPen(QColor(0, 0, 0, 70), 0));
+    p.setBrush(Qt::NoBrush);
+    QSizeF size = (QSizeF(pm.size()) / pm.devicePixelRatio());
+    p.drawRect(QRectF(0, 0, size.width() - 1.0 / flagScale, size.height() - 1.0 / flagScale));
+    p.end();
+    return pm;
+}
+
+QPixmap Model::flagIcon(const QString& key) const
 {
     if (key.isEmpty()) return {};
     auto it = flags.find(key);
     if (it != flags.end()) return *it;
 
-    // the flags are 16x11 pixel art; show them at twice the size, sharp
     QList<QPixmap> parts;
     for (const QString& code : key.split('+'))
     {
-        QPixmap pm(":/flags/" + code + ".png");
-        if (!pm.isNull())
-            parts << pm.scaled(pm.size() * 2, Qt::IgnoreAspectRatio, Qt::FastTransformation);
+        QPixmap pm = flagPixmap(code);
+        if (!pm.isNull()) parts << pm;
     }
 
-    QIcon icon;
+    QPixmap icon;
     if (parts.size() == 1)
     {
-        icon = QIcon(parts.first());
+        icon = parts.first();
     }
     else if (!parts.isEmpty())
     {
-        const int gap = 4;
-        int w = -gap, h = 0;
-        for (const QPixmap& pm : parts) { w += pm.width() + gap; h = std::max(h, pm.height()); }
-        QPixmap combined(w, h);
+        // side by side, e.g. USA/Europe
+        const qreal dpr = parts.first().devicePixelRatio();
+        const qreal gap = 4;
+        qreal w = -gap, h = 0;
+        for (const QPixmap& pm : parts)
+        {
+            QSizeF s = (QSizeF(pm.size()) / pm.devicePixelRatio());
+            w += s.width() + gap;
+            h = std::max(h, s.height());
+        }
+        QPixmap combined((QSizeF(w, h) * dpr).toSize());
+        combined.setDevicePixelRatio(dpr);
         combined.fill(Qt::transparent);
         QPainter p(&combined);
-        int x = 0;
-        for (const QPixmap& pm : parts) { p.drawPixmap(x, (h - pm.height()) / 2, pm); x += pm.width() + gap; }
+        qreal x = 0;
+        for (const QPixmap& pm : parts)
+        {
+            QSizeF s = (QSizeF(pm.size()) / pm.devicePixelRatio());
+            p.drawPixmap(QPointF(x, (h - s.height()) / 2), pm);
+            x += s.width() + gap;
+        }
         p.end();
-        icon = QIcon(combined);
+        icon = combined;
     }
     flags.insert(key, icon);
     return icon;
@@ -603,7 +664,7 @@ public:
     {
         QStyleOptionViewItem opt = option;
         initStyleOption(&opt, index);
-        const QIcon icon = opt.icon;
+        const QPixmap flag = index.data(Qt::DecorationRole).value<QPixmap>();
         const QString text = opt.text;
 
         // background, selection and focus as usual, without the content
@@ -614,18 +675,17 @@ public:
         QStyle* style = w ? w->style() : QApplication::style();
         style->drawControl(QStyle::CE_ItemViewItem, &opt, p, w);
 
-        QSize iconSize;
-        if (!icon.isNull())
-            // at full width: combined flags (USA/Europe) are wider than they're tall
-            iconSize = icon.actualSize(QSize(256, option.decorationSize.height()));
-        const int gap = (!icon.isNull() && !text.isEmpty()) ? 6 : 0;
+        // measured in logical pixels, so high-DPI flags aren't drawn doubled
+        const QSize iconSize = flag.isNull() ? QSize()
+                             : (QSizeF(flag.size()) / flag.devicePixelRatio()).toSize();
+        const int gap = (!flag.isNull() && !text.isEmpty()) ? 6 : 0;
         const int textW = text.isEmpty() ? 0 : option.fontMetrics.horizontalAdvance(text);
         const QRect r = option.rect;
         int x = r.left() + std::max(4, (r.width() - iconSize.width() - gap - textW) / 2);
 
-        if (!icon.isNull())
+        if (!flag.isNull())
         {
-            icon.paint(p, QRect(QPoint(x, r.top() + (r.height() - iconSize.height()) / 2), iconSize));
+            p->drawPixmap(QRect(QPoint(x, r.top() + (r.height() - iconSize.height()) / 2), iconSize), flag);
             x += iconSize.width() + gap;
         }
         if (!text.isEmpty())
@@ -763,6 +823,27 @@ Widget::~Widget()
         *scanCancel = true;
         scanThread->wait(2000);
     }
+}
+
+void Widget::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    updateFlagStyle();
+}
+
+void Widget::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+    updateFlagStyle();
+}
+
+void Widget::updateFlagStyle()
+{
+    // pixel-art flags suit a small window on a normal screen; once the window
+    // is large or the screen is high-DPI they'd look blocky, so use vector ones
+    const qreal dpr = devicePixelRatioF();
+    const bool highRes = dpr >= 1.5 || width() >= 1100;
+    model->setFlagStyle(highRes, dpr);
 }
 
 int Widget::gameCount() const

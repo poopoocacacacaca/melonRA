@@ -109,6 +109,9 @@ public:
     // region column: flag and name, or just the flag
     void setShowRegionNames(bool show);
     bool showsRegionNames() const { return regionNames; }
+    // vector flags (large windows, high-DPI screens) or the pixel-art ones;
+    // `scale` is the screen's device pixel ratio
+    void setFlagStyle(bool highRes, qreal scale);
     const std::vector<Game>& games() const { return list; }
 
     int rowCount(const QModelIndex& parent = QModelIndex()) const override;
@@ -117,12 +120,16 @@ public:
     QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
 
 private:
-    QIcon flagIcon(const QString& key) const;
+    // a pixmap rather than a QIcon, which would lose its device pixel ratio
+    QPixmap flagIcon(const QString& key) const;
+    QPixmap flagPixmap(const QString& code) const;
 
     std::vector<Game> list;
     std::vector<QIcon> icons;
-    mutable QHash<QString, QIcon> flags;
+    mutable QHash<QString, QPixmap> flags;
     bool regionNames = true;
+    bool highResFlags = false;
+    qreal flagScale = 1.0;
 };
 
 
@@ -139,6 +146,10 @@ public:
 
     QSize minimumSizeHint() const override { return QSize(200, 120); }
 
+protected:
+    void resizeEvent(QResizeEvent* event) override;
+    void showEvent(QShowEvent* event) override;
+
 signals:
     void bootRequested(const QString& path);
 
@@ -154,6 +165,7 @@ private:
     void saveHeader();
     void restoreHeader();
     void defaultColumns();
+    void updateFlagStyle();
 
     void setSearchBarVisible(bool visible);
     void addViewOptions(QMenu& menu);
