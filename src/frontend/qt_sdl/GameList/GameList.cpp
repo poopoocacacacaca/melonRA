@@ -49,6 +49,9 @@
 #include <QLocale>
 #include <QMenu>
 #include <QPainter>
+#include <QMessageBox>
+#include <QProcess>
+#include <QProgressBar>
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QShortcut>
@@ -481,10 +484,13 @@ void Model::setGames(std::vector<Game> games)
     icons.clear();
     icons.reserve(list.size());
     coverKeys.clear();
+    sizeTexts.clear();
+    QLocale loc;
     for (const Game& g : list)
     {
         icons.push_back(g.icon.isNull() ? QIcon() : QIcon(QPixmap::fromImage(g.icon)));
         coverKeys.push_back(Covers::keyFor(g));
+        sizeTexts.push_back(loc.formattedDataSize(g.size));
     }
     endResetModel();
 }
@@ -612,6 +618,8 @@ QVariant Model::data(const QModelIndex& index, int role) const
         return g.path;
     if (role == CoverRole)
         return Covers::get()->cover(g);
+    if (role == CoverKeyRole)
+        return coverKeys[index.row()];
 
     if (role == Qt::ToolTipRole)
     {
@@ -651,7 +659,7 @@ QVariant Model::data(const QModelIndex& index, int role) const
         if (role == Qt::TextAlignmentRole) return int(Qt::AlignCenter);
         break;
     case Col_Size:
-        if (role == Qt::DisplayRole) return QLocale().formattedDataSize(g.size);
+        if (role == Qt::DisplayRole) return sizeTexts[index.row()];
         if (role == SortRole) return g.size;
         if (role == Qt::TextAlignmentRole) return int(Qt::AlignCenter);
         break;
@@ -719,6 +727,41 @@ private:
 
 }
 
+// The list's cells: no hover effect, and the selected row in the theme's
+// selection color with its selected-text color, so it stands out clearly.
+class RowDelegate : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    // paints the selection (if any) and returns the option to draw the
+    // content with: no hover, no focus frame, selected text colors
+    static QStyleOptionViewItem prepare(QPainter* p, const QStyleOptionViewItem& in)
+    {
+        QStyleOptionViewItem opt = in;
+        const bool selected = opt.state & QStyle::State_Selected;
+        opt.state &= ~(QStyle::State_MouseOver | QStyle::State_HasFocus | QStyle::State_Selected);
+        if (selected)
+        {
+            p->fillRect(opt.rect, opt.palette.brush(QPalette::Active, QPalette::Highlight));
+            const QColor text = opt.palette.color(QPalette::Active, QPalette::HighlightedText);
+            opt.palette.setColor(QPalette::Text, text);
+            opt.palette.setColor(QPalette::WindowText, text);
+            opt.features &= ~QStyleOptionViewItem::Alternate;
+        }
+        return opt;
+    }
+
+    void paint(QPainter* p, const QStyleOptionViewItem& option, const QModelIndex& index) const override
+    {
+        QStyleOptionViewItem opt = prepare(p, option);
+        initStyleOption(&opt, index);
+        const QWidget* w = option.widget;
+        QStyle* style = w ? w->style() : QApplication::style();
+        style->drawControl(QStyle::CE_ItemViewItem, &opt, p, w);
+    }
+};
+
 // Qt keeps an item's icon at the left even when its text is centered; this
 // centers the flag and region name together
 class CenteredDelegate : public QStyledItemDelegate
@@ -728,12 +771,13 @@ public:
 
     void paint(QPainter* p, const QStyleOptionViewItem& option, const QModelIndex& index) const override
     {
-        QStyleOptionViewItem opt = option;
+        QStyleOptionViewItem opt = RowDelegate::prepare(p, option);
         initStyleOption(&opt, index);
         const QPixmap flag = index.data(Qt::DecorationRole).value<QPixmap>();
         const QString text = opt.text;
+        const QPalette palette = opt.palette;
 
-        // background, selection and focus as usual, without the content
+        // background as usual, without the content
         opt.icon = QIcon();
         opt.text.clear();
         opt.features &= ~QStyleOptionViewItem::HasDecoration;
@@ -756,9 +800,8 @@ public:
         }
         if (!text.isEmpty())
         {
-            const bool selected = option.state & QStyle::State_Selected;
             p->save();
-            p->setPen(option.palette.color(selected ? QPalette::HighlightedText : QPalette::Text));
+            p->setPen(palette.color(QPalette::Text));
             p->setFont(option.font);
             QRect tr(x, r.top(), r.right() - x - 2, r.height());
             p->drawText(tr, Qt::AlignLeft | Qt::AlignVCenter,
@@ -769,16 +812,27 @@ public:
 };
 
 // a tile in the grid: the box art (or the game's icon until there is one)
-// with the title under it
+// with the title under it; the selected tile gets an outline
 class GridDelegate : public QStyledItemDelegate
 {
 public:
-    explicit GridDelegate(QObject* parent) : QStyledItemDelegate(parent) {}
+    explicit GridDelegate(QObject* parent) : QStyledItemDelegate(parent)
+    {
+        scaled.setMaxCost(48 * 1024); // KB
+        // covers changed (another folder, ...): drop what was drawn
+        QObject::connect(Covers::get(), &Covers::coversReset, this, [this]() { scaled.clear(); });
+    }
 
     int tile = 144;
 
     // DS boxes are a little wider than they're tall
     static constexpr double kBoxRatio = 0.9;
+
+    void setTile(int size)
+    {
+        tile = size;
+        scaled.clear();
+    }
 
     QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex&) const override
     {
@@ -788,58 +842,75 @@ public:
 
     void paint(QPainter* p, const QStyleOptionViewItem& option, const QModelIndex& index) const override
     {
-        QStyleOptionViewItem opt = option;
-        initStyleOption(&opt, index);
-        const QString title = opt.text;
-        opt.text.clear();
-        opt.icon = QIcon();
-        opt.features &= ~QStyleOptionViewItem::HasDecoration;
-        const QWidget* w = option.widget;
-        QStyle* style = w ? w->style() : QApplication::style();
-        style->drawControl(QStyle::CE_ItemViewItem, &opt, p, w); // selection and hover
-
+        const QString title = index.data(Qt::DisplayRole).toString();
         const QRect r = option.rect.adjusted(4, 4, -4, -4);
         const QRect art(r.left(), r.top(), r.width(), (int)(r.width() * kBoxRatio));
+        const QPalette& pal = option.palette;
+
+        // the cover, scaled once per tile size and kept, so scrolling and
+        // redrawing don't rescale images
+        QPixmap cover;
+        const QString key = index.data(Model::CoverKeyRole).toString();
+        const qreal dpr = p->device() ? p->device()->devicePixelRatioF() : 1.0;
+        const QString cacheKey = key + '@' + QString::number(tile) + '@' + QString::number(dpr);
+        if (QPixmap* pm = scaled.object(cacheKey))
+            cover = *pm;
+        else
+        {
+            QImage img = index.data(Model::CoverRole).value<QImage>();
+            if (!img.isNull())
+            {
+                QSize s = img.size().scaled(art.size() * dpr, Qt::KeepAspectRatio);
+                cover = QPixmap::fromImage(img.scaled(s, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+                cover.setDevicePixelRatio(dpr);
+                scaled.insert(cacheKey, new QPixmap(cover), std::max(1, s.width() * s.height() * 4 / 1024));
+            }
+        }
 
         p->save();
         p->setRenderHint(QPainter::Antialiasing, true);
-        p->setRenderHint(QPainter::SmoothPixmapTransform, true);
-
-        const QImage cover = index.data(Model::CoverRole).value<QImage>();
+        QRect frame;
         if (!cover.isNull())
         {
-            QSize s = cover.size().scaled(art.size(), Qt::KeepAspectRatio);
-            QRect target(QPoint(art.center().x() - s.width() / 2, art.bottom() - s.height() + 1), s);
-            p->drawImage(target, cover);
+            QSize s = (QSizeF(cover.size()) / cover.devicePixelRatio()).toSize();
+            frame = QRect(QPoint(art.center().x() - s.width() / 2, art.bottom() - s.height() + 1), s);
+            p->drawPixmap(frame, cover);
             p->setPen(QPen(QColor(0, 0, 0, 60), 1));
             p->setBrush(Qt::NoBrush);
-            p->drawRect(QRectF(target).adjusted(0.5, 0.5, -0.5, -0.5));
+            p->drawRect(QRectF(frame).adjusted(0.5, 0.5, -0.5, -0.5));
         }
         else
         {
             // a plain card with the game's own icon
-            const QPalette& pal = option.palette;
-            QRect card = art.adjusted(art.width() / 12, art.height() / 12, -art.width() / 12, 0);
+            frame = art.adjusted(art.width() / 12, art.height() / 12, -art.width() / 12, 0);
             p->setPen(QPen(pal.color(QPalette::Mid), 1));
             p->setBrush(pal.color(QPalette::AlternateBase));
-            p->drawRoundedRect(QRectF(card).adjusted(0.5, 0.5, -0.5, -0.5), 6, 6);
+            p->drawRoundedRect(QRectF(frame).adjusted(0.5, 0.5, -0.5, -0.5), 6, 6);
             QIcon icon = index.data(Qt::DecorationRole).value<QIcon>();
             if (!icon.isNull())
             {
-                int is = std::min(64, std::min(card.width(), card.height()) * 2 / 3);
+                int is = std::min(64, std::min(frame.width(), frame.height()) * 2 / 3);
                 QPixmap pm = icon.pixmap(32, 32);
                 p->setRenderHint(QPainter::SmoothPixmapTransform, false); // pixel art
-                p->drawPixmap(QRect(card.center().x() - is / 2, card.center().y() - is / 2, is, is), pm);
+                p->drawPixmap(QRect(frame.center().x() - is / 2, frame.center().y() - is / 2, is, is), pm);
             }
+        }
+
+        // selected: an outline in the theme's selection color around the cover
+        if (option.state & QStyle::State_Selected)
+        {
+            QPen pen(pal.color(QPalette::Active, QPalette::Highlight), 3);
+            p->setPen(pen);
+            p->setBrush(Qt::NoBrush);
+            p->drawRoundedRect(QRectF(frame).adjusted(-2.5, -2.5, 2.5, 2.5), 4, 4);
         }
         p->restore();
 
         // two lines of title
-        const bool selected = option.state & QStyle::State_Selected;
         p->save();
-        p->setPen(option.palette.color(selected ? QPalette::HighlightedText : QPalette::Text));
-        QRect textRect(r.left(), art.bottom() + 4, r.width(), r.bottom() - art.bottom() - 4);
-        QFontMetrics fm(option.font);
+        p->setPen(pal.color(QPalette::Text));
+        QRect textRect(r.left(), art.bottom() + 6, r.width(), r.bottom() - art.bottom() - 6);
+        const QFontMetrics& fm = option.fontMetrics;
         QString line1, rest;
         // break at a word if the title doesn't fit on one line
         if (fm.horizontalAdvance(title) <= textRect.width())
@@ -860,6 +931,9 @@ public:
                         Qt::AlignHCenter | Qt::AlignTop, fm.elidedText(rest, Qt::ElideRight, textRect.width()));
         p->restore();
     }
+
+private:
+    mutable QCache<QString, QPixmap> scaled;
 };
 
 // the List and Grid buttons' icons, drawn in the theme's text color so they
@@ -940,7 +1014,10 @@ Widget::Widget(QWidget* parent) : QWidget(parent)
     view->header()->setFirstSectionMovable(true);
     // centered column titles; the cells keep their own alignment
     view->header()->setDefaultAlignment(Qt::AlignCenter);
+    view->setItemDelegate(new RowDelegate(view));
     view->setItemDelegateForColumn(Model::Col_Region, new CenteredDelegate(view));
+    // no hover effect: nothing to redraw while the mouse moves over the list
+    view->viewport()->setAttribute(Qt::WA_Hover, false);
     model->setShowRegionNames(showRegionNames());
     // every column keeps the width it's dragged to; the list scrolls sideways
     // if they add up to more than the window
@@ -962,15 +1039,22 @@ Widget::Widget(QWidget* parent) : QWidget(parent)
     grid->setContextMenuPolicy(Qt::CustomContextMenu);
     grid->setItemDelegate(new GridDelegate(grid));
     grid->viewport()->installEventFilter(this);
+    grid->viewport()->setAttribute(Qt::WA_Hover, false);
+    grid->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
 
     views = new QStackedWidget();
     views->addWidget(view);
     views->addWidget(grid);
     listLayout->addWidget(views, 1);
 
-    // bottom bar: list or grid, the game count, and the tile size
+    // bottom bar: list or grid on the left, the game count in the middle,
+    // cover downloads and the tile size on the right
+    auto* barGrid = new QGridLayout();
+    barGrid->setContentsMargins(0, 0, 0, 0);
+    barGrid->setColumnStretch(0, 1);
+    barGrid->setColumnStretch(2, 1);
     auto* bar = new QHBoxLayout();
-    bar->setContentsMargins(0, 0, 0, 0);
+    auto* barRight = new QHBoxLayout();
     listButton = new QToolButton();
     listButton->setText("List");
     listButton->setToolTip("List");
@@ -992,18 +1076,50 @@ Widget::Widget(QWidget* parent) : QWidget(parent)
     }
     bar->addStretch(1);
     status = new QLabel();
-    bar->addWidget(status);
-    bar->addStretch(1);
+    status->setAlignment(Qt::AlignCenter);
+
+    coverProgress = new QProgressBar();
+    coverProgress->setFixedWidth(160);
+    coverProgress->setMaximumHeight(16);
+    coverProgress->setFormat("Covers: %v / %m");
+    coverProgress->setToolTip("Downloading box art");
+    coverProgress->hide();
+    coverStop = new QToolButton();
+    coverStop->setAutoRaise(true);
+    coverStop->setIcon(style()->standardIcon(QStyle::SP_DialogCloseButton));
+    coverStop->setToolTip("Stop downloading covers");
+    coverStop->hide();
+    barRight->addStretch(1);
+    barRight->addWidget(coverProgress);
+    barRight->addWidget(coverStop);
+    barRight->addSpacing(8);
     sizeLabel = new QLabel("Size:");
-    bar->addWidget(sizeLabel);
+    barRight->addWidget(sizeLabel);
     sizeSlider = new QSlider(Qt::Horizontal);
     sizeSlider->setRange(kMinTile, kMaxTile);
     sizeSlider->setSingleStep(8);
     sizeSlider->setPageStep(32);
     sizeSlider->setFixedWidth(140);
     sizeSlider->setToolTip("Tile size (Ctrl + mouse wheel)");
-    bar->addWidget(sizeSlider);
-    listLayout->addLayout(bar);
+    barRight->addWidget(sizeSlider);
+    barGrid->addLayout(bar, 0, 0);
+    barGrid->addWidget(status, 0, 1);
+    barGrid->addLayout(barRight, 0, 2);
+    listLayout->addLayout(barGrid);
+
+    connect(Covers::get(), &Covers::downloadProgress, this, [this](int done, int total)
+    {
+        coverProgress->setRange(0, std::max(1, total));
+        coverProgress->setValue(done);
+        coverProgress->show();
+        coverStop->show();
+    });
+    connect(Covers::get(), &Covers::downloadsFinished, this, [this]()
+    {
+        coverProgress->hide();
+        coverStop->hide();
+    });
+    connect(coverStop, &QToolButton::clicked, Covers::get(), &Covers::stopDownloads);
     pages->addWidget(listPage);
 
     // shown when there's nothing to list
@@ -1164,6 +1280,8 @@ void Widget::scanFinished(int serial, std::vector<Game> games)
     emit notifier()->gamesChanged();
     view->sortByColumn(view->header()->sortIndicatorSection(), view->header()->sortIndicatorOrder());
     updatePage();
+    // after the list is up, so the question (if any) shows over it
+    QTimer::singleShot(0, this, &Widget::maybeDownloadCovers);
 }
 
 void Widget::updatePage()
@@ -1206,13 +1324,54 @@ void Widget::setGridMode(bool on)
     sizeSlider->setEnabled(on);
     sizeLabel->setEnabled(on);
     GameList::setGridMode(on);
+    if (on) maybeDownloadCovers();
+}
+
+void Widget::maybeDownloadCovers()
+{
+    if (views->currentWidget() != grid || model->games().empty())
+        return;
+    if (!Covers::useGameTDB() && !Covers::useLibretro())
+        return;
+
+    Covers* covers = Covers::get();
+    const QString consent = Covers::downloadConsent();
+    if (consent == "no")
+        return;
+
+    if (consent.isEmpty())
+    {
+        // ask once, before the first downloads
+        if (askedAboutCovers) return;
+        const int missing = covers->countMissing(model->games());
+        if (missing == 0) return;
+        askedAboutCovers = true;
+
+        QMessageBox box(QMessageBox::Question, "Game Covers - melonRA",
+                        QString("Download box art for %1 game%2?").arg(missing).arg(missing == 1 ? "" : "s"),
+                        QMessageBox::NoButton, this);
+        box.setInformativeText("Covers come from GameTDB and the libretro thumbnails. Each one is downloaded "
+                               "once and kept on your computer. You can follow or stop the downloads in the "
+                               "bar at the bottom of the list.\n\n"
+                               "You can change this later in View → Game Covers.");
+        QPushButton* yes = box.addButton("Download Covers", QMessageBox::AcceptRole);
+        box.addButton("Not Now", QMessageBox::RejectRole);
+        box.setDefaultButton(yes);
+        box.exec();
+        const bool ok = box.clickedButton() == yes;
+        Covers::setDownloadConsent(ok ? "yes" : "no");
+        Config::Save();
+        if (!ok) return;
+    }
+
+    covers->downloadMissing(model->games());
 }
 
 void Widget::setTileSize(int size)
 {
     size = std::clamp(size, kMinTile, kMaxTile);
     auto* delegate = static_cast<GridDelegate*>(grid->itemDelegate());
-    delegate->tile = size;
+    delegate->setTile(size);
     // the delegate's size changed; have the view lay the tiles out again
     QStyleOptionViewItem opt;
     opt.initFrom(grid);
@@ -1239,6 +1398,30 @@ bool Widget::eventFilter(QObject* watched, QEvent* event)
     return QWidget::eventFilter(watched, event);
 }
 
+// Opens the file manager with the file selected
+static void revealFile(const QString& path)
+{
+    const QString native = QDir::toNativeSeparators(QFileInfo(path).absoluteFilePath());
+#if defined(_WIN32)
+    // explorer wants "/select," and the path as one argument, quoted as-is
+    QProcess proc;
+    proc.setProgram("explorer.exe");
+    proc.setNativeArguments(QString("/select,\"%1\"").arg(native));
+    if (proc.startDetached()) return;
+#elif defined(__APPLE__)
+    if (QProcess::startDetached("open", {"-R", native})) return;
+#else
+    // the freedesktop file manager interface (Dolphin, Nautilus, Nemo, Thunar...)
+    const QString uri = QUrl::fromLocalFile(native).toString(QUrl::FullyEncoded);
+    if (QProcess::startDetached("dbus-send",
+            {"--session", "--print-reply", "--dest=org.freedesktop.FileManager1", "--type=method_call",
+             "/org/freedesktop/FileManager1", "org.freedesktop.FileManager1.ShowItems",
+             "array:string:" + uri, "string:"}))
+        return;
+#endif
+    QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(path).absolutePath()));
+}
+
 void Widget::showContextMenu(QAbstractItemView* from, const QPoint& pos)
 {
     QModelIndex index = from->indexAt(pos);
@@ -1253,6 +1436,14 @@ void Widget::showContextMenu(QAbstractItemView* from, const QPoint& pos)
         boot->setFont(f);
         connect(boot, &QAction::triggered, this, [this, index]() { bootIndex(index); });
 
+#if defined(_WIN32)
+        const char* revealText = "Show in Explorer";
+#elif defined(__APPLE__)
+        const char* revealText = "Show in Finder";
+#else
+        const char* revealText = "Show in File Manager";
+#endif
+        connect(menu.addAction(revealText), &QAction::triggered, this, [path]() { revealFile(path); });
         connect(menu.addAction("Open Containing Folder"), &QAction::triggered, this, [path]()
         {
             QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(path).absolutePath()));

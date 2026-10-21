@@ -709,8 +709,33 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                 });
 
                 covers->addSeparator();
-                connect(covers->addAction("Look Again for Missing Covers"), &QAction::triggered, this,
-                        [covers_]() { covers_->retryMissing(); });
+                QAction* autoDl = covers->addAction("Download Covers Automatically");
+                autoDl->setCheckable(true);
+                autoDl->setChecked(GameList::Covers::downloadConsent() == "yes");
+                autoDl->setToolTip("Download the covers of new games when the grid view is shown");
+                connect(autoDl, &QAction::toggled, this, [covers_](bool on)
+                {
+                    GameList::Covers::setDownloadConsent(on ? "yes" : "no");
+                    Config::Save();
+                    if (on) covers_->downloadMissing(GameList::scannedGames());
+                    else covers_->stopDownloads();
+                });
+                connect(covers->addAction("Download Missing Covers Now"), &QAction::triggered, this,
+                        [covers_]() { covers_->downloadMissing(GameList::scannedGames(), true); });
+                QAction* stopDl = covers->addAction("Stop Downloading Covers");
+                connect(stopDl, &QAction::triggered, covers_, &GameList::Covers::stopDownloads);
+                connect(covers, &QMenu::aboutToShow, this, [covers_, stopDl, autoDl]()
+                {
+                    stopDl->setEnabled(covers_->isDownloading());
+                    QSignalBlocker b(autoDl);
+                    autoDl->setChecked(GameList::Covers::downloadConsent() == "yes");
+                });
+                connect(covers->addAction("Look Again for Missing Covers"), &QAction::triggered, this, [covers_]()
+                {
+                    covers_->retryMissing();
+                    if (GameList::Covers::downloadConsent() == "yes")
+                        covers_->downloadMissing(GameList::scannedGames(), true);
+                });
                 connect(covers->addAction("Open Downloaded Covers Folder"), &QAction::triggered, this, [covers_]()
                 {
                     QDesktopServices::openUrl(QUrl::fromLocalFile(covers_->cacheFolder()));

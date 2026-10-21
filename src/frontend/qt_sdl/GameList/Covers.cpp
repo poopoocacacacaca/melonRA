@@ -29,6 +29,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QRegularExpression>
+#include <QThreadPool>
 #include <QUrl>
 
 #include "Config.h"
@@ -155,7 +156,7 @@ QString Covers::keyFor(const Game& game)
     return "title-" + QString::fromLatin1(h.toHex().left(16));
 }
 
-QImage Covers::loadFile(const QString& path) const
+QImage Covers::loadFile(const QString& path)
 {
     QImage img(path);
     if (img.isNull()) return img;
@@ -164,60 +165,139 @@ QImage Covers::loadFile(const QString& path) const
     return img.convertToFormat(QImage::Format_ARGB32_Premultiplied);
 }
 
+QStringList Covers::diskCandidates(const Game& game, const QString& key) const
+{
+    QStringList paths;
+    // the player's own covers first
+    QString custom = customFolder();
+    if (!custom.isEmpty())
+    {
+        QFileInfo rom(game.path);
+        QDir dir(custom);
+        for (const QString& n : {game.gameCode + ".png", game.gameCode + ".jpg", game.gameCode + ".jpeg",
+                                 rom.fileName() + ".png", rom.completeBaseName() + ".png",
+                                 rom.completeBaseName() + ".jpg"})
+            paths << dir.filePath(n);
+    }
+    // then the ones downloaded before
+    paths << QDir(cacheFolder()).filePath(key + ".png");
+    return paths;
+}
+
+bool Covers::onDisk(const Game& game, const QString& key) const
+{
+    for (const QString& p : diskCandidates(game, key))
+        if (QFileInfo::exists(p)) return true;
+    return false;
+}
+
 QImage Covers::cover(const Game& game)
 {
     const QString key = keyFor(game);
     if (QImage* img = memory.object(key))
         return *img;
+    if (loading.contains(key) || notOnDisk.contains(key))
+        return {};
 
-    auto remember = [this, &key](const QImage& img)
+    // read it in the background; painting never waits for the disk
+    loading.insert(key);
+    const QStringList paths = diskCandidates(game, key);
+    QThreadPool::globalInstance()->start([this, key, paths]()
     {
-        memory.insert(key, new QImage(img), std::max<qsizetype>(1, img.sizeInBytes() / 1024));
-        return img;
-    };
-
-    // the player's own covers
-    QString custom = customFolder();
-    if (!custom.isEmpty())
-    {
-        QFileInfo rom(game.path);
-        const QStringList names = {
-            game.gameCode + ".png", game.gameCode + ".jpg", game.gameCode + ".jpeg",
-            rom.fileName() + ".png", rom.completeBaseName() + ".png", rom.completeBaseName() + ".jpg",
-        };
-        for (const QString& n : names)
+        QImage img;
+        for (const QString& p : paths)
         {
-            QString p = QDir(custom).filePath(n);
-            if (QFileInfo::exists(p))
-            {
-                QImage img = loadFile(p);
-                if (!img.isNull()) return remember(img);
-            }
+            if (!QFileInfo::exists(p)) continue;
+            img = loadFile(p);
+            if (!img.isNull()) break;
         }
-    }
-
-    // downloaded before
-    QString cached = QDir(cacheFolder()).filePath(key + ".png");
-    if (QFileInfo::exists(cached))
-    {
-        QImage img = loadFile(cached);
-        if (!img.isNull()) return remember(img);
-    }
-
-    if (missing.contains(key) || queued.contains(key))
-        return {};
-
-    // looked for recently and not found
-    QFileInfo marker(QDir(cacheFolder()).filePath(key + ".none"));
-    if (marker.exists() &&
-        marker.lastModified().msecsTo(QDateTime::currentDateTime()) < kMissingRetryMs)
-    {
-        missing.insert(key);
-        return {};
-    }
-
-    enqueue(game, key);
+        if (!alive) return;
+        QMetaObject::invokeMethod(this, [this, key, img]()
+        {
+            loading.remove(key);
+            if (img.isNull())
+            {
+                notOnDisk.insert(key);
+                return;
+            }
+            memory.insert(key, new QImage(img), std::max<qsizetype>(1, img.sizeInBytes() / 1024));
+            emit coverReady(key);
+        }, Qt::QueuedConnection);
+    });
     return {};
+}
+
+int Covers::countMissing(const std::vector<Game>& games) const
+{
+    int n = 0;
+    for (const Game& g : games)
+    {
+        QString key = keyFor(g);
+        if (!memory.contains(key) && !onDisk(g, key)) n++;
+    }
+    return n;
+}
+
+void Covers::downloadMissing(const std::vector<Game>& games, bool retry)
+{
+    if (retry)
+    {
+        missing.clear();
+        QDir dir(cacheFolder());
+        for (const QString& f : dir.entryList({"*.none"}, QDir::Files))
+            dir.remove(f);
+    }
+
+    const QDir dir(cacheFolder());
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    for (const Game& g : games)
+    {
+        const QString key = keyFor(g);
+        if (memory.contains(key) || queued.contains(key) || missing.contains(key))
+            continue;
+        if (onDisk(g, key))
+            continue;
+
+        // looked for recently and not found
+        QFileInfo marker(dir.filePath(key + ".none"));
+        if (marker.exists() && now - marker.lastModified().toMSecsSinceEpoch() < kMissingRetryMs)
+        {
+            missing.insert(key);
+            continue;
+        }
+        enqueue(g, key);
+    }
+    if (batchTotal > 0)
+        emit downloadProgress(batchDone, batchTotal);
+}
+
+void Covers::stopDownloads()
+{
+    // what's already being downloaded finishes; the rest is dropped
+    for (const auto& job : queue)
+        queued.remove(job->key);
+    for (const auto& job : waitingForIndex)
+        queued.remove(job->key);
+    queue.clear();
+    waitingForIndex.clear();
+    batchTotal = batchDone + running;
+    if (running == 0)
+    {
+        batchTotal = batchDone = 0;
+        emit downloadsFinished();
+    }
+    else
+        emit downloadProgress(batchDone, batchTotal);
+}
+
+QString Covers::downloadConsent()
+{
+    return globalConfig().GetQString("GameList.CoversDownload");
+}
+
+void Covers::setDownloadConsent(const QString& answer)
+{
+    globalConfig().SetQString("GameList.CoversDownload", answer);
 }
 
 void Covers::enqueue(const Game& game, const QString& key)
@@ -250,6 +330,7 @@ void Covers::enqueue(const Game& game, const QString& key)
 
     queued.insert(key);
     queue.push_back(job);
+    batchTotal++;
     pump();
 }
 
@@ -392,6 +473,7 @@ void Covers::finish(const std::shared_ptr<Job>& job, const QByteArray& data)
 {
     running--;
     queued.remove(job->key);
+    batchDone++;
 
     const QDir dir(cacheFolder());
     QImage img;
@@ -403,6 +485,7 @@ void Covers::finish(const std::shared_ptr<Job>& job, const QByteArray& data)
         QFile::remove(dir.filePath(job->key + ".none"));
         img = img.convertToFormat(QImage::Format_ARGB32_Premultiplied);
         memory.insert(job->key, new QImage(img), std::max<qsizetype>(1, img.sizeInBytes() / 1024));
+        notOnDisk.remove(job->key);
         emit coverReady(job->key);
     }
     else
@@ -418,12 +501,20 @@ void Covers::finish(const std::shared_ptr<Job>& job, const QByteArray& data)
         }
     }
 
+    if (queue.empty() && waitingForIndex.empty() && running == 0)
+    {
+        batchDone = batchTotal = 0;
+        emit downloadsFinished();
+    }
+    else
+        emit downloadProgress(batchDone, batchTotal);
     pump();
 }
 
 void Covers::retryMissing()
 {
     missing.clear();
+    notOnDisk.clear();
     QDir dir(cacheFolder());
     for (const QString& f : dir.entryList({"*.none"}, QDir::Files))
         dir.remove(f);
@@ -434,6 +525,7 @@ void Covers::reset()
 {
     memory.clear();
     missing.clear();
+    notOnDisk.clear();
     emit coversReset();
 }
 

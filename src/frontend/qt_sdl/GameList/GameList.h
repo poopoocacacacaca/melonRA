@@ -38,6 +38,7 @@ class QLabel;
 class QLineEdit;
 class QListView;
 class QListWidget;
+class QProgressBar;
 class QSlider;
 class QToolButton;
 class QAbstractItemView;
@@ -123,6 +124,8 @@ public:
     static constexpr int PathRole = Qt::UserRole + 1;
     // the box art (QImage; null until there is one), for the grid
     static constexpr int CoverRole = Qt::UserRole + 2;
+    // identifies the cover (QString), so drawn covers can be cached
+    static constexpr int CoverKeyRole = Qt::UserRole + 3;
 
     explicit Model(QObject* parent = nullptr);
 
@@ -148,6 +151,7 @@ private:
     std::vector<Game> list;
     std::vector<QIcon> icons;
     std::vector<QString> coverKeys;
+    std::vector<QString> sizeTexts;
     mutable QHash<QString, QPixmap> flags;
     bool regionNames = true;
     bool highResFlags = false;
@@ -187,6 +191,8 @@ private:
     void showContextMenu(QAbstractItemView* from, const QPoint& pos);
     void setGridMode(bool grid);
     void setTileSize(int size);
+    // in grid view: download missing covers, asking the first time
+    void maybeDownloadCovers();
     void showHeaderMenu(const QPoint& pos);
     void bootIndex(const QModelIndex& index);
     void saveHeader();
@@ -211,6 +217,9 @@ private:
     QToolButton* gridButton;
     QSlider* sizeSlider;
     QLabel* sizeLabel;
+    QProgressBar* coverProgress;
+    QToolButton* coverStop;
+    bool askedAboutCovers = false;
     Model* model;
     QSortFilterProxyModel* proxy;
 

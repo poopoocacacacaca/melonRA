@@ -21,6 +21,7 @@
 
 #include <deque>
 #include <memory>
+#include <vector>
 
 #include <QCache>
 #include <QImage>
@@ -54,8 +55,23 @@ public:
     static Covers* get();
     ~Covers() override;
 
-    // the cover, or a null image if there's none (yet; coverReady follows)
+    // The cover if it's loaded. Otherwise a null image, and the cover is
+    // looked for on disk in the background (coverReady follows if found).
+    // Never downloads anything, so it's cheap to call while painting.
     QImage cover(const Game& game);
+
+    // Downloads the covers of the given games that aren't on disk yet, in the
+    // background. `retry` also tries games whose cover wasn't found recently.
+    void downloadMissing(const std::vector<Game>& games, bool retry = false);
+    void stopDownloads();
+    bool isDownloading() const { return batchTotal > 0; }
+    // how many of the given games have no cover on disk
+    int countMissing(const std::vector<Game>& games) const;
+
+    // Whether covers may be downloaded without asking: "" (not asked yet),
+    // "yes" or "no".
+    static QString downloadConsent();
+    static void setDownloadConsent(const QString& answer);
     // identifies a game's cover
     static QString keyFor(const Game& game);
 
@@ -77,6 +93,9 @@ public:
 signals:
     void coverReady(const QString& key);
     void coversReset();
+    // a batch of downloads: `done` of `total` games handled so far
+    void downloadProgress(int done, int total);
+    void downloadsFinished();
 
 private:
     Covers();
@@ -93,7 +112,9 @@ private:
         bool networkError = false;
     };
 
-    QImage loadFile(const QString& path) const;
+    static QImage loadFile(const QString& path);
+    QStringList diskCandidates(const Game& game, const QString& key) const;
+    bool onDisk(const Game& game, const QString& key) const;
     void enqueue(const Game& game, const QString& key);
     void pump();
     void tryNext(std::shared_ptr<Job> job);
@@ -103,8 +124,12 @@ private:
 
     std::unique_ptr<RA::Http> http;
     QCache<QString, QImage> memory;
-    QSet<QString> missing;
-    QSet<QString> queued;
+    QSet<QString> missing;      // not found online recently
+    QSet<QString> queued;       // waiting to be downloaded
+    QSet<QString> loading;      // being read from disk
+    QSet<QString> notOnDisk;    // looked for on disk, not there
+    int batchDone = 0;
+    int batchTotal = 0;
     std::deque<std::shared_ptr<Job>> queue;
     int running = 0;
 

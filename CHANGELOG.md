@@ -11,8 +11,15 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 - **Grid view with box art.** The bar at the bottom of the game list switches between List and Grid;
   the grid shows each game's cover, with a size slider (or Ctrl + mouse wheel). Covers come from
   GameTDB by game code and region, then from the libretro thumbnails by title, and are kept on disk
-  after the first download. View → Game Covers picks the sources, can use a folder of your own covers
-  (named by game code or after the ROM), and opens the downloaded covers folder.
+  after the first download. melonRA asks before downloading any, and the bar shows the download
+  progress with a button to stop it. View → Game Covers picks the sources, turns automatic downloads
+  on or off, downloads or stops on demand, can use a folder of your own covers (named by game code or
+  after the ROM), and opens the downloaded covers folder. Covers load in the background, so large
+  collections scroll smoothly.
+- The game list has no hover highlight; the selected game's text changes color in the list, and the
+  selected cover gets an outline in the grid. The game count stays centered in the bottom bar.
+- Right-clicking a game offers Show in Explorer (Finder on macOS, the file manager on Linux), which
+  opens the folder with the ROM selected, next to Open Containing Folder.
 - **All your games in the achievements window.** RetroAchievements → Achievements... has a sidebar
   with the game being played and every game from the game list that's on RetroAchievements, each with
   your progress ("12 / 50 achievements"). Picking one shows its achievements (locked, unlocked in

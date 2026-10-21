@@ -177,6 +177,9 @@ void Library::refresh()
         setStatus({});
         return;
     }
+    // ROMs are only read once the achievements window asks for them, so
+    // nothing touches the disk while the game list is loading
+    if (!active) return;
     startHashing();
 }
 
