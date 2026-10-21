@@ -1447,7 +1447,10 @@ void Manager::handleEvent(const rc_client_event_t* ev)
         break;
 
     case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_SHOW:
-        ovl->showChallenge(ev->achievement->id, achievementBadgeUrl(ev->achievement, false));
+        ovl->showChallenge(ev->achievement->id, achievementBadgeUrl(ev->achievement, false),
+                           QString("%1 (%2 points)").arg(QString::fromUtf8(ev->achievement->title))
+                                                    .arg(ev->achievement->points),
+                           QString::fromUtf8(ev->achievement->description));
         break;
 
     case RC_CLIENT_EVENT_ACHIEVEMENT_CHALLENGE_INDICATOR_HIDE:

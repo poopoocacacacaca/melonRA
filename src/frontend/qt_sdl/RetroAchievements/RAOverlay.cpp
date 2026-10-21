@@ -82,12 +82,13 @@ void Overlay::addPopup(PopupKind kind, const std::string& iconUrl,
     version++;
 }
 
-void Overlay::showChallenge(uint32_t achievementId, const std::string& iconUrl)
+void Overlay::showChallenge(uint32_t achievementId, const std::string& iconUrl,
+                            const QString& title, const QString& description)
 {
     images.prefetch(iconUrl);
 
     std::lock_guard<std::mutex> guard(lock);
-    challenges[achievementId] = iconUrl;
+    challenges[achievementId] = {iconUrl, title, description};
     version++;
 }
 
@@ -95,7 +96,33 @@ void Overlay::hideChallenge(uint32_t achievementId)
 {
     std::lock_guard<std::mutex> guard(lock);
     challenges.erase(achievementId);
+    if (hoveredChallenge == achievementId) hoveredChallenge = 0;
     version++;
+}
+
+void Overlay::setPointer(float x, float y, bool inside)
+{
+    std::lock_guard<std::mutex> guard(lock);
+    pointer = QPointF(x, y);
+    pointerInside = inside;
+    updateHover();
+}
+
+// which challenge badge is under the mouse (lock held)
+void Overlay::updateHover()
+{
+    uint32_t id = 0;
+    if (pointerInside && showChallenges)
+    {
+        for (const auto& [rect, cid] : challengeRects)
+            if (rect.contains(pointer)) { id = cid; break; }
+    }
+    if (id && challenges.find(id) == challenges.end()) id = 0;
+    if (id != hoveredChallenge)
+    {
+        hoveredChallenge = id;
+        version++;
+    }
 }
 
 void Overlay::showProgress(const std::string& iconUrl, const QString& text)
@@ -308,7 +335,72 @@ void Overlay::paint(QPainter& p, int width, int height)
     if (showProgressInd) progressItems(style[Element::Progress], items[(int)Element::Progress], ui, now);
     if (showTrackers) trackerItems(style[Element::Trackers], items[(int)Element::Trackers], ui);
 
+    challengeRects.clear();
     placeItems(p, items, width, height, ui);
+    // the badges may have moved under the mouse
+    updateHover();
+    if (hoveredChallenge) drawChallengeTooltip(p, width, height, ui);
+}
+
+// The hovered challenge's name and description, in a box styled like the
+// challenge indicators, next to its badge and kept inside the screen.
+void Overlay::drawChallengeTooltip(QPainter& p, int width, int height, float ui)
+{
+    auto ch = challenges.find(hoveredChallenge);
+    if (ch == challenges.end() || (ch->second.title.isEmpty() && ch->second.description.isEmpty())) return;
+    QRectF badge;
+    for (const auto& [rect, id] : challengeRects)
+        if (id == hoveredChallenge) badge = rect;
+    if (badge.isNull()) return;
+
+    const ElementStyle& st = style[Element::Challenges];
+    const bool mono_ = !style.colored;
+    const float pad = 7 * ui;
+    const float margin = kMargin * ui;
+    const float maxW = std::min(280.f * ui, width - 2 * margin);
+    const int wrap = Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap;
+
+    QFont titleFont;
+    titleFont.setPixelSize(std::max(9, (int)(12 * ui)));
+    titleFont.setBold(true);
+    QFont bodyFont = titleFont;
+    bodyFont.setBold(st.bold);
+    bodyFont.setPixelSize(std::max(8, (int)(11 * ui)));
+    QFontMetricsF tfm(titleFont), bfm(bodyFont);
+
+    const QString& title = ch->second.title;
+    const QString& desc = ch->second.description;
+    const float textMax = maxW - 2 * pad;
+    QRectF tr = title.isEmpty() ? QRectF() : tfm.boundingRect(QRectF(0, 0, textMax, 1e6), wrap, title);
+    QRectF dr = desc.isEmpty() ? QRectF() : bfm.boundingRect(QRectF(0, 0, textMax, 1e6), wrap, desc);
+    const float gapTD = (!title.isEmpty() && !desc.isEmpty()) ? 2 * ui : 0.f;
+    const float w = std::max(tr.width(), dr.width()) + 2 * pad + 1;
+    const float h = tr.height() + gapTD + dr.height() + 2 * pad;
+
+    // below the badge if there's room (badges near the top), above otherwise
+    const float gap = 6 * ui;
+    float y = badge.bottom() + gap;
+    if (y + h > height - margin) y = badge.top() - gap - h;
+    y = std::clamp(y, margin, std::max(margin, height - margin - h));
+    float x = std::clamp((float)badge.center().x() - w / 2, margin, std::max(margin, width - margin - w));
+
+    QRectF box(x, y, w, h);
+    drawBox(p, box, st, ui, boxFill(mono_, 235), QColor(255, 255, 255, mono_ ? 90 : 110));
+
+    float ty = box.top() + pad;
+    if (!title.isEmpty())
+    {
+        p.setFont(titleFont);
+        p.setPen(mono_ ? textColor(true) : accentColor(PopupKind::Unlock));
+        p.drawText(QRectF(box.left() + pad, ty, textMax, tr.height()), wrap, title);
+        ty += tr.height() + gapTD;
+    }
+    if (!desc.isEmpty())
+    {
+        p.setFont(bodyFont);
+        p.setPen(textColor(mono_));
+        p.drawText(QRectF(box.left() + pad, ty, textMax, dr.height()), wrap, desc);
+    }
 }
 
 void Overlay::popupItems(std::deque<Popup>& queue, const ElementStyle& st, std::vector<Item>& out,
@@ -429,27 +521,29 @@ void Overlay::challengeItems(const ElementStyle& st, std::vector<Item>& out, int
     const float limitW = width - 2 * kMargin * ui;
 
     // a row of small badges
-    std::vector<std::string> urls;
+    std::vector<std::pair<uint32_t, std::string>> badges;
     float w = 0;
-    for (const auto& [id, url] : challenges)
+    for (const auto& [id, ch] : challenges)
     {
-        float next = w + (urls.empty() ? 0 : gap) + size + 2 * pad;
+        float next = w + (badges.empty() ? 0 : gap) + size + 2 * pad;
         if (next > limitW) break;
-        urls.push_back(url);
+        badges.push_back({id, ch.iconUrl});
         w = next;
     }
-    if (urls.empty()) return;
+    if (badges.empty()) return;
 
     Item item;
     item.size = QSizeF(w, size + 2 * pad);
     item.draw = [=](QPainter& p, const QRectF& box)
     {
         float x = box.left();
-        for (const std::string& url : urls)
+        for (const auto& [id, url] : badges)
         {
             QRectF cell(x, box.top(), size + 2 * pad, size + 2 * pad);
-            drawBox(p, cell, st, ui, QColor(0, 0, 0, 150), QColor(255, 255, 255, 110));
+            const bool hovered = id == hoveredChallenge;
+            drawBox(p, cell, st, ui, QColor(0, 0, 0, 150), QColor(255, 255, 255, hovered ? 200 : 110));
             drawIcon(p, url, cell.adjusted(pad, pad, -pad, -pad), st.rounded);
+            challengeRects.push_back({cell, id});
             x += cell.width() + gap;
         }
     };

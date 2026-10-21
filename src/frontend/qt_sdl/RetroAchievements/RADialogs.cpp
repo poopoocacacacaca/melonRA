@@ -571,10 +571,11 @@ void SettingsDialog::showTestNotifications()
         Overlay& ovl = m->overlay();
         addTestNotifications(ovl, account);
         constexpr uint32_t kTestId = 0xFFFFFF00;
-        ovl.showChallenge(kTestId, ":/melon-icon");
+        ovl.showChallenge(kTestId, ":/melon-icon", "Test Challenge (10 points)",
+                          "Point at a challenge indicator to see what the achievement asks for.");
         ovl.showProgress(":/melon-icon", "12/50");
         ovl.showTracker(kTestId, "01:23.45");
-        QTimer::singleShot(6000, m, [m]()
+        QTimer::singleShot(10000, m, [m]()
         {
             m->overlay().hideChallenge(kTestId);
             m->overlay().hideTracker(kTestId);

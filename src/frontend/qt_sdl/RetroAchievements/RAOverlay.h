@@ -114,7 +114,12 @@ public:
                   const QString& line2 = QString(), int durationMs = 5000);
 
     // --- challenge indicators (one small badge per primed achievement) ---
-    void showChallenge(uint32_t achievementId, const std::string& iconUrl);
+    // `title` and `description` are shown when the mouse is over the badge
+    void showChallenge(uint32_t achievementId, const std::string& iconUrl,
+                       const QString& title = {}, const QString& description = {});
+    // where the mouse is over the game screen, in the same coordinates as
+    // paint(); `inside` false when it left
+    void setPointer(float x, float y, bool inside);
     void hideChallenge(uint32_t achievementId);
 
     // --- progress indicator (single, most recent measured progress) ---
@@ -202,7 +207,20 @@ private:
     // achievement/game popups, and leaderboard popups, which can be placed elsewhere
     std::deque<Popup> popups;
     std::deque<Popup> lbPopups;
-    std::map<uint32_t, std::string> challenges;
+    struct Challenge
+    {
+        std::string iconUrl;
+        QString title;
+        QString description;
+    };
+    std::map<uint32_t, Challenge> challenges;
+    // where each challenge badge was drawn last, for the hover text
+    std::vector<std::pair<QRectF, uint32_t>> challengeRects;
+    bool pointerInside = false;
+    QPointF pointer;
+    uint32_t hoveredChallenge = 0;
+    void updateHover();
+    void drawChallengeTooltip(QPainter& p, int width, int height, float ui);
     bool progressVisible = false;
     std::string progressIcon;
     QString progressText;

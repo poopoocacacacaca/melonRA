@@ -89,7 +89,14 @@ ScreenPanel::ScreenPanel(QWidget* parent) : QWidget(parent)
     mouseHideDelay = 0;
 
     QTimer* mouseTimer = setupMouseTimer();
-    connect(mouseTimer, &QTimer::timeout, [=] { if (mouseHide) setCursor(Qt::BlankCursor);});
+    connect(mouseTimer, &QTimer::timeout, [=]
+    {
+        if (!mouseHide) return;
+        setCursor(Qt::BlankCursor);
+        // no hover text under a hidden pointer
+        if (RA::Overlay* ra = raOverlayFor(emuInstance))
+            ra->setPointer(0, 0, false);
+    });
 
     osdEnabled = false;
     osdID = 1;
@@ -295,6 +302,10 @@ void ScreenPanel::mouseMoveEvent(QMouseEvent* event)
 
     showCursor();
 
+    // the challenge indicators show what they're about when pointed at
+    if (RA::Overlay* ra = raOverlayFor(emuInstance))
+        ra->setPointer(event->position().x(), event->position().y(), true);
+
     if (!emuInstance->emuIsActive()) return;
     //if (!(event->buttons() & Qt::LeftButton)) return;
     if (!touching) return;
@@ -306,6 +317,13 @@ void ScreenPanel::mouseMoveEvent(QMouseEvent* event)
     {
         emuInstance->touchScreen(x, y);
     }
+}
+
+void ScreenPanel::leaveEvent(QEvent* event)
+{
+    if (RA::Overlay* ra = raOverlayFor(emuInstance))
+        ra->setPointer(0, 0, false);
+    QWidget::leaveEvent(event);
 }
 
 void ScreenPanel::tabletEvent(QTabletEvent* event)
