@@ -86,6 +86,7 @@
 #include "GameList/GameList.h"
 #include "GameList/Covers.h"
 #include "SettingsBackup.h"
+#include "GameSettingsDialog.h"
 
 using namespace melonDS;
 
@@ -900,6 +901,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
         centralStack->addWidget(gameList);
         connect(gameList, &GameList::Widget::bootRequested, this, &MainWindow::bootROMPath);
         connect(gameList, &GameList::Widget::dsiWareRequested, this, &MainWindow::explainDSiWare);
+        connect(gameList, &GameList::Widget::gameSettingsRequested, this, &MainWindow::openGameSettings);
         connect(gameList, &GameList::Widget::settingsRequested, this, &MainWindow::onOpenPathSettings);
     }
 
@@ -2235,6 +2237,57 @@ void MainWindow::onRAStateChanged()
     }
 }
 
+void MainWindow::openGameSettings(const QString& id, const QString& title, const QIcon& icon, const QString& path)
+{
+    const bool running = emuInstance && emuInstance->emuIsActive() && Config::ActiveGame() == id.toStdString();
+    auto* dlg = new GameSettingsDialog(this, id.toStdString(), title, icon, path, running);
+    const bool glBefore = emuInstance ? emuInstance->usesOpenGL() : false;
+    connect(dlg, &GameSettingsDialog::settingsChanged, this, [this, glBefore](const QString& changed)
+    {
+        if (gameList) gameList->refreshSettingsMarks();
+
+        // the game being played: show the new settings now
+        if (emuInstance && Config::ActiveGame() == changed.toStdString())
+        {
+            emuInstance->audioVolume = localCfg.GetInt("Audio.Volume");
+            const bool cheats = localCfg.GetBool("EnableCheats");
+            emuThread->enableCheats(cheats);
+            onGameSettingsApplied(emuInstance->usesOpenGL() != glBefore);
+        }
+    });
+    dlg->open();
+}
+
+void MainWindow::onGameSettingsApplied(bool glchange)
+{
+    if (!emuInstance) return;
+
+    if (hasMenu)
+    {
+        actScreenRotation[windowCfg.GetInt("ScreenRotation")]->setChecked(true);
+        const int gap = windowCfg.GetInt("ScreenGap");
+        for (int i = 0; i < 6; i++)
+            if (actScreenGap[i]->data().toInt() == gap) actScreenGap[i]->setChecked(true);
+        actScreenLayout[windowCfg.GetInt("ScreenLayout")]->setChecked(true);
+        actScreenSizing[windowCfg.GetInt("ScreenSizing")]->setChecked(true);
+        actIntegerScaling->setChecked(windowCfg.GetBool("IntegerScaling"));
+        actScreenSwap->setChecked(windowCfg.GetBool("ScreenSwap"));
+        const int aspectTop = windowCfg.GetInt("ScreenAspectTop");
+        const int aspectBot = windowCfg.GetInt("ScreenAspectBot");
+        for (int i = 0; i < AspectRatiosNum; i++)
+        {
+            if (aspectTop == aspectRatios[i].id) actScreenAspectTop[i]->setChecked(true);
+            if (aspectBot == aspectRatios[i].id) actScreenAspectBot[i]->setChecked(true);
+        }
+        actScreenFiltering->setChecked(windowCfg.GetBool("ScreenFilter"));
+        actEnableCheats->setChecked(localCfg.GetBool("EnableCheats"));
+    }
+
+    panel->setFilter(windowCfg.GetBool("ScreenFilter"));
+    emit screenLayoutChange();
+    onUpdateVideoSettings(glchange);
+}
+
 void MainWindow::explainDSiWare(const QString& path, const QString& title)
 {
     const bool nandSet = !globalCfg.GetString("DSi.NANDPath").empty();
@@ -2789,6 +2842,10 @@ void MainWindow::onEmuStart()
 
 void MainWindow::onEmuStop()
 {
+    // back to the usual settings
+    if (emuInstance && windowID == 0)
+        emuInstance->applyGameSettings("");
+
     if (!hasMenu) return;
 
     for (int i = 0; i < 9; i++)

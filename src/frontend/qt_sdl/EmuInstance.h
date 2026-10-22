@@ -95,6 +95,9 @@ public:
     melonDS::NDS* getNDS() { return nds; }
 
     MainWindow* getMainWindow() { return mainWindow; }
+    // switches to a game's own settings ("" for the usual ones) and has the
+    // windows apply them; console-level ones apply when the console is set up
+    void applyGameSettings(const std::string& id);
     int getNumWindows() { return numWindows; }
     MainWindow* getWindow(int id) { return windowList[id]; }
 

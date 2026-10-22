@@ -48,6 +48,9 @@
 #include <QListView>
 #include <QListWidget>
 #include <QSlider>
+#include <QToolTip>
+#include <QHelpEvent>
+#include <QPainterPath>
 #include <QToolButton>
 #include <QWheelEvent>
 #include <QLocale>
@@ -614,7 +617,28 @@ void Model::setGames(std::vector<Game> games)
         coverKeys.push_back(Covers::keyFor(g));
         sizeTexts.push_back(loc.formattedDataSize(g.size));
     }
+    hasSettings.assign(list.size(), false);
+    for (size_t i = 0; i < list.size(); i++)
+        hasSettings[i] = Config::HasGameSettings(settingsId(list[i]).toStdString());
     endResetModel();
+}
+
+void Model::refreshSettingsMarks()
+{
+    for (size_t i = 0; i < list.size(); i++)
+    {
+        const bool has = Config::HasGameSettings(settingsId(list[i]).toStdString());
+        if (i < hasSettings.size() && hasSettings[i] != has)
+        {
+            hasSettings[i] = has;
+            emit dataChanged(index((int)i, Col_Title), index((int)i, Col_Title), {HasSettingsRole});
+        }
+    }
+}
+
+QString settingsId(const Game& game)
+{
+    return QString::fromStdString(Config::GameSettingsId(game.gameCode.toStdString(), game.fileName.toStdString()));
 }
 
 void Model::setShowRegionNames(bool show)
@@ -742,6 +766,8 @@ QVariant Model::data(const QModelIndex& index, int role) const
         return Covers::get()->cover(g);
     if (role == CoverKeyRole)
         return coverKeys[index.row()];
+    if (role == HasSettingsRole)
+        return (size_t)index.row() < hasSettings.size() && hasSettings[index.row()];
 
     if (role == Qt::ToolTipRole)
     {
@@ -851,6 +877,27 @@ private:
 
 // The list's cells: no hover effect, and the selected row in the theme's
 // selection color with its selected-text color, so it stands out clearly.
+// a small gear, marking games with their own settings
+static void drawGear(QPainter* p, const QRectF& r, const QColor& color)
+{
+    p->save();
+    p->setRenderHint(QPainter::Antialiasing);
+    p->translate(r.center());
+    const qreal s = std::min(r.width(), r.height()) / 2;
+    QPainterPath gear;
+    gear.addEllipse(QPointF(0, 0), s * 0.72, s * 0.72);
+    for (int i = 0; i < 8; i++)
+    {
+        QPainterPath tooth;
+        tooth.addRect(QRectF(-s * 0.17, -s, s * 0.34, s * 0.5));
+        gear = gear.united(QTransform().rotate(i * 45).map(tooth));
+    }
+    QPainterPath hole;
+    hole.addEllipse(QPointF(0, 0), s * 0.3, s * 0.3);
+    p->fillPath(gear.subtracted(hole), color);
+    p->restore();
+}
+
 class RowDelegate : public QStyledItemDelegate
 {
 public:
@@ -880,7 +927,32 @@ public:
         initStyleOption(&opt, index);
         const QWidget* w = option.widget;
         QStyle* style = w ? w->style() : QApplication::style();
+
+        // the gear goes right after the title, so leave it room
+        const bool gear = index.column() == Model::Col_Title && index.data(Model::HasSettingsRole).toBool();
+        const int g = std::max(10, opt.fontMetrics.height() - 4);
+        if (gear) opt.rect.adjust(0, 0, -(g + 6), 0);
         style->drawControl(QStyle::CE_ItemViewItem, &opt, p, w);
+        if (!gear) return;
+
+        const QRect text = style->subElementRect(QStyle::SE_ItemViewItemText, &opt, w);
+        const int textW = std::min(opt.fontMetrics.horizontalAdvance(opt.text), text.width());
+        const QRectF where(text.left() + textW + 5, opt.rect.center().y() - g / 2.0, g, g);
+        QColor c = opt.palette.color(QPalette::Text);
+        c.setAlphaF(0.7);
+        drawGear(p, where, c);
+    }
+
+    bool helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option,
+                   const QModelIndex& index) override
+    {
+        if (event->type() == QEvent::ToolTip && index.column() == Model::Col_Title &&
+            index.data(Model::HasSettingsRole).toBool())
+        {
+            QToolTip::showText(event->globalPos(), "This game has its own settings (right-click > Game Settings)", view);
+            return true;
+        }
+        return QStyledItemDelegate::helpEvent(event, view, option, index);
     }
 };
 
@@ -1016,6 +1088,17 @@ public:
                 p->setRenderHint(QPainter::SmoothPixmapTransform, false); // pixel art
                 p->drawPixmap(QRect(frame.center().x() - is / 2, frame.center().y() - is / 2, is, is), pm);
             }
+        }
+
+        // its own settings: a gear in the cover's corner
+        if (index.data(Model::HasSettingsRole).toBool() && !frame.isNull())
+        {
+            const int g = std::clamp(frame.width() / 7, 12, 22);
+            const QRectF badge(frame.right() - g - 3, frame.top() + 3, g + 2, g + 2);
+            p->setPen(Qt::NoPen);
+            p->setBrush(QColor(0, 0, 0, 150));
+            p->drawEllipse(badge);
+            drawGear(p, badge.adjusted(2, 2, -2, -2), QColor(255, 255, 255, 230));
         }
 
         // selected: an outline in the theme's selection color around the cover
@@ -1444,6 +1527,11 @@ void Widget::scanFinished(int serial, std::vector<Game> games, bool changed)
     QTimer::singleShot(0, this, &Widget::maybeDownloadCovers);
 }
 
+void Widget::refreshSettingsMarks()
+{
+    model->refreshSettingsMarks();
+}
+
 void Widget::updatePage()
 {
     const int total = model->rowCount();
@@ -1621,6 +1709,22 @@ void Widget::showContextMenu(QAbstractItemView* from, const QPoint& pos)
             QApplication::clipboard()->setText(QDir::toNativeSeparators(path));
         });
         menu.addSeparator();
+
+        // the game's own settings
+        const int row = proxy->mapToSource(proxy->index(index.row(), 0)).row();
+        if (row >= 0 && row < (int)model->games().size())
+        {
+            const Game& g = model->games()[row];
+            const QString id = settingsId(g);
+            const QIcon icon = g.icon.isNull() ? QIcon() : QIcon(QPixmap::fromImage(g.icon));
+            const QString title = g.title;
+            const QString romPath = g.path;
+            connect(menu.addAction("Game Settings..."), &QAction::triggered, this, [this, id, title, icon, romPath]()
+            {
+                emit gameSettingsRequested(id, title, icon, romPath);
+            });
+            menu.addSeparator();
+        }
     }
     addViewOptions(menu);
     menu.addSeparator();

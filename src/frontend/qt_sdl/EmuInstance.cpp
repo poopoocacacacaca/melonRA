@@ -381,6 +381,22 @@ void EmuInstance::emuStop(StopReason reason)
 }
 
 
+void EmuInstance::applyGameSettings(const std::string& id)
+{
+    if (instanceID != 0) return;
+    if (Config::ActiveGame() == id) return;
+
+    const bool glBefore = usesOpenGL();
+    Config::SetActiveGame(id);
+    audioVolume = localCfg.GetInt("Audio.Volume");
+    cheatsOn = localCfg.GetBool("EnableCheats");
+    const bool glChange = usesOpenGL() != glBefore;
+
+    // may run on the emulator thread
+    MainWindow* win = mainWindow;
+    QMetaObject::invokeMethod(win, [win, glChange]() { win->onGameSettingsApplied(glChange); }, Qt::QueuedConnection);
+}
+
 bool EmuInstance::usesOpenGL()
 {
     return globalCfg.GetBool("Screen.UseGL") ||
@@ -2024,6 +2040,13 @@ bool EmuInstance::loadROM(QStringList filepath, bool reset, QString& errorstr)
         // If we couldn't parse the ROM...
         errorstr = "Failed to load the DS ROM.";
         return false;
+    }
+
+    // the game's own settings (Game Settings in the game list), before the
+    // console is set up for it
+    {
+        const auto& hdr = cart->GetHeader();
+        applyGameSettings(Config::GameSettingsId(std::string(hdr.GameCode, 4), romname));
     }
 
     if (reset)

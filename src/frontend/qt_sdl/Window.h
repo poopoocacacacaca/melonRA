@@ -151,6 +151,12 @@ private slots:
     void onOpenTitleManager();
     // how to play a DSiWare title picked in the game list
     void explainDSiWare(const QString& path, const QString& title);
+    // Game Settings... from the game list
+    void openGameSettings(const QString& id, const QString& title, const QIcon& icon, const QString& path);
+public:
+    // a game's own settings were switched on or off: show and apply them
+    void onGameSettingsApplied(bool glchange);
+private slots:
     void onMPNewInstance();
     void onLANStartHost();
     void onLANStartClient();

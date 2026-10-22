@@ -71,6 +71,9 @@ QString selectedDns()
 {
     const QString id = selected();
     if (id.isEmpty()) return {};
+    // no online play: the DS's own address, where no DNS server answers, so
+    // every lookup fails and the game reports it can't connect
+    if (id == "off") return "127.0.0.1";
     if (id == "custom")
     {
         const QString dns = customDns();

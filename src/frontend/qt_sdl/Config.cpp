@@ -22,6 +22,7 @@
 #include <inttypes.h>
 #include <iostream>
 #include <fstream>
+#include <mutex>
 #include <filesystem>
 #include <regex>
 #include "toml/toml.hpp"
@@ -537,6 +538,112 @@ void Array::SetDouble(const int id, double val)
     PathPrefix = "";
 }*/
 
+// --- per-game settings ---
+
+static std::mutex activeGameLock;
+static std::string activeGame;
+static thread_local int usualDepth = 0;
+
+UsualSettings::UsualSettings() { usualDepth++; }
+UsualSettings::~UsualSettings() { usualDepth--; }
+
+std::string ActiveGame()
+{
+    std::lock_guard<std::mutex> guard(activeGameLock);
+    return activeGame;
+}
+
+void SetActiveGame(const std::string& id)
+{
+    std::lock_guard<std::mutex> guard(activeGameLock);
+    activeGame = id;
+}
+
+std::string GameSettingsId(const std::string& gameCode, const std::string& fileName)
+{
+    bool valid = gameCode.size() == 4 && gameCode != "####";
+    for (char c : gameCode)
+        if (!isalnum((unsigned char)c)) valid = false;
+    if (valid) return gameCode;
+
+    // homebrew has no real game code: go by the file name
+    std::string name = fileName;
+    for (char& c : name) c = (char)tolower((unsigned char)c);
+    return "file:" + name;
+}
+
+// the game's own table, or null (no lookups that would add entries)
+static toml::value* gameTable(const std::string& id)
+{
+    if (id.empty() || !RootTable.is_table() || !RootTable.contains("GameSettings")) return nullptr;
+    toml::value& all = RootTable.at("GameSettings");
+    if (!all.is_table() || !all.contains(id)) return nullptr;
+    toml::value& game = all.at(id);
+    return game.is_table() ? &game : nullptr;
+}
+
+// only the first instance runs games with their own settings
+static bool appliesTo(const std::string& fullPath)
+{
+    return fullPath.compare(0, 8, "Instance") != 0 || fullPath.compare(0, 10, "Instance0.") == 0;
+}
+
+// the running game's value for this setting, if it has one
+static toml::value* gameValue(const std::string& fullPath)
+{
+    if (usualDepth > 0 || !appliesTo(fullPath)) return nullptr;
+    toml::value* game = gameTable(ActiveGame());
+    if (!game || !game->contains(fullPath)) return nullptr;
+    return &game->at(fullPath);
+}
+
+bool HasGameSettings(const std::string& id)
+{
+    toml::value* game = gameTable(id);
+    return game && !game->as_table().empty();
+}
+
+QVariantMap GetGameSettings(const std::string& id)
+{
+    QVariantMap out;
+    toml::value* game = gameTable(id);
+    if (!game) return out;
+    for (const auto& [key, val] : game->as_table())
+    {
+        const QString k = QString::fromStdString(key);
+        if (val.is_boolean()) out[k] = val.as_boolean();
+        else if (val.is_integer()) out[k] = (qlonglong)val.as_integer();
+        else if (val.is_string()) out[k] = QString::fromStdString(val.as_string());
+    }
+    return out;
+}
+
+void SetGameSettings(const std::string& id, const QVariantMap& values)
+{
+    if (id.empty()) return;
+    if (!RootTable.is_table()) RootTable = toml::table();
+
+    if (values.isEmpty())
+    {
+        if (RootTable.contains("GameSettings") && RootTable.at("GameSettings").is_table())
+            RootTable.at("GameSettings").as_table().erase(id);
+        return;
+    }
+
+    toml::table game;
+    for (auto it = values.begin(); it != values.end(); ++it)
+    {
+        const std::string key = it.key().toStdString();
+        const QVariant& v = it.value();
+        if (v.typeId() == QMetaType::Bool) game[key] = v.toBool();
+        else if (v.typeId() == QMetaType::QString) game[key] = v.toString().toStdString();
+        else game[key] = (int64_t)v.toLongLong();
+    }
+    toml::value& all = RootTable["GameSettings"];
+    if (!all.is_table()) all = toml::table();
+    all.as_table()[id] = game;
+}
+
 Table::Table(toml::value& data, const std::string& path) : Data(data)
 {
     if (path.empty())
@@ -579,11 +686,16 @@ Table Table::GetTable(const std::string& path, const std::string& defpath)
 
 int Table::GetInt(const std::string& path)
 {
-    toml::value& tval = ResolvePath(path);
-    if (!tval.is_integer())
-        tval = FindDefault(path, 0, DefaultInts);
-
-    int ret = (int)tval.as_integer();
+    int ret;
+    if (toml::value* game = gameValue(PathPrefix + path); game && game->is_integer())
+        ret = (int)game->as_integer();
+    else
+    {
+        toml::value& tval = ResolvePath(path);
+        if (!tval.is_integer())
+            tval = FindDefault(path, 0, DefaultInts);
+        ret = (int)tval.as_integer();
+    }
 
     std::string rngkey = GetDefaultKey(PathPrefix+path);
     if (IntRanges.count(rngkey) != 0)
@@ -606,6 +718,9 @@ int64_t Table::GetInt64(const std::string& path)
 
 bool Table::GetBool(const std::string& path)
 {
+    if (toml::value* game = gameValue(PathPrefix + path); game && game->is_boolean())
+        return game->as_boolean();
+
     toml::value& tval = ResolvePath(path);
     if (!tval.is_boolean())
         tval = FindDefault(path, false, DefaultBools);
@@ -615,6 +730,9 @@ bool Table::GetBool(const std::string& path)
 
 std::string Table::GetString(const std::string& path)
 {
+    if (toml::value* game = gameValue(PathPrefix + path); game && game->is_string())
+        return game->as_string();
+
     toml::value& tval = ResolvePath(path);
     if (!tval.is_string())
         tval = FindDefault(path, ""s, DefaultStrings);
@@ -640,6 +758,9 @@ void Table::SetInt(const std::string& path, int val)
         val = std::clamp(val, std::get<0>(range), std::get<1>(range));
     }
 
+    // a setting the running game has its own value for: change the game's
+    if (toml::value* game = gameValue(PathPrefix + path)) { *game = val; return; }
+
     toml::value& tval = ResolvePath(path);
     tval = val;
 }
@@ -652,12 +773,16 @@ void Table::SetInt64(const std::string& path, int64_t val)
 
 void Table::SetBool(const std::string& path, bool val)
 {
+    if (toml::value* game = gameValue(PathPrefix + path)) { *game = val; return; }
+
     toml::value& tval = ResolvePath(path);
     tval = val;
 }
 
 void Table::SetString(const std::string& path, const std::string& val)
 {
+    if (toml::value* game = gameValue(PathPrefix + path)) { *game = val; return; }
+
     toml::value& tval = ResolvePath(path);
     tval = val;
 }

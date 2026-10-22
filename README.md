@@ -30,6 +30,7 @@ regular melonDS desktop app.
 - **Game list** with icons, region flags, search and sorting, plus a grid view with box art
 - **Screen layout hotkeys** to cycle through layouts and sizings while playing
 - **Settings backup and restore** in one file, for moving to another computer
+- **Game Settings** per game (graphics, layout, Wi-Fi, emulation, cheats), from the game list
 - **Online play server picker** (Wiimmfi, Kaeru WFC or a custom DNS) in Wi-Fi Settings
 - **Built-in updater** with Stable and Nightly channels
 

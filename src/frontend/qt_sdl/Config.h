@@ -22,6 +22,7 @@
 #include <variant>
 #include <string>
 #include <QString>
+#include <QVariantMap>
 #include <unordered_map>
 #include <tuple>
 
@@ -143,6 +144,31 @@ bool ExportBackup(const std::string& path, bool includePaths, bool includeLogin,
 // melonRA.toml.bak. From then on Save() does nothing, so the restored file
 // isn't overwritten before melonRA restarts.
 bool RestoreBackup(const std::string& path, std::string& error);
+
+// Per-game settings: values that replace the usual ones while that game runs
+// (in the first instance). Stored in melonRA.toml under GameSettings, by
+// game id, as full config paths ("3D.Renderer",
+// "Instance0.Window0.ScreenLayout") mapped to their values.
+//
+// While a game is active, every Get of a path the game sets returns the
+// game's value, and every Set of such a path changes the game's value
+// instead of the usual one.
+
+// identifies a game: its game code, or its file name for homebrew
+std::string GameSettingsId(const std::string& gameCode, const std::string& fileName);
+void SetActiveGame(const std::string& id);   // "" when no game runs
+std::string ActiveGame();
+QVariantMap GetGameSettings(const std::string& id);
+void SetGameSettings(const std::string& id, const QVariantMap& values); // empty removes them
+bool HasGameSettings(const std::string& id);
+
+// While one exists, Gets on this thread ignore the running game's settings
+// (to show what the usual settings are).
+struct UsualSettings
+{
+    UsualSettings();
+    ~UsualSettings();
+};
 
 Table GetLocalTable(int instance);
 inline Table GetGlobalTable() { return GetLocalTable(-1); }

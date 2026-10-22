@@ -17,6 +17,20 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   screen layouts (Natural, Vertical, Horizontal, Hybrid) and the screen sizings (Even, Emphasize Top,
   Emphasize Bottom, Auto, Top Only, Bottom Only), with an on-screen message naming the new one.
   They're unassigned until you pick a key or button.
+- **Game Settings.** Right-click a game in the list → Game Settings... to give it its own settings,
+  like RPCS3's custom configurations. Every setting starts at "Global" (follow the emulator) and can
+  instead have its own value, or be turned On or Off for that game alone:
+  - Graphics: renderer, internal resolution, threaded rendering, polygon splitting, high-resolution
+    coordinates, OpenGL display, vsync, screen filtering
+  - Screen Layout: layout, sizing, rotation, gap, swap, integer scaling, aspect ratios
+  - Wi-Fi: Global, Off (the game can't go online), Wiimmfi, Kaeru WFC or a custom DNS server
+  - Emulation & Audio: console type, direct boot, JIT, audio interpolation, volume
+  - Cheats: on or off for the game, and which of its cheats (from the cheats folder in Path Settings)
+    are active
+
+  Games with their own settings show a gear after their title (and on their cover in the grid).
+  While such a game runs, changing one of its settings from the menus changes the game's value, not
+  the global one.
 - **DSiWare in the game list.** DSiWare titles show "DSiWare" as their platform. Double-clicking one
   explains how to install and play it on an emulated DSi (it can't be started like a cartridge), with
   a button to open Manage DSi Titles when a DSi NAND is set up.

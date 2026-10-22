@@ -42,7 +42,8 @@ struct Server
 // the known servers, in the order they're offered
 const std::vector<Server>& servers();
 
-// config: "" (leave the firmware's settings alone), a server id, or "custom"
+// config: "" (leave the firmware's settings alone), a server id, "custom",
+// or "off" (no online play; offered in Game Settings)
 QString selected();
 QString customDns();
 void setSelection(const QString& id, const QString& customDns);

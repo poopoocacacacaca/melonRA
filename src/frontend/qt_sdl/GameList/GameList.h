@@ -72,6 +72,9 @@ struct Game
     QImage icon;        // the 32x32 icon from the banner
 };
 
+// The id its per-game settings are kept under.
+QString settingsId(const Game& game);
+
 // Reads a DS ROM's header and banner. Returns false if it isn't one.
 bool readGame(const QString& path, Game& game);
 
@@ -135,6 +138,8 @@ public:
     static constexpr int CoverRole = Qt::UserRole + 2;
     // identifies the cover (QString), so drawn covers can be cached
     static constexpr int CoverKeyRole = Qt::UserRole + 3;
+    // whether the game has its own settings (bool), for the gear marker
+    static constexpr int HasSettingsRole = Qt::UserRole + 4;
 
     explicit Model(QObject* parent = nullptr);
 
@@ -146,6 +151,8 @@ public:
     // `scale` is the screen's device pixel ratio
     void setFlagStyle(bool highRes, qreal scale);
     const std::vector<Game>& games() const { return list; }
+    // looks again at which games have their own settings
+    void refreshSettingsMarks();
 
     int rowCount(const QModelIndex& parent = QModelIndex()) const override;
     int columnCount(const QModelIndex& parent = QModelIndex()) const override;
@@ -161,6 +168,7 @@ private:
     std::vector<QIcon> icons;
     std::vector<QString> coverKeys;
     std::vector<QString> sizeTexts;
+    std::vector<bool> hasSettings;
     mutable QHash<QString, QPixmap> flags;
     bool regionNames = true;
     bool highResFlags = false;
@@ -189,6 +197,12 @@ signals:
     void bootRequested(const QString& path);
     // a DSiWare title, which can't be started like a cartridge
     void dsiWareRequested(const QString& path, const QString& title);
+    // Game Settings... for a game; `id` is its Config::GameSettingsId
+    void gameSettingsRequested(const QString& id, const QString& title, const QIcon& icon, const QString& path);
+
+public:
+    // after a game's settings changed
+    void refreshSettingsMarks();
     // the game folders are set in Path Settings, which the window opens
     void settingsRequested();
 
