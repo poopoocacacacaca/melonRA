@@ -151,9 +151,6 @@ private slots:
     void onOpenTitleManager();
     // how to play a DSiWare title picked in the game list
     void explainDSiWare(const QString& path, const QString& title);
-    void pauseForSettingsWindow();
-    void resumeAfterSettingsWindow();
-    int settingsWindowPauses = 0;
     // Game Settings... from the game list
     void openGameSettings(const QString& id, const QString& title, const QIcon& icon, const QString& path);
 public:
@@ -222,6 +219,10 @@ private slots:
     void onRAToolkitMenuChanged();
 
 private:
+    // settings windows pause the game only when Emulation Settings says so
+    void pauseForSettingsWindow();
+    void resumeAfterSettingsWindow();
+    int settingsWindowPauses = 0;
     virtual void closeEvent(QCloseEvent* event) override;
 
     QStringList currentROM;
