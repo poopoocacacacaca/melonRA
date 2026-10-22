@@ -28,7 +28,7 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   - Cheats: on or off for the game, and which of its cheats (from the cheats folder in Path Settings)
     are active
 
-  Games with their own settings show a gear after their title (and on their cover in the grid).
+  Games with their own settings show a gear in front of their title (and on their cover in the grid).
   While such a game runs, changing one of its settings from the menus changes the game's value, not
   the global one.
 - **DSiWare in the game list.** DSiWare titles show "DSiWare" as their platform. Double-clicking one

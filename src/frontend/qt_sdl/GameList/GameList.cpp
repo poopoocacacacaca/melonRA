@@ -928,19 +928,32 @@ public:
         const QWidget* w = option.widget;
         QStyle* style = w ? w->style() : QApplication::style();
 
-        // the gear goes right after the title, so leave it room
         const bool gear = index.column() == Model::Col_Title && index.data(Model::HasSettingsRole).toBool();
-        const int g = std::max(10, opt.fontMetrics.height() - 4);
-        if (gear) opt.rect.adjust(0, 0, -(g + 6), 0);
-        style->drawControl(QStyle::CE_ItemViewItem, &opt, p, w);
-        if (!gear) return;
+        if (!gear)
+        {
+            style->drawControl(QStyle::CE_ItemViewItem, &opt, p, w);
+            return;
+        }
 
+        // the gear goes in front of the title: draw the icon without the
+        // text, then the gear, then the title after it
         const QRect text = style->subElementRect(QStyle::SE_ItemViewItemText, &opt, w);
-        const int textW = std::min(opt.fontMetrics.horizontalAdvance(opt.text), text.width());
-        const QRectF where(text.left() + textW + 5, opt.rect.center().y() - g / 2.0, g, g);
+        const QString title = opt.text;
+        opt.text.clear();
+        style->drawControl(QStyle::CE_ItemViewItem, &opt, p, w);
+
+        const int g = std::max(10, opt.fontMetrics.height() - 4);
         QColor c = opt.palette.color(QPalette::Text);
-        c.setAlphaF(0.7);
-        drawGear(p, where, c);
+        c.setAlphaF(0.75);
+        drawGear(p, QRectF(text.left() + 1, opt.rect.center().y() - g / 2.0, g, g), c);
+
+        QRect rest = text.adjusted(g + 6, 0, 0, 0);
+        p->save();
+        p->setFont(opt.font);
+        p->setPen(opt.palette.color(QPalette::Text));
+        p->drawText(rest, Qt::AlignLeft | Qt::AlignVCenter,
+                    opt.fontMetrics.elidedText(title, opt.textElideMode, rest.width()));
+        p->restore();
     }
 
     bool helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option,
