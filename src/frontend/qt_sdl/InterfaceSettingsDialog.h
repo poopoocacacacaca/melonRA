@@ -71,7 +71,6 @@ private slots:
     void on_pbQuarter_clicked();
 
 private:
-    class QCheckBox* cbPauseSettings = nullptr;
     Ui::InterfaceSettingsDialog* ui;
 
     EmuInstance* emuInstance;

@@ -24,6 +24,8 @@
 #include "Config.h"
 
 #include "EmuSettingsDialog.h"
+
+#include <QCheckBox>
 #include "ui_EmuSettingsDialog.h"
 #include "main.h"
 
@@ -77,6 +79,13 @@ EmuSettingsDialog::EmuSettingsDialog(QWidget* parent) : QDialog(parent), ui(new 
     ui->cbxConsoleType->setCurrentIndex(cfg.GetInt("Emu.ConsoleType"));
 
     ui->chkDirectBoot->setChecked(cfg.GetBool("Emu.DirectBoot"));
+
+    // not an emulation setting: saved on its own, never asks for a reset
+    cbKeepRunning = new QCheckBox("Keep the game running while settings windows are open");
+    cbKeepRunning->setToolTip("Off: the game pauses while Emulation, Input, Wi-Fi and the other settings "
+                              "windows are open.");
+    cbKeepRunning->setChecked(cfg.GetBool("KeepRunningInSettings"));
+    ui->formLayout_4->addRow(cbKeepRunning);
 
 #ifdef JIT_ENABLED
     ui->chkEnableJIT->setChecked(cfg.GetBool("JIT.Enable"));
@@ -225,6 +234,10 @@ void EmuSettingsDialog::done(int r)
 
     if (r == QDialog::Accepted)
     {
+        emuInstance->getGlobalConfig().SetBool("KeepRunningInSettings", cbKeepRunning->isChecked());
+        Config::Save();
+        cbKeepRunning->setProperty("user_originalValue", cbKeepRunning->isChecked());
+
         bool modified = false;
 
 #define CHECK_ORIGVAL(type, val) \

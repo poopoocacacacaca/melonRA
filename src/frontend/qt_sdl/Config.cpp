@@ -128,6 +128,7 @@ DefaultList<bool> DefaultBools =
     {"RetroAchievements.Sounds", true},
     {"RetroAchievements.ShowAccountOnStart", true},
     {"RetroAchievements.OfflineSessions", true},
+    {"KeepRunningInSettings", true},
     {"GameList.Enabled", true},
     {"GameList.SearchSubfolders", true},
     {"GameList.RegionNames", true},

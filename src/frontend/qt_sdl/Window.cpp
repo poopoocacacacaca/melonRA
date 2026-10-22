@@ -2106,12 +2106,12 @@ void MainWindow::onEnableCheats(bool checked)
     }, windowID);
 }
 
-// Settings windows don't stop the game unless "Pause emulation while a
-// settings window is open" is on (Interface Settings). Each pause is
-// counted, so turning the option off while a window is open is fine.
+// Settings windows leave the game running unless "Keep the game running
+// while settings windows are open" (Emulation Settings) is off. Each pause is
+// counted, so changing the option while a window is open is fine.
 void MainWindow::pauseForSettingsWindow()
 {
-    if (!globalCfg.GetBool("PauseSettingsWindows")) return;
+    if (globalCfg.GetBool("KeepRunningInSettings")) return;
     settingsWindowPauses++;
     emuThread->emuPause();
 }

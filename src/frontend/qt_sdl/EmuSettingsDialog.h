@@ -83,6 +83,7 @@ private slots:
     void on_cbGdbEnabled_toggled();
 
 private:
+    class QCheckBox* cbKeepRunning = nullptr;
     void verifyFirmware();
     void updateLastBIOSFolder(QString& filename);
 
