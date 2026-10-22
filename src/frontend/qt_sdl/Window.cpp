@@ -2106,9 +2106,26 @@ void MainWindow::onEnableCheats(bool checked)
     }, windowID);
 }
 
+// Settings windows don't stop the game unless "Pause emulation while a
+// settings window is open" is on (Interface Settings). Each pause is
+// counted, so turning the option off while a window is open is fine.
+void MainWindow::pauseForSettingsWindow()
+{
+    if (!globalCfg.GetBool("PauseSettingsWindows")) return;
+    settingsWindowPauses++;
+    emuThread->emuPause();
+}
+
+void MainWindow::resumeAfterSettingsWindow()
+{
+    if (settingsWindowPauses <= 0) return;
+    settingsWindowPauses--;
+    emuThread->emuUnpause();
+}
+
 void MainWindow::onSetupCheats()
 {
-    emuThread->emuPause();
+    pauseForSettingsWindow();
 
     CheatsDialog* dlg = CheatsDialog::openDlg(this);
     connect(dlg, &CheatsDialog::finished, this, &MainWindow::onCheatsDialogFinished);
@@ -2116,7 +2133,7 @@ void MainWindow::onSetupCheats()
 
 void MainWindow::onCheatsDialogFinished(int res)
 {
-    emuThread->emuUnpause();
+    resumeAfterSettingsWindow();
 }
 
 void MainWindow::onROMInfo()
@@ -2392,7 +2409,7 @@ bool MainWindow::lanWarning(bool host)
 
 void MainWindow::onOpenEmuSettings()
 {
-    emuThread->emuPause();
+    pauseForSettingsWindow();
 
     EmuSettingsDialog* dlg = EmuSettingsDialog::openDlg(this);
     connect(dlg, &EmuSettingsDialog::finished, this, &MainWindow::onEmuSettingsDialogFinished);
@@ -2423,12 +2440,12 @@ void MainWindow::onEmuSettingsDialogFinished(int res)
     if (!emuThread->emuIsActive())
         actTitleManager->setEnabled(!globalCfg.GetString("DSi.NANDPath").empty());
 
-    emuThread->emuUnpause();
+    resumeAfterSettingsWindow();
 }
 
 void MainWindow::onOpenInputConfig()
 {
-    emuThread->emuPause();
+    pauseForSettingsWindow();
 
     InputConfigDialog* dlg = InputConfigDialog::openDlg(this);
     connect(dlg, &InputConfigDialog::finished, this, &MainWindow::onInputConfigFinished);
@@ -2436,7 +2453,7 @@ void MainWindow::onOpenInputConfig()
 
 void MainWindow::onInputConfigFinished(int res)
 {
-    emuThread->emuUnpause();
+    resumeAfterSettingsWindow();
 }
 
 void MainWindow::onOpenVideoSettings()
@@ -2447,7 +2464,7 @@ void MainWindow::onOpenVideoSettings()
 
 void MainWindow::onOpenCameraSettings()
 {
-    emuThread->emuPause();
+    pauseForSettingsWindow();
 
     camStarted[0] = camManager[0]->isStarted();
     camStarted[1] = camManager[1]->isStarted();
@@ -2463,7 +2480,7 @@ void MainWindow::onCameraSettingsFinished(int res)
     if (camStarted[0]) camManager[0]->start();
     if (camStarted[1]) camManager[1]->start();
 
-    emuThread->emuUnpause();
+    resumeAfterSettingsWindow();
 }
 
 void MainWindow::onOpenAudioSettings()
@@ -2478,7 +2495,7 @@ void MainWindow::onOpenAudioSettings()
 
 void MainWindow::onOpenFirmwareSettings()
 {
-    emuThread->emuPause();
+    pauseForSettingsWindow();
 
     FirmwareSettingsDialog* dlg = FirmwareSettingsDialog::openDlg(this);
     connect(dlg, &FirmwareSettingsDialog::finished, this, &MainWindow::onFirmwareSettingsFinished);
@@ -2489,12 +2506,12 @@ void MainWindow::onFirmwareSettingsFinished(int res)
     if (FirmwareSettingsDialog::needsReset)
         onReset();
 
-    emuThread->emuUnpause();
+    resumeAfterSettingsWindow();
 }
 
 void MainWindow::onOpenPathSettings()
 {
-    emuThread->emuPause();
+    pauseForSettingsWindow();
 
     PathSettingsDialog* dlg = PathSettingsDialog::openDlg(this);
     connect(dlg, &PathSettingsDialog::finished, this, &MainWindow::onPathSettingsFinished);
@@ -2508,7 +2525,7 @@ void MainWindow::onPathSettingsFinished(int res)
     if (PathSettingsDialog::needsReset)
         onReset();
 
-    emuThread->emuUnpause();
+    resumeAfterSettingsWindow();
 }
 
 void MainWindow::onUpdateAudioVolume(int vol, int dsisync)
@@ -2539,7 +2556,7 @@ void MainWindow::onAudioSettingsFinished(int res)
 
 void MainWindow::onOpenMPSettings()
 {
-    emuThread->emuPause();
+    pauseForSettingsWindow();
 
     MPSettingsDialog* dlg = MPSettingsDialog::openDlg(this);
     connect(dlg, &MPSettingsDialog::finished, this, &MainWindow::onMPSettingsFinished);
@@ -2551,12 +2568,12 @@ void MainWindow::onMPSettingsFinished(int res)
     emuInstance->updateAudioMuteByWindowFocus();
     MPInterface::Get().SetRecvTimeout(globalCfg.GetInt("MP.RecvTimeout"));
 
-    emuThread->emuUnpause();
+    resumeAfterSettingsWindow();
 }
 
 void MainWindow::onOpenWifiSettings()
 {
-    emuThread->emuPause();
+    pauseForSettingsWindow();
 
     WifiSettingsDialog* dlg = WifiSettingsDialog::openDlg(this);
     connect(dlg, &WifiSettingsDialog::finished, this, &MainWindow::onWifiSettingsFinished);
@@ -2567,12 +2584,12 @@ void MainWindow::onWifiSettingsFinished(int res)
     if (WifiSettingsDialog::needsReset)
         onReset();
 
-    emuThread->emuUnpause();
+    resumeAfterSettingsWindow();
 }
 
 void MainWindow::onOpenInterfaceSettings()
 {
-    emuThread->emuPause();
+    pauseForSettingsWindow();
     InterfaceSettingsDialog* dlg = InterfaceSettingsDialog::openDlg(this);
     connect(dlg, &InterfaceSettingsDialog::finished, this, &MainWindow::onInterfaceSettingsFinished);
     connect(dlg, &InterfaceSettingsDialog::updateInterfaceSettings, this, &MainWindow::onUpdateInterfaceSettings);
@@ -2590,7 +2607,7 @@ void MainWindow::onUpdateInterfaceSettings()
 
 void MainWindow::onInterfaceSettingsFinished(int res)
 {
-    emuThread->emuUnpause();
+    resumeAfterSettingsWindow();
 }
 
 void MainWindow::onChangeScreenSize()

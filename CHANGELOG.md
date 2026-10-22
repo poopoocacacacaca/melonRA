@@ -31,6 +31,10 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   Games with their own settings show a gear in front of their title (and on their cover in the grid).
   While such a game runs, changing one of its settings from the menus changes the game's value, not
   the global one.
+- **Settings windows don't pause the game.** Emulation, Input and Hotkeys, Camera, Firmware, Path,
+  Multiplayer, Wi-Fi, Interface and Setup Cheats now leave the game running, like Video and Audio
+  already did. Config → Interface Settings has "Pause emulation while a settings window is open" for
+  the old behavior.
 - **DSiWare in the game list.** DSiWare titles show "DSiWare" as their platform. Double-clicking one
   explains how to install and play it on an emulated DSi (it can't be started like a cartridge), with
   a button to open Manage DSi Titles when a DSi NAND is set up.

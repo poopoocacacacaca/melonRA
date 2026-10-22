@@ -18,6 +18,8 @@
 
 #include <QStyleFactory>
 #include "InterfaceSettingsDialog.h"
+
+#include <QCheckBox>
 #include "ui_InterfaceSettingsDialog.h"
 
 #include "types.h"
@@ -39,6 +41,12 @@ InterfaceSettingsDialog::InterfaceSettingsDialog(QWidget* parent) : QDialog(pare
     ui->spinMouseHideSeconds->setEnabled(ui->cbMouseHide->isChecked());
     ui->spinMouseHideSeconds->setValue(cfg.GetInt("Mouse.HideSeconds"));
     ui->cbPauseLostFocus->setChecked(cfg.GetBool("PauseLostFocus"));
+
+    cbPauseSettings = new QCheckBox("Pause emulation while a settings window is open");
+    cbPauseSettings->setToolTip("Off: the game keeps running behind Emulation, Wi-Fi, Input and the other "
+                                "settings windows.");
+    cbPauseSettings->setChecked(cfg.GetBool("PauseSettingsWindows"));
+    ui->verticalLayout_2->insertWidget(ui->verticalLayout_2->indexOf(ui->cbPauseLostFocus) + 1, cbPauseSettings);
     ui->cbMuteFastForward->setChecked(cfg.GetBool("MuteFastForward"));
     ui->spinTargetFPS->setValue(cfg.GetDouble("TargetFPS"));
     ui->spinFFW->setValue(cfg.GetDouble("FastForwardFPS"));
@@ -119,6 +127,7 @@ void InterfaceSettingsDialog::done(int r)
         cfg.SetBool("Mouse.Hide", ui->cbMouseHide->isChecked());
         cfg.SetInt("Mouse.HideSeconds", ui->spinMouseHideSeconds->value());
         cfg.SetBool("PauseLostFocus", ui->cbPauseLostFocus->isChecked());
+        cfg.SetBool("PauseSettingsWindows", cbPauseSettings->isChecked());
         cfg.SetBool("MuteFastForward", ui->cbMuteFastForward->isChecked());
 
         double val = ui->spinTargetFPS->value();
