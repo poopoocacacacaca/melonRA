@@ -199,12 +199,12 @@ signals:
     void dsiWareRequested(const QString& path, const QString& title);
     // Game Settings... for a game; `id` is its Config::GameSettingsId
     void gameSettingsRequested(const QString& id, const QString& title, const QIcon& icon, const QString& path);
+    // the game folders are set in Path Settings, which the window opens
+    void settingsRequested();
 
 public:
     // after a game's settings changed
     void refreshSettingsMarks();
-    // the game folders are set in Path Settings, which the window opens
-    void settingsRequested();
 
 public slots:
     void openSettings();
