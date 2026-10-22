@@ -55,6 +55,13 @@ jobs:
           configurePreset: release-mac-${{ matrix.arch }}
           buildPreset: release-mac-${{ matrix.arch }}
           configurePresetAdditionalArgs: "['-DMELONDS_EMBED_BUILD_INFO=ON']"
+      # the job log isn't always reachable: repeat the failing part of the
+      # build and show the compiler's errors as annotations
+      - name: Show build errors
+        if: failure()
+        shell: bash
+        run: |
+          cmake --build --preset release-mac-${{ matrix.arch }} -- -k 0 2>&1 | grep -E "error[: ]" | head -40 | sed 's/^/::error::/' || true
       - name: Compress app bundle
         shell: bash
         run: |

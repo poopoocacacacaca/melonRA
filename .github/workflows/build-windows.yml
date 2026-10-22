@@ -56,6 +56,13 @@ jobs:
         configurePreset: release-windows-${{ matrix.arch.name }}
         configurePresetAdditionalArgs: "['-DENABLE_DEBUG_DEPS=OFF', '-DMELONDS_EMBED_BUILD_INFO=ON']"
         buildPreset: release-windows-${{ matrix.arch.name }}
+    # the job log isn't always reachable: repeat the failing part of the
+    # build and show the compiler's errors as annotations
+    - name: Show build errors
+      if: failure()
+      shell: bash
+      run: |
+        cmake --build --preset release-windows-${{ matrix.arch.name }} -- -k 0 2>&1 | grep -E "error[: ]" | head -40 | sed 's/^/::error::/' || true
     - uses: actions/upload-artifact@v7
       with:
         name: melonRA-windows-${{ matrix.arch.name }}

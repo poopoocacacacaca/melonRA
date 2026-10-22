@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <iostream>
+#include <cctype>
 #include <fstream>
 #include <mutex>
 #include <filesystem>
