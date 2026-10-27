@@ -25,7 +25,6 @@ regular melonDS desktop app.
   - notifications, challenge and progress indicators, leaderboard trackers
   - customizable overlay: position, style, size, colored or black and white
   - achievements and leaderboards browser for every game in your list
-  - Rich Presence, sound effects, savestates that keep achievement progress
   - optional RAIntegration developer toolkit (Windows)
 - **Game list** with icons, region flags, search and sorting, plus a grid view with box art
 - **Screen layout hotkeys** to cycle through layouts and sizings while playing
