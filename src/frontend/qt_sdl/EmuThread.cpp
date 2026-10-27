@@ -33,6 +33,7 @@
 
 #include "types.h"
 #include "version.h"
+#include "Updater/Updater.h"
 
 #include "ScreenLayout.h"
 
@@ -157,6 +158,7 @@ void EmuThread::run()
     u8 dsiVolumeLevel = 0x1F;
 
     char melontitle[100];
+    const QByteArray titleBase = Updater::windowTitle().toUtf8();
 
     bool fastforward = false;
     bool slowmo = false;
@@ -484,7 +486,7 @@ void EmuThread::run()
                     winUpdateFreq = 1;
                     
                 double actualfps = (59.8261 * 263.0) / nlines;
-                snprintf(melontitle, sizeof(melontitle), "[%d/%.0f] melonRA " MELONRA_VERSION, fps, actualfps);
+                snprintf(melontitle, sizeof(melontitle), "[%d/%.0f] %s", fps, actualfps, titleBase.constData());
                 changeWindowTitle(melontitle);
             }
         }
@@ -497,7 +499,7 @@ void EmuThread::run()
 
             emit windowUpdate();
 
-            snprintf(melontitle, sizeof(melontitle), "melonRA " MELONRA_VERSION);
+            snprintf(melontitle, sizeof(melontitle), "%s", titleBase.constData());
             changeWindowTitle(melontitle);
 
             SDL_Delay(75);

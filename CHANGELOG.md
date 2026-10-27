@@ -56,6 +56,8 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   included if you ask for it. Restoring keeps the previous settings as `melonRA.toml.bak`.
 - **Challenge details on hover.** Pointing the mouse at a challenge indicator shows the achievement's
   name, points and description, in a box that follows the indicators' style settings.
+- Nightly builds show their commit in the window title, e.g. "melonRA 0.3.0 (b7a432a)"; releases show
+  just the version.
 - The JIT recompiler works on Intel Macs again (from melonDS).
 - Security: updates are only downloaded from melonRA's own GitHub releases and are checked against the
   SHA-256 checksum GitHub publishes before they're installed; the RAIntegration toolkit is only

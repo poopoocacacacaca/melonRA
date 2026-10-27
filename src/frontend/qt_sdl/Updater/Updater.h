@@ -88,6 +88,9 @@ QString cannotInstallReason();
 
 // "0.1.0" for release builds, "0.1.0 (nightly abc1234)" for others
 QString currentVersionLabel();
+// "melonRA 0.3.0" for releases and local builds; nightly and other branch
+// builds add their commit, e.g. "melonRA 0.3.0 (b7a432a)"
+QString windowTitle();
 
 // Blocking; call these off the GUI thread. `cancel` may be set from another
 // thread to stop early.

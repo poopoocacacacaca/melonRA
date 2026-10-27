@@ -842,6 +842,15 @@ QString cannotInstallReason()
 #endif
 }
 
+QString windowTitle()
+{
+    QString title = "melonRA " MELONRA_VERSION;
+    const QString hash = buildHash();
+    if (!hash.isEmpty() && buildBranch() != "v" MELONRA_VERSION)
+        title += " (" + hash.left(7) + ")";
+    return title;
+}
+
 QString currentVersionLabel()
 {
     QString label = MELONRA_VERSION;
