@@ -360,12 +360,13 @@ void Overlay::drawChallengeTooltip(QPainter& p, int width, int height, float ui)
     const float maxW = std::min(280.f * ui, width - 2 * margin);
     const int wrap = Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap;
 
+    // the same fonts as the popups: a bold title, the description in normal weight
     QFont titleFont;
-    titleFont.setPixelSize(std::max(9, (int)(12 * ui)));
+    titleFont.setPixelSize(std::max(10, (int)(13 * ui)));
     titleFont.setBold(true);
     QFont bodyFont = titleFont;
-    bodyFont.setBold(st.bold);
-    bodyFont.setPixelSize(std::max(8, (int)(11 * ui)));
+    bodyFont.setBold(false);
+    bodyFont.setPixelSize(std::max(9, (int)(11 * ui)));
     QFontMetricsF tfm(titleFont), bfm(bodyFont);
 
     const QString& title = ch->second.title;
