@@ -122,7 +122,7 @@ applying.
 | A. Hit counts in savestates | ✅ |
 | A. Toolkit (RAIntegration) support | ✅ Windows x86/x64; includes downloader/updater |
 | A. Standard save file formats | ✅ unchanged melonDS `.sav` |
-| B. Cheats, rewind, slow motion, frame advance blocked | ✅ Cheats (menu, cheat files, per-game Game Settings) stay off; slow motion and frame advance blocked; the speed can't drop below full speed through the target or fast-forward speed in Interface Settings; melonDS has no rewind |
+| B. Cheats, rewind, slow motion, frame advance blocked | ✅ Cheats (menu, cheat files, per-game Game Settings) stay off; slow motion and frame advance blocked; the game runs at the DS's own speed and only fast forward changes it (a custom target speed is ignored, a fast-forward speed below full speed is raised); melonDS has no rewind |
 | B. Loading states always blocked; saving allowed | ✅ |
 | B. Rich Presence and leaderboards can't be disabled in hardcore | ✅ (trackers forced visible) |
 | B. Casual → hardcore resets the game | ✅ |

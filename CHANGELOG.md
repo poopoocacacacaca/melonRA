@@ -34,9 +34,10 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 - **Hardcore mode, checked against the RetroAchievements requirements.** Anything hardcore doesn't
   allow (loading or undoing save states, frame advance, slow motion, cheats, RAM search, the GDB stub)
   now shows a short on-screen note such as "Loading save states doesn't work in Hardcore mode",
-  whether it's used from a hotkey or a menu, instead of offering to switch to casual. The speed can no
-  longer drop below full speed in hardcore through the target or fast-forward speed in Interface
-  Settings, and cheats turned on in settings or Game Settings say they're off when a game starts.
+  whether it's used from a hotkey or a menu, instead of offering to switch to casual. In hardcore the game
+  always runs at the DS's own speed and fast forward is the only way to change it, like in RetroArch:
+  a custom target speed in Interface Settings is ignored, and a fast-forward speed below full speed is
+  raised to it. Cheats turned on in settings or Game Settings say they're off when a game starts.
 - **Settings windows don't pause the game.** Emulation, Input and Hotkeys, Camera, Firmware, Path,
   Multiplayer, Wi-Fi, Interface and Setup Cheats now leave the game running, like Video and Audio
   already did. Config → Emulation Settings has "Keep the game running while settings windows are

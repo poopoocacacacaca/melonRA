@@ -17,6 +17,7 @@
 */
 
 #include <stdlib.h>
+#include <cmath>
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
@@ -401,17 +402,26 @@ void EmuThread::run()
             else if (!emuInstance->doLimitFPS && !emuInstance->doAudioSync) emuInstance->curFPS = 1000.0;
             else emuInstance->curFPS = emuInstance->targetFPS;
 
-            // hardcore: never below full speed, whatever the target or
-            // fast-forward speed in Interface Settings says
+            // hardcore: the DS's own speed, and only fast forward changes it
+            // (like RetroArch). A custom target speed is ignored; a fast-forward
+            // speed below full speed counts as slow motion and is raised.
             constexpr double kFullSpeed = 59.8260982880808;
-            if (hardcore && emuInstance->curFPS < kFullSpeed - 0.01)
+            if (hardcore)
             {
-                emuInstance->curFPS = kFullSpeed;
-                if (!speedFloorWarned)
+                const bool custom = fastforward ? emuInstance->curFPS < kFullSpeed - 0.01
+                                                : (emuInstance->curFPS != 1000.0 &&
+                                                   std::abs(emuInstance->curFPS - kFullSpeed) > 0.5);
+                if (custom)
                 {
-                    ra->notifyBlocked("Running below full speed");
-                    speedFloorWarned = true;
+                    emuInstance->curFPS = kFullSpeed;
+                    if (!speedFloorWarned)
+                    {
+                        ra->notifyBlocked("Changing the game speed (other than fast forward)");
+                        speedFloorWarned = true;
+                    }
                 }
+                else
+                    speedFloorWarned = false;
             }
             else
                 speedFloorWarned = false;
