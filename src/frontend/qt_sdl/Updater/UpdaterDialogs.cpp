@@ -137,6 +137,8 @@ bool downloadAndInstall(QWidget* parent, const Release& rel)
         return false;
 
     if (ok)
+        ok = verify(rel, package, error);
+    if (ok)
         ok = install(package, error);
 
     if (!ok)

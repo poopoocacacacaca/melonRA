@@ -170,6 +170,15 @@ bool OfflineCache::lookup(const std::string& key, const std::string& postData, s
     return !body.empty();
 }
 
+void OfflineCache::forgetLogin(const std::string& username)
+{
+    if (username.empty()) return;
+    // same key keyFor() gives a login request for this user
+    const std::string key = "login2&u=" + QString::fromStdString(username).toLower().toStdString();
+    std::lock_guard<std::mutex> guard(lock);
+    QFile::remove(pathFor(key));
+}
+
 void OfflineCache::noteRequest(const std::string& postData)
 {
     if (postData.empty()) return;

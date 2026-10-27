@@ -39,7 +39,7 @@ class GameSettingsDialog : public QDialog
     Q_OBJECT
 public:
     // `romPath` locates the game's cheat file; `running` if it's the game
-    // being played (its cheat list is then edited in Setup Cheats instead)
+    // being played (its cheat list is then edited in Set Up Cheat Codes instead)
     GameSettingsDialog(QWidget* parent, const std::string& gameId, const QString& title, const QIcon& icon,
                        const QString& romPath, bool running);
     ~GameSettingsDialog() override;

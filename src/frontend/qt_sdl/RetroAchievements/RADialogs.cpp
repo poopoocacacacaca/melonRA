@@ -187,6 +187,7 @@ void LoginDialog::onLoginFinished(bool success, QString message)
 {
     if (success)
     {
+        password->clear();
         accept();
         return;
     }

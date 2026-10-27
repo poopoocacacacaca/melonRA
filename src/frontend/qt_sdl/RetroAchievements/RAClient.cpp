@@ -29,6 +29,7 @@
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
+#include <QUrl>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
@@ -199,7 +200,7 @@ struct ClientCallbacks
                            result == RC_ACCESS_DENIED);
 
         // persist on the GUI thread, which owns the config
-        QMetaObject::invokeMethod(m, [m, ok, clearToken, username, token]()
+        QMetaObject::invokeMethod(m, [ok, clearToken, username, token]()
         {
             Config::Table cfg = raConfig();
             if (ok)
@@ -712,6 +713,14 @@ void Manager::downloadRAIntegration(std::function<void(bool, QString)> done)
             finish(false, "the server did not return a download link for RAIntegration");
             return;
         }
+        // the DLL is loaded into melonRA: only take it from RetroAchievements, over HTTPS
+        const QUrl dllUrl(url);
+        const QString host = dllUrl.host().toLower();
+        if (dllUrl.scheme() != "https" || (host != "retroachievements.org" && !host.endsWith(".retroachievements.org")))
+        {
+            finish(false, "the RAIntegration download link doesn't point to RetroAchievements");
+            return;
+        }
 
         http->request(url.toStdString(), "", "", [finish, version](const HttpResponse& dl)
         {
@@ -1060,10 +1069,16 @@ void Manager::loginWithPassword(const QString& username, const QString& password
     QByteArray p = password.toUtf8();
     rc_client_begin_login_with_password(rcClient, u.constData(), p.constData(),
                                         ClientCallbacks::loginDone, nullptr);
+    // rcheevos has its own copy for the request; don't leave this one in memory
+    p.fill('\0');
 }
 
 void Manager::logout()
 {
+    // the offline copy of the login holds the token too
+    if (const rc_client_user_t* user = rc_client_get_user_info(rcClient); user && user->username)
+        offlineCache->forgetLogin(user->username);
+
     rc_client_unload_game(rcClient);
     rc_client_logout(rcClient);
     {

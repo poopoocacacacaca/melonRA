@@ -50,6 +50,9 @@ struct Release
     // the package for this platform; empty if it can't be installed here
     QString assetUrl;
     qint64 assetSize = 0;
+    // the package's SHA-256 as published by GitHub (lowercase hex); empty if
+    // GitHub didn't give one
+    QString assetSha256;
     // identifies the exact uploaded file (name and upload time), so the same
     // file is never installed twice in a row
     QString packageKey;
@@ -95,6 +98,8 @@ bool download(const QString& url, QByteArray& out, const ProgressFn& progress,
 // Puts the downloaded package in place of the running build. The running
 // process keeps working; the new version starts on the next launch.
 bool install(const QByteArray& package, QString& error);
+// Checks a downloaded package against the release's published SHA-256.
+bool verify(const Release& release, const QByteArray& package, QString& error);
 
 // Removes files left over from replacing the running build last time.
 void cleanUpAfterUpdate();

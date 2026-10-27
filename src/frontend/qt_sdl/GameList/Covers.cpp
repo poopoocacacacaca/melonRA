@@ -174,9 +174,12 @@ QStringList Covers::diskCandidates(const Game& game, const QString& key) const
     {
         QFileInfo rom(game.path);
         QDir dir(custom);
-        for (const QString& n : {game.gameCode + ".png", game.gameCode + ".jpg", game.gameCode + ".jpeg",
-                                 rom.fileName() + ".png", rom.completeBaseName() + ".png",
-                                 rom.completeBaseName() + ".jpg"})
+        QStringList names;
+        // the game code comes from the ROM: only a real one names a file
+        if (validCode(game.gameCode))
+            names << game.gameCode + ".png" << game.gameCode + ".jpg" << game.gameCode + ".jpeg";
+        names << rom.fileName() + ".png" << rom.completeBaseName() + ".png" << rom.completeBaseName() + ".jpg";
+        for (const QString& n : names)
             paths << dir.filePath(n);
     }
     // then the ones downloaded before

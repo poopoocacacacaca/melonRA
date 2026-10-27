@@ -96,7 +96,8 @@ connect when you use them.
 - `retroachievements/offline/` holds the RetroAchievements server's answers
   for games you've played (your account and points, the games' achievements,
   your unlocks), so achievements also work without a connection. It includes
-  the same login token kept in `melonRA.toml`, never your password. You can
+  the same login token kept in `melonRA.toml`, never your password; logging out
+  deletes it. You can
   delete this folder at any time, or turn the feature off in RetroAchievements
   Settings.
 - Savestates may contain achievement progress (hit counts) for the game.

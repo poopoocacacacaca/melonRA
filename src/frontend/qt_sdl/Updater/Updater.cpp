@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <QCoreApplication>
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -374,6 +375,12 @@ QString fillAsset(Release& rel, const QJsonObject& json)
         {
             rel.assetUrl = asset["browser_download_url"].toString();
             rel.assetSize = (qint64)asset["size"].toDouble();
+            // only this repository's release files, over HTTPS
+            if (!rel.assetUrl.startsWith("https://github.com/" + repo() + "/releases/download/", Qt::CaseInsensitive))
+                rel.assetUrl.clear();
+            const QString digest = asset["digest"].toString();
+            if (digest.startsWith("sha256:", Qt::CaseInsensitive))
+                rel.assetSha256 = digest.mid(7).toLower();
             rel.packageKey = name + "@" + asset["updated_at"].toString();
             return asset["label"].toString();
         }
@@ -872,6 +879,16 @@ bool download(const QString& url, QByteArray& out, const ProgressFn& progress,
     }
     out = std::move(resp.body);
     return true;
+}
+
+bool verify(const Release& rel, const QByteArray& package, QString& error)
+{
+    if (rel.assetSha256.isEmpty()) return true;
+    const QString actual = QString::fromLatin1(QCryptographicHash::hash(package, QCryptographicHash::Sha256).toHex());
+    if (actual == rel.assetSha256) return true;
+    error = "The download doesn't match the published checksum: it may be damaged or have been "
+            "changed, so it wasn't installed. Try again later.";
+    return false;
 }
 
 bool install(const QByteArray& package, QString& error)

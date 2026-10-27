@@ -13,7 +13,7 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   be reached. Unlocks earned offline stay unlocked in later offline sessions and are submitted once
   you're back online. A notification says when you're playing offline. Can be turned off in
   RetroAchievements Settings.
-- **Screen layout hotkeys.** Two new hotkeys (Config → Input and Hotkeys → General) step through the
+- **Screen layout hotkeys.** Two new hotkeys (Config → Input and Hotkeys → General Hotkeys) step through the
   screen layouts (Natural, Vertical, Horizontal, Hybrid) and the screen sizings (Even, Emphasize Top,
   Emphasize Bottom, Auto, Top Only, Bottom Only), with an on-screen message naming the new one.
   They're unassigned until you pick a key or button.
@@ -39,7 +39,7 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   a custom target speed in Interface Settings is ignored, and a fast-forward speed below full speed is
   raised to it. Cheats turned on in settings or Game Settings say they're off when a game starts.
 - **Settings windows don't pause the game.** Emulation, Input and Hotkeys, Camera, Firmware, Path,
-  Multiplayer, Wi-Fi, Interface and Setup Cheats now leave the game running, like Video and Audio
+  Multiplayer, Wi-Fi, Interface and Set Up Cheat Codes now leave the game running, like Video and Audio
   already did. Config → Emulation Settings has "Keep the game running while settings windows are
   open" (on by default); turn it off for the old behavior.
 - **DSiWare in the game list.** DSiWare titles show "DSiWare" as their platform. Double-clicking one
@@ -56,6 +56,10 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 - **Challenge details on hover.** Pointing the mouse at a challenge indicator shows the achievement's
   name, points and description, in a box that follows the indicators' style settings.
 - The JIT recompiler works on Intel Macs again (from melonDS).
+- Security: updates are only downloaded from melonRA's own GitHub releases and are checked against the
+  SHA-256 checksum GitHub publishes before they're installed; the RAIntegration toolkit is only
+  downloaded from RetroAchievements over HTTPS; logging out also deletes the offline copy of your
+  login; the typed password is cleared from memory once it's sent.
 - **The game list remembers your games.** It shows up instantly from the last scan, then checks the
   folders in the background and only reads ROMs that are new or have changed. If nothing changed, the
   list isn't touched, so your selection and scroll position stay put.

@@ -306,7 +306,7 @@ void GameSettingsDialog::addCheatsTab(QTabWidget* tabs)
     if (!QFileInfo::exists(file))
     {
         cheatTree->hide();
-        note->setText("This game has no cheats yet. Add them with System → Setup Cheats while it runs, or put a "
+        note->setText("This game has no cheats yet. Add them with System → Set Up Cheat Codes while it runs, or put a "
                       "cheat file with this name in the cheats folder (Config → Path Settings).");
         tabs->addTab(page, "Cheats");
         return;
@@ -344,7 +344,7 @@ void GameSettingsDialog::addCheatsTab(QTabWidget* tabs)
     if (running)
     {
         cheatTree->setEnabled(false);
-        note->setText("This game is running: change its cheats in System → Setup Cheats.");
+        note->setText("This game is running: change its cheats in System → Set Up Cheat Codes.");
     }
     else
         note->setText("Checked cheats are active when cheats are on. They're always off in RetroAchievements "

@@ -63,6 +63,9 @@ public:
     // Records an unlock request as it is sent, so offline sessions know about it.
     void noteRequest(const std::string& postData);
 
+    // Deletes the saved login (and its token) for this user, on logout.
+    void forgetLogin(const std::string& username);
+
 private:
     struct Unlock
     {
