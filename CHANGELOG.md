@@ -6,7 +6,7 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 - **MINOR** goes up for feature releases.
 - **PATCH** goes up for small updates and bug fixes.
 
-## Unreleased
+## 0.3.0
 
 - **Play offline.** Games you've played online once keep their achievements without an internet
   connection, in Hardcore and Casual mode alike: melonRA saves what the RetroAchievements server sends
