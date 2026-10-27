@@ -55,6 +55,7 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   included if you ask for it. Restoring keeps the previous settings as `melonRA.toml.bak`.
 - **Challenge details on hover.** Pointing the mouse at a challenge indicator shows the achievement's
   name, points and description, in a box that follows the indicators' style settings.
+- The JIT recompiler works on Intel Macs again (from melonDS).
 - **The game list remembers your games.** It shows up instantly from the last scan, then checks the
   folders in the background and only reads ROMs that are new or have changed. If nothing changed, the
   list isn't touched, so your selection and scroll position stay put.
