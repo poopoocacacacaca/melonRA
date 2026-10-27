@@ -1,5 +1,5 @@
 <p align="center"><img src="res/melonRA-logo.png" alt="melonRA" width="480"></p>
-<h3 align="center">melonRA - fork of melonDS with RetroAchievements integration</h3>
+<h3 align="center">melonRA - fork of melonDS with RetroAchievements integration and other neat features</h3>
 <p align="center">
 <a href="https://retroachievements.org"><img src="https://img.shields.io/badge/RetroAchievements-supported-%23f2b632.svg"></a>
 <a href="https://github.com/melonDS-emu/melonDS"><img src="https://img.shields.io/badge/based%20on-melonDS%201.1-%235c913b.svg"></a>
