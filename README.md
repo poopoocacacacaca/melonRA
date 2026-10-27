@@ -21,7 +21,7 @@ regular melonDS desktop app.
 - **RetroAchievements**
   - log in once with your password; only a login token is kept, never the password itself
   - automatic game detection, hardcore mode (WIP), subsets, encore, spectator and unofficial achievements
-  - play offline: games played online once keep their achievements, unlocks are sent later
+  - play offline, in Hardcore or Casual: games played online once keep their achievements, unlocks are sent later
   - notifications, challenge and progress indicators, leaderboard trackers
   - customizable overlay: position, style, size, colored or black and white
   - achievements and leaderboards browser for every game in your list

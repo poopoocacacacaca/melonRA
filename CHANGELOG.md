@@ -9,9 +9,10 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 ## Unreleased
 
 - **Play offline.** Games you've played online once keep their achievements without an internet
-  connection: melonRA saves what the RetroAchievements server sends and uses it when the server can't
-  be reached. Unlocks earned offline stay unlocked in later offline sessions and are submitted once
-  you're back online. A notification says when you're playing offline. Can be turned off in
+  connection, in Hardcore and Casual mode alike: melonRA saves what the RetroAchievements server sends
+  and uses it when the server can't be reached. Hardcore rules apply offline exactly as online.
+  Unlocks earned offline stay unlocked in later offline sessions and are submitted in the mode they
+  were earned in once you're back online. A notification says when you're playing offline. Can be turned off in
   RetroAchievements Settings.
 - **Screen layout hotkeys.** Two new hotkeys (Config → Input and Hotkeys → General Hotkeys) step through the
   screen layouts (Natural, Vertical, Horizontal, Hybrid) and the screen sizings (Even, Emphasize Top,

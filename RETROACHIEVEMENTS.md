@@ -71,7 +71,10 @@ persistent queue on top, in `retroachievements/pending_submissions.json`:
 ## Offline sessions
 
 Games played online once can start their achievements without a connection
-(Settings → "Play offline with saved achievement data", on by default).
+(Settings → "Play offline with saved achievement data", on by default), in
+hardcore and casual alike. Hardcore restrictions apply offline as online, and
+each unlock is queued with its hardcore flag, so it's submitted in the mode it
+was earned in.
 Every request goes through `Manager::send`, which hands it to
 `OfflineCache` in `retroachievements/offline/`:
 
