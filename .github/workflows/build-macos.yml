@@ -16,7 +16,6 @@ env:
   MELONDS_GIT_REPO: ${{ github.repository }}
   MELONDS_GIT_HASH: ${{ github.sha }}
   MELONDS_BUILD_PROVIDER: GitHub Actions
-#  MELONDS_VERSION_SUFFIX: " RC"
 
 jobs:
   build-macos:
@@ -129,10 +128,3 @@ jobs:
           file="melonRA-${GITHUB_REF_NAME#v}-macOS-universal.zip"
           cp melonRA-macOS-universal.zip "$file"
           src/tools/ci-release.sh "$file"
-#     - name: Clean up architecture-specific artifacts
-#       uses: geekyeggo/delete-artifact@v4
-#       with:
-#         failOnError: false
-#         name: |
-#           melonRA-macOS-x86_64.zip
-#           melonRA-macOS-arm64.zip

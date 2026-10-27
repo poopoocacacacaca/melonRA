@@ -98,7 +98,7 @@ Every request goes through `Manager::send`, which hands it to
 The client identifies itself to the server as:
 
 ```
-melonRA/0.1.0 (<OS>) melonDS/<version> rcheevos/<version>
+melonRA/<version> (<OS>) melonDS/<version> rcheevos/<version>
 ```
 
 The version comes from `MELONRA_VERSION` in the top-level `CMakeLists.txt` and must only ever increase.
