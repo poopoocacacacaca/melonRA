@@ -202,6 +202,8 @@ private:
     bool useOpenGL;
     int videoRenderer;
     bool videoSettingsDirty;
+    // hardcore raised the speed to full speed (warned once until it no longer has to)
+    bool speedFloorWarned = false;
 };
 
 #endif // EMUTHREAD_H

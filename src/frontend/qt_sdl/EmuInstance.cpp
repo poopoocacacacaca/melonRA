@@ -928,6 +928,8 @@ void EmuInstance::loadCheats()
     cheatFile = std::make_unique<ARCodeFile>(filename);
 
     RA::Manager* ra = raFor(this);
+    if (cheatsOn && ra && ra->hardcoreActive())
+        ra->notifyBlocked("Cheats");
     if (cheatsOn && !(ra && ra->hardcoreActive()))
     {
         nds->AREngine.Cheats = cheatFile->GetCodes();

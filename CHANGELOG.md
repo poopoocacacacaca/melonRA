@@ -31,6 +31,12 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   Games with their own settings show a gear in front of their title (and on their cover in the grid).
   While such a game runs, changing one of its settings from the menus changes the game's value, not
   the global one.
+- **Hardcore mode, checked against the RetroAchievements requirements.** Anything hardcore doesn't
+  allow (loading or undoing save states, frame advance, slow motion, cheats, RAM search, the GDB stub)
+  now shows a short on-screen note such as "Loading save states doesn't work in Hardcore mode",
+  whether it's used from a hotkey or a menu, instead of offering to switch to casual. The speed can no
+  longer drop below full speed in hardcore through the target or fast-forward speed in Interface
+  Settings, and cheats turned on in settings or Game Settings say they're off when a game starts.
 - **Settings windows don't pause the game.** Emulation, Input and Hotkeys, Camera, Firmware, Path,
   Multiplayer, Wi-Fi, Interface and Setup Cheats now leave the game running, like Video and Audio
   already did. Config → Emulation Settings has "Keep the game running while settings windows are

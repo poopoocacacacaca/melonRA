@@ -122,14 +122,17 @@ applying.
 | A. Hit counts in savestates | ✅ |
 | A. Toolkit (RAIntegration) support | ✅ Windows x86/x64; includes downloader/updater |
 | A. Standard save file formats | ✅ unchanged melonDS `.sav` |
-| B. Cheats, rewind, slow motion, frame advance blocked | ✅ (melonDS has no rewind) |
+| B. Cheats, rewind, slow motion, frame advance blocked | ✅ Cheats (menu, cheat files, per-game Game Settings) stay off; slow motion and frame advance blocked; the speed can't drop below full speed through the target or fast-forward speed in Interface Settings; melonDS has no rewind |
 | B. Loading states always blocked; saving allowed | ✅ |
 | B. Rich Presence and leaderboards can't be disabled in hardcore | ✅ (trackers forced visible) |
 | B. Casual → hardcore resets the game | ✅ |
+| B. Quick resume switches to casual | ✅ not applicable: melonDS has no resume feature |
+| B. Pausing can't be used as slowdown | ✅ pausing is rate-limited with rcheevos' `rc_client_can_pause` |
 | B. Memory editors, debuggers, input playback blocked | ✅ RAM search and GDB stub blocked; melonDS has no input playback |
 | C. Unique, numeric User-Agent | ✅ `melonRA/x.y.z`; never used another client's UA |
 | D. 6 months public | ✅ via upstream melonDS |
 | E. Hardcore on by default, mode shown at game start | ✅ |
+| Blocked features explain themselves | ✅ a short on-screen note ("Loading save states doesn't work in Hardcore mode") for hotkeys and menus alike |
 | F. No monetization; licenses list; privacy policy | ✅ [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md), [PRIVACY.md](PRIVACY.md) |
 
 ## Building

@@ -27,6 +27,7 @@
 #include <cstring>
 
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -1093,25 +1094,28 @@ bool Manager::hardcoreActive() const
     return isLoggedIn() || loginPending;
 }
 
+// A short on-screen note, like the emulator's other messages. The same note
+// isn't repeated while it's still on screen (a held hotkey, say).
 void Manager::notifyBlocked(const QString& action)
 {
-    osd(kColorError, QString("%1 is disabled in RetroAchievements Hardcore mode").arg(action));
+    static QString lastText;
+    static qint64 lastTime = 0;
+    const QString text = QString("%1 doesn't work in Hardcore mode").arg(action);
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (text == lastText && now - lastTime < 2000) return;
+    lastText = text;
+    lastTime = now;
+    osd(0, text);
 }
 
+// Menu actions: in hardcore, the action is refused with the same note
+// (Hardcore mode can be turned off in the RetroAchievements menu).
 bool Manager::requestHardcoreExemption(QWidget* parent, const QString& action)
 {
+    (void)parent;
     if (!hardcoreActive()) return true;
-
-    QMessageBox::StandardButton res = QMessageBox::question(parent, "RetroAchievements - Hardcore Mode",
-        QString("%1 is not available in Hardcore mode.\n\n"
-                "Switch to Casual mode? Hardcore unlocks will not be awarded until "
-                "Hardcore mode is enabled again, which resets the game.").arg(action),
-        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
-
-    if (res != QMessageBox::Yes) return false;
-
-    setHardcorePreferred(false);
-    return true;
+    notifyBlocked(action);
+    return false;
 }
 
 
@@ -1216,8 +1220,8 @@ bool Manager::canPause()
     uint32_t frames = 0;
     if (rc_client_can_pause(rcClient, &frames)) return true;
 
-    osd(kColorWarn, QString("Hardcore mode: you can pause again in %1 s")
-                        .arg(frames / 60.0, 0, 'f', 1));
+    osd(0, QString("Pausing this often doesn't work in Hardcore mode (again in %1 s)")
+               .arg(frames / 60.0, 0, 'f', 1));
     return false;
 }
 

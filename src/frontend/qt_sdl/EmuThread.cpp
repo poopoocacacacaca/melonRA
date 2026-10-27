@@ -401,6 +401,21 @@ void EmuThread::run()
             else if (!emuInstance->doLimitFPS && !emuInstance->doAudioSync) emuInstance->curFPS = 1000.0;
             else emuInstance->curFPS = emuInstance->targetFPS;
 
+            // hardcore: never below full speed, whatever the target or
+            // fast-forward speed in Interface Settings says
+            constexpr double kFullSpeed = 59.8260982880808;
+            if (hardcore && emuInstance->curFPS < kFullSpeed - 0.01)
+            {
+                emuInstance->curFPS = kFullSpeed;
+                if (!speedFloorWarned)
+                {
+                    ra->notifyBlocked("Running below full speed");
+                    speedFloorWarned = true;
+                }
+            }
+            else
+                speedFloorWarned = false;
+
             if (emuInstance->audioDSiVolumeSync && emuInstance->nds->ConsoleType == 1)
             {
                 DSi* dsi = static_cast<DSi*>(emuInstance->nds);
