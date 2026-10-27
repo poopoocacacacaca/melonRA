@@ -25,7 +25,7 @@ jobs:
         arch: [x86_64, arm64]
 
     name: ${{ matrix.arch }}
-    runs-on: macos-26
+    runs-on: macos-15
 
     env:
       VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/vcpkg_cache,readwrite
@@ -82,7 +82,7 @@ jobs:
   universal-binary:
     name: Universal binary
     needs: [build-macos]
-    runs-on: macos-26
+    runs-on: macos-15
     continue-on-error: true
     permissions:
       contents: write
