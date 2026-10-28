@@ -47,6 +47,8 @@ public:
 
     static bool isEnabled();          // Interface Settings
     static bool showsAchievements();  // RetroAchievements status instead of just the game
+    static bool showsAchievementCount(); // "(12/50 🏆)" after the title
+    static bool showsEmulatorIcon();  // the small melonRA icon on the game's image
 
     // the settings changed
     void reloadSettings();

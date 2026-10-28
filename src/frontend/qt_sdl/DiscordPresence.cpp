@@ -118,6 +118,16 @@ bool Presence::showsAchievements()
     return Config::GetGlobalTable().GetBool("Discord.ShowAchievements");
 }
 
+bool Presence::showsAchievementCount()
+{
+    return Config::GetGlobalTable().GetBool("Discord.ShowAchievementCount");
+}
+
+bool Presence::showsEmulatorIcon()
+{
+    return Config::GetGlobalTable().GetBool("Discord.ShowEmulatorIcon");
+}
+
 Presence::Presence()
 {
     reconnectTimer.setInterval(kReconnectMs);
@@ -239,14 +249,18 @@ QJsonObject Presence::buildActivity() const
         const QString raTitle = ra->gameTitle();
         if (!raTitle.isEmpty()) details = raTitle;
 
-        const QString progress = ra->achievementProgress();
-        const QString rp = ra->richPresence();
-        state = !rp.isEmpty() ? rp : progress;
+        state = ra->richPresence();
 
         const QString badge = QString::fromStdString(ra->gameBadgeUrl());
         if (badge.startsWith("https://"))
             largeImage = badge;
-        largeText = progress.isEmpty() ? details : details + " - " + progress;
+        largeText = details;
+
+        // "Super Mario 64 DS (0/157 🏆)"
+        const QString count = ra->achievementCount();
+        if (!count.isEmpty() && showsAchievementCount())
+            details += " (" + count + " " + QString::fromUtf8("\xF0\x9F\x8F\x86") + ")";
+
         smallText = ra->hardcoreStatusText() + " - " + Updater::windowTitle();
 
         if (const uint32_t id = ra->gameId())
@@ -268,7 +282,7 @@ QJsonObject Presence::buildActivity() const
 
     assets["large_image"] = largeImage;
     assets["large_text"] = fit(largeText);
-    if (largeImage != kLogoUrl)
+    if (largeImage != kLogoUrl && showsEmulatorIcon())
     {
         assets["small_image"] = kLogoUrl;
         assets["small_text"] = fit(smallText);

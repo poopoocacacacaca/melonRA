@@ -133,6 +133,40 @@
         </item>
        </layout>
       </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayoutDiscordCount">
+        <property name="leftMargin">
+         <number>36</number>
+        </property>
+        <item>
+         <widget class="QCheckBox" name="cbDiscordCount">
+          <property name="toolTip">
+           <string>Adds your achievement count after the game's title, e.g. "Super Mario 64 DS (12/157 🏆)". Also shown in server member lists.</string>
+          </property>
+          <property name="text">
+           <string>Show achievement count next to the title</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayoutDiscordIcon">
+        <property name="leftMargin">
+         <number>18</number>
+        </property>
+        <item>
+         <widget class="QCheckBox" name="cbDiscordIcon">
+          <property name="toolTip">
+           <string>The small melonRA icon in the corner of the game's image, with the version and Hardcore or Casual mode when you hover it.</string>
+          </property>
+          <property name="text">
+           <string>Show the melonRA icon</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
      </layout>
     </widget>
    </item>

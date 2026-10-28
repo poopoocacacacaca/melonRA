@@ -43,8 +43,18 @@ InterfaceSettingsDialog::InterfaceSettingsDialog(QWidget* parent) : QDialog(pare
     ui->cbMuteFastForward->setChecked(cfg.GetBool("MuteFastForward"));
     ui->cbDiscordEnabled->setChecked(cfg.GetBool("Discord.Enabled"));
     ui->cbDiscordAchievements->setChecked(cfg.GetBool("Discord.ShowAchievements"));
-    ui->cbDiscordAchievements->setEnabled(ui->cbDiscordEnabled->isChecked());
-    connect(ui->cbDiscordEnabled, &QCheckBox::toggled, ui->cbDiscordAchievements, &QCheckBox::setEnabled);
+    ui->cbDiscordCount->setChecked(cfg.GetBool("Discord.ShowAchievementCount"));
+    ui->cbDiscordIcon->setChecked(cfg.GetBool("Discord.ShowEmulatorIcon"));
+    auto updateDiscordBoxes = [this]()
+    {
+        const bool on = ui->cbDiscordEnabled->isChecked();
+        ui->cbDiscordAchievements->setEnabled(on);
+        ui->cbDiscordCount->setEnabled(on && ui->cbDiscordAchievements->isChecked());
+        ui->cbDiscordIcon->setEnabled(on);
+    };
+    updateDiscordBoxes();
+    connect(ui->cbDiscordEnabled, &QCheckBox::toggled, this, updateDiscordBoxes);
+    connect(ui->cbDiscordAchievements, &QCheckBox::toggled, this, updateDiscordBoxes);
     ui->spinTargetFPS->setValue(cfg.GetDouble("TargetFPS"));
     ui->spinFFW->setValue(cfg.GetDouble("FastForwardFPS"));
     ui->spinSlow->setValue(cfg.GetDouble("SlowmoFPS"));
@@ -127,6 +137,8 @@ void InterfaceSettingsDialog::done(int r)
         cfg.SetBool("MuteFastForward", ui->cbMuteFastForward->isChecked());
         cfg.SetBool("Discord.Enabled", ui->cbDiscordEnabled->isChecked());
         cfg.SetBool("Discord.ShowAchievements", ui->cbDiscordAchievements->isChecked());
+        cfg.SetBool("Discord.ShowAchievementCount", ui->cbDiscordCount->isChecked());
+        cfg.SetBool("Discord.ShowEmulatorIcon", ui->cbDiscordIcon->isChecked());
 
         double val = ui->spinTargetFPS->value();
         if (val == 0.0) cfg.SetDouble("TargetFPS", 0.0001);

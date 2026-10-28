@@ -131,6 +131,8 @@ DefaultList<bool> DefaultBools =
     {"KeepRunningInSettings", true},
     {"Discord.Enabled", true},
     {"Discord.ShowAchievements", true},
+    {"Discord.ShowAchievementCount", true},
+    {"Discord.ShowEmulatorIcon", true},
     {"GameList.Enabled", true},
     {"GameList.SearchSubfolders", true},
     {"GameList.RegionNames", true},

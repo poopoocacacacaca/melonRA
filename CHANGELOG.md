@@ -9,9 +9,11 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 ## Unreleased
 
 - **Discord Rich Presence.** Your Discord profile shows the game you're playing and for how long,
-  with its box art when there is one online. For games with achievements it shows what
-  RetroAchievements says you're doing, your progress, the game's icon and a link to the game's page.
-  Both can be turned off in Config → Interface Settings. Only works while the Discord app is open.
+  with its box art when there is one online; server member lists show the game's name. For games
+  with achievements it shows what RetroAchievements says you're doing, your achievement count next to
+  the title, the game's icon and a link to the game's page. Config → Interface Settings can turn it
+  off, or just the achievement status, the count or the small melonRA icon. Only works while the
+  Discord app is open.
 
 ## 0.3.0
 

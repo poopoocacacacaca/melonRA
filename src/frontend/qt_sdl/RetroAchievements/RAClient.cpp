@@ -1310,12 +1310,12 @@ uint32_t Manager::gameId() const
     return game ? game->id : 0;
 }
 
-QString Manager::achievementProgress() const
+QString Manager::achievementCount() const
 {
     rc_client_user_game_summary_t summary{};
     rc_client_get_user_game_summary(rcClient, &summary);
     if (!summary.num_promoted_achievements) return {};
-    return QString("%1 of %2 achievements").arg(summary.num_unlocked_achievements).arg(summary.num_promoted_achievements);
+    return QString("%1/%2").arg(summary.num_unlocked_achievements).arg(summary.num_promoted_achievements);
 }
 
 QString Manager::hardcoreStatusText() const
