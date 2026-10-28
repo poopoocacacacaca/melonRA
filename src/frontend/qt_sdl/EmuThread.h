@@ -159,6 +159,7 @@ signals:
     void screenEmphasisToggle();
     void screenLayoutCycle();
     void screenSizingCycle();
+    void screenRotationCycle();
 
     void syncVolumeLevel();
 

@@ -60,6 +60,7 @@ enum
     HK_GuitarGripBlue,
     HK_CycleScreenLayout,
     HK_CycleScreenSizing,
+    HK_RotateScreens,
     HK_MAX
 };
 

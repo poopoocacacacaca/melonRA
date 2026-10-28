@@ -27,7 +27,7 @@ regular melonDS desktop app.
   - achievements and leaderboards browser for every game in your list
   - optional RAIntegration developer toolkit (Windows)
 - **Game list** with icons, region flags, search and sorting, a grid view with box art, and achievement progress bars with stars for mastered games
-- **Screen layout hotkeys** to cycle through layouts and sizings while playing
+- **Screen hotkeys** to cycle through layouts and sizings, and to rotate the screens, while playing
 - **Settings backup and restore** in one file, for moving to another computer
 - **Game Settings** per game (graphics, layout, Wi-Fi, emulation, cheats), from the game list
 - **Discord Rich Presence** with the game, play time and, for games with achievements, RetroAchievements status

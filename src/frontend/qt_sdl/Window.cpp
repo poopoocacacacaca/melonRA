@@ -2835,6 +2835,17 @@ void MainWindow::onScreenSizingCycled()
     emit screenLayoutChange();
 }
 
+void MainWindow::onScreenRotationCycled()
+{
+    // a quarter turn clockwise each press, for games held sideways
+    const int rot = (windowCfg.GetInt("ScreenRotation") + 1) % screenRot_MAX;
+    windowCfg.SetInt("ScreenRotation", rot);
+    if (hasMenu) actScreenRotation[rot]->setChecked(true);
+    osdAddMessage(0, QString("Screen rotation: %1%2").arg(rot * 90).arg(QChar(0x00B0)).toUtf8().constData());
+
+    emit screenLayoutChange();
+}
+
 void MainWindow::onEmuStart()
 {
     updateDiscordPresence();

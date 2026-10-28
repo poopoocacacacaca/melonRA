@@ -69,7 +69,8 @@ const char* EmuInstance::hotkeyNames[HK_MAX] =
     "HK_GuitarGripYellow",
     "HK_GuitarGripBlue",
     "HK_CycleScreenLayout",
-    "HK_CycleScreenSizing"
+    "HK_CycleScreenSizing",
+    "HK_RotateScreens"
 };
 
 std::shared_ptr<SDL_mutex> EmuInstance::joyMutexGlobal = nullptr;

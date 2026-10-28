@@ -20,6 +20,9 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   gold once they're all unlocked. Games you've mastered get a ⭐ in front of their title, in the list
   and on their cover in the grid; "Show Mastery Stars" in the game list's right-click menu turns the
   stars off. Progress updates when you stop playing.
+- **Rotate screens hotkey.** Config → Input and Hotkeys → General Hotkeys has a "Rotate screens" hotkey
+  that turns the screens a quarter turn each press, for games played sideways (like Mario & Luigi:
+  Bowser's Inside Story), with an on-screen message showing the angle. Unassigned until you pick a key.
 
 ## 0.3.0
 

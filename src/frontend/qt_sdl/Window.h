@@ -213,6 +213,7 @@ private slots:
     void onScreenEmphasisToggled();
     void onScreenLayoutCycled();
     void onScreenSizingCycled();
+    void onScreenRotationCycled();
 
     void onRAToggleHardcore(bool checked);
     void onRAStateChanged();
