@@ -81,6 +81,15 @@ set(SOURCES_QT_SDL
     RetroAchievements/RAPendingQueue.h
     RetroAchievements/RAOfflineCache.cpp
     RetroAchievements/RAOfflineCache.h
+
+    Netplay/NetplayConsole.h
+    Netplay/NetplayDialogs.cpp
+    Netplay/NetplayDialogs.h
+    Netplay/NetplayProtocol.h
+    Netplay/NetplayRunner.cpp
+    Netplay/NetplayRunner.h
+    Netplay/NetplaySession.cpp
+    Netplay/NetplaySession.h
     RetroAchievements/resources/retroachievements.qrc
 
     GameList/Covers.cpp

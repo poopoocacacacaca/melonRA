@@ -69,11 +69,13 @@ const string kWifiSettingsPath = "wfcsettings.bin";
 extern Net net;
 
 
-EmuInstance::EmuInstance(int inst) : deleting(false),
+EmuInstance::EmuInstance(int inst, std::unique_ptr<Netplay::Console> netplayConsole) : deleting(false),
     instanceID(inst),
     globalCfg(Config::GetGlobalTable()),
     localCfg(Config::GetLocalTable(inst))
 {
+    netplay = std::move(netplayConsole);
+
     consoleType = globalCfg.GetInt("Emu.ConsoleType");
 
     ndsSave = nullptr;
@@ -151,7 +153,7 @@ EmuInstance::EmuInstance(int inst) : deleting(false),
     emuThread->start();
 
     // if any extra windows were saved as enabled, open them
-    for (int i = 1; i < kMaxWindows; i++)
+    for (int i = 1; i < kMaxWindows && !netplay; i++)
     {
         std::string key = "Window" + std::to_string(i) + ".Enabled";
         bool enable = localCfg.GetBool(key);
@@ -180,7 +182,7 @@ EmuInstance::~EmuInstance()
 
     if (nds)
     {
-        saveRTCData();
+        if (!netplay) saveRTCData();
         delete nds;
     }
 }
@@ -384,7 +386,7 @@ void EmuInstance::emuStop(StopReason reason)
 
 void EmuInstance::applyGameSettings(const std::string& id)
 {
-    if (instanceID != 0) return;
+    if (instanceID != 0 || netplay) return;
     if (Config::ActiveGame() == id) return;
 
     const bool glBefore = usesOpenGL();
@@ -725,6 +727,12 @@ std::string EmuInstance::getEffectiveFirmwareSavePath()
 // OR the path to the wi-fi settings.
 void EmuInstance::initFirmwareSaveManager() noexcept
 {
+    // netplay consoles don't keep firmware changes
+    if (netplay)
+    {
+        firmwareSave = nullptr;
+        return;
+    }
     firmwareSave = std::make_unique<SaveManager>(getEffectiveFirmwareSavePath() + instanceFileSuffix());
 }
 
@@ -1043,7 +1051,8 @@ Firmware EmuInstance::generateFirmware(int type) noexcept
     // Wi-fi access point data includes Nintendo WFC settings,
     // and if we didn't keep them then the player would have to reset them in each session.
     // We don't need to save the whole firmware, just the part that may actually change.
-    if (FileHandle* f = OpenLocalFile(kWifiSettingsPath, Read))
+    // (Netplay consoles all start from the defaults.)
+    if (FileHandle* f = netplay ? nullptr : OpenLocalFile(kWifiSettingsPath, Read))
     {// If we have Wi-fi settings to load...
         constexpr unsigned TOTAL_WFC_SETTINGS_SIZE = 3 * (sizeof(Firmware::WifiAccessPoint) + sizeof(Firmware::ExtendedWifiAccessPoint));
 
@@ -1301,6 +1310,14 @@ void EmuInstance::saveRTCData()
 
 void EmuInstance::setDateTime()
 {
+    if (netplay)
+    {
+        // every computer starts its consoles at the same date and time
+        const Netplay::StartInfo& st = netplay->start;
+        nds->RTC.SetDateTime(st.Year, st.Month, st.Day, st.Hour, st.Minute, st.Second);
+        return;
+    }
+
     QDateTime hosttime = QDateTime::currentDateTime();
     QDateTime time = hosttime.addSecs(localCfg.GetInt64("RTC.Offset"));
 
@@ -1310,7 +1327,7 @@ void EmuInstance::setDateTime()
 
 void EmuInstance::syncRTC()
 {
-    if (!localCfg.GetBool("RTC.SyncToHost"))
+    if (netplay || !localCfg.GetBool("RTC.SyncToHost"))
         return;
 
     setDateTime();
@@ -1447,7 +1464,7 @@ bool EmuInstance::updateConsole() noexcept
     {
         if (nds)
         {
-            saveRTCData();
+            if (!netplay) saveRTCData();
             delete nds;
         }
 
@@ -1457,7 +1474,7 @@ bool EmuInstance::updateConsole() noexcept
             nds = new NDS(std::move(ndsargs), this);
 
         nds->Reset();
-        loadRTCData();
+        if (!netplay) loadRTCData();
         emuThread->updateVideoRenderer();
     }
     else
@@ -1856,7 +1873,7 @@ void EmuInstance::customizeFirmware(Firmware& firmware, bool overridesettings) n
         }
     }
 
-    if (instanceID > 0)
+    if (instanceID > 0 && !netplay)
     {
         rep = true;
         mac[3] += instanceID;
@@ -1874,7 +1891,8 @@ void EmuInstance::customizeFirmware(Firmware& firmware, bool overridesettings) n
     firmware.UpdateChecksums();
 
     // online play server chosen in Wi-Fi Settings
-    WfcServers::apply(firmware);
+    if (!netplay)
+        WfcServers::apply(firmware);
 }
 
 // Loads ROM data without parsing it. Works for GBA and NDS ROMs.
@@ -2101,6 +2119,137 @@ bool EmuInstance::loadROM(QStringList filepath, bool reset, QString& errorstr)
     ndsSave = std::make_unique<SaveManager>(savname);
 
     return true; // success
+}
+
+bool EmuInstance::readROMFile(const QStringList& path, std::vector<u8>& data, std::string& romname)
+{
+    unique_ptr<u8[]> filedata;
+    u32 filelen = 0;
+    std::string basepath;
+    if (!loadROMData(path, filedata, filelen, basepath, romname))
+        return false;
+
+    data.assign(filedata.get(), filedata.get() + filelen);
+    return true;
+}
+
+std::string EmuInstance::saveFileFor(const QStringList& path)
+{
+    if (path.isEmpty()) return "";
+
+    // the same place loadROM() looks: the save folder in Path Settings, or
+    // next to the ROM, named after it
+    std::string file = path.last().toStdString();
+    std::string dir;
+    if (path.count() == 1)
+    {
+        int pos = lastSep(file);
+        if (pos != -1) dir = file.substr(0, pos);
+    }
+    else
+    {
+        std::string archive = path.first().toStdString();
+        dir = archive.substr(0, lastSep(archive));
+    }
+    std::string name = file.substr(lastSep(file) + 1);
+    if (name.size() > 4 && name.substr(name.size() - 4) == ".zst")
+        name = name.substr(0, name.size() - 4);
+
+    std::string savedDir = baseROMDir, savedName = baseAssetName;
+    baseROMDir = dir;
+    baseAssetName = name.substr(0, name.rfind('.'));
+    std::string result = getAssetPath(false, localCfg.GetString("SaveFilePath"), ".sav");
+    baseROMDir = savedDir;
+    baseAssetName = savedName;
+    return result;
+}
+
+bool EmuInstance::netplayBoot(const QStringList& path, QString& error)
+{
+    if (!netplay)
+        return false;
+
+    unique_ptr<u8[]> filedata = nullptr;
+    u32 filelen;
+    std::string basepath;
+    std::string romname;
+
+    if (!loadROMData(path, filedata, filelen, basepath, romname))
+    {
+        error = "Failed to load the DS ROM.";
+        return false;
+    }
+
+    if (RA::Manager* ra = raFor(this))
+        ra->identifyROM(filedata.get(), filelen, romname);
+
+    ndsSave = nullptr;
+    baseROMDir = basepath;
+    baseROMName = romname;
+    baseAssetName = romname.substr(0, romname.rfind('.'));
+
+    // every computer starts this console from its owner's save
+    u32 savelen = (u32)netplay->save.size();
+    std::unique_ptr<u8[]> savedata = nullptr;
+    if (savelen)
+    {
+        savedata = std::make_unique<u8[]>(savelen);
+        memcpy(savedata.get(), netplay->save.data(), savelen);
+    }
+
+    NDSCart::NDSCartArgs cartargs {
+            .SDCard = std::nullopt,
+            .SRAM = std::move(savedata),
+            .SRAMLength = savelen,
+    };
+
+    GameList::Game banner;
+    GameList::readGame(QByteArray::fromRawData((const char*)filedata.get(), (qsizetype)filelen),
+                       QString::fromStdString(romname), banner);
+
+    auto cart = NDSCart::ParseROM(std::move(filedata), filelen, this, std::move(cartargs));
+    if (!cart)
+    {
+        error = "Failed to load the DS ROM.";
+        return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> guard(cartGameLock);
+        cartGameInfo = {banner.title, banner.subtitle, banner.gameCode};
+    }
+
+    cheatsOn = false;
+    nextCart = std::move(cart);
+    changeCart = true;
+
+    // the GBA slot stays empty: the other computers' copies of this console
+    // don't have whatever was in it here
+    nextGBACart = nullptr;
+    changeGBACart = true;
+    gbaSave = nullptr;
+    gbaCartType = -1;
+
+    if (!updateConsole())
+    {
+        error = "Failed to set up the console.";
+        return false;
+    }
+
+    initFirmwareSaveManager();
+    nds->Reset();
+    nds->SetupDirectBoot(romname);
+    setBatteryLevels();
+    setDateTime();
+
+    cartType = 0;
+
+    // only this computer's own console writes back to the player's save
+    if (netplay->local && !netplay->savePath.empty())
+        ndsSave = std::make_unique<SaveManager>(netplay->savePath);
+
+    audioMutedByWindowFocus = netplayHidden();
+    return true;
 }
 
 void EmuInstance::ejectCart()

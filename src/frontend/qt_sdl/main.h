@@ -24,6 +24,9 @@
 #include <QApplication>
 #include <QEvent>
 #include <QElapsedTimer>
+#include <memory>
+
+namespace Netplay { struct Console; }
 
 #include "EmuInstance.h"
 #include "Window.h"
@@ -55,6 +58,9 @@ extern QString emuDirectory;
 extern QElapsedTimer sysTimer;
 
 bool createEmuInstance();
+// an instance running a netplay console (takes ownership); null if none is free
+EmuInstance* createNetplayInstance(std::unique_ptr<Netplay::Console> console);
+EmuInstance* emuInstanceAt(int id);
 void deleteEmuInstance(int id);
 void deleteAllEmuInstances(int first = 0);
 int numEmuInstances();

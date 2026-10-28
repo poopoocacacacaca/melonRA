@@ -81,11 +81,32 @@ Nintendo's closed servers, exactly as a real DS set up for it would. melonRA
 itself sends nothing to these services; what the game sends is covered by the
 service's own terms.
 
+### Netplay (Experimental)
+
+Netplay connects your computer directly to the other players' computers, with
+no server in between. Only while you host or join a session, and only with the
+players in it, melonRA shares:
+
+- your IP address, as any direct connection does (the host's address is what
+  players type to join, and the host sees the address of everyone who joins)
+- the name you enter for the session
+- your DS settings: nickname, message, birthday, favorite color and language
+- your save file for the game being played, so every computer starts your
+  console from it
+- a fingerprint (SHA-1) of your copy of the game, to check that everyone has
+  the same one; the game itself is never sent
+- your button and touch inputs while playing, and checksums of the consoles'
+  state to notice when they stop matching
+
+Nothing about your RetroAchievements account is sent. The connection isn't
+encrypted. While a game runs, melonRA keeps the other players' saves in memory
+only, and never writes them to disk.
+
 ### Other features
 
 Other melonDS features that use the network work exactly as in upstream
-melonDS. Local wireless, LAN/netplay and the DSi title downloader only
-connect when you use them.
+melonDS. Local wireless, LAN and the DSi title downloader only connect when
+you use them.
 
 ## What melonRA stores on your computer
 
@@ -117,9 +138,11 @@ connect when you use them.
   delete this folder at any time, or turn the feature off in RetroAchievements
   Settings.
 - Savestates may contain achievement progress (hit counts) for the game.
+- `melonRA.toml` also keeps the name, address and ports you last used for
+  netplay, to fill them in next time.
 
 Nothing is kept anywhere else, and nothing leaves your computer except the
-RetroAchievements and update traffic described above.
+traffic described above.
 
 ## GDPR
 

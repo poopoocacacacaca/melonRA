@@ -39,6 +39,7 @@ namespace melonDS
 class NDS;
 }
 
+namespace Netplay { struct Console; }
 class EmuInstance;
 class MainWindow;
 class ScreenPanelGL;
@@ -71,6 +72,8 @@ public:
 
         msg_BootROM,
         msg_BootFirmware,
+        msg_NetplayBoot,
+        msg_NetplayEnd,
         msg_InsertCart,
         msg_EjectCart,
         msg_InsertGBACart,
@@ -115,6 +118,11 @@ public:
 
     int bootROM(const QStringList& filename, QString& errorstr);
     int bootFirmware(QString& errorstr);
+
+    // sets the console up for its netplay session; emuRun() starts it
+    int netplayBoot(const QStringList& filename, QString& errorstr);
+    // the instance leaves its session (emulation must be stopped)
+    void netplayEnd();
     int insertCart(const QStringList& filename, bool gba, QString& errorstr);
     void ejectCart(bool gba);
     int insertGBAAddon(int type, QString& errorstr);
@@ -205,6 +213,14 @@ private:
     bool videoSettingsDirty;
     // hardcore raised the speed to full speed (warned once until it no longer has to)
     bool speedFloorWarned = false;
+
+    // netplay: feed the frame's inputs from the session (false once it ended),
+    // report the console's progress after it, show why something is blocked
+    bool netplayInput(Netplay::Console* np);
+    void netplayFrameDone(Netplay::Console* np);
+    void netplayNote(const char* what);
+    double netplayNoteTime = 0;
+    bool netplayWaitShown = false;
 };
 
 #endif // EMUTHREAD_H

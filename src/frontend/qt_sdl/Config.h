@@ -170,6 +170,14 @@ struct UsualSettings
     ~UsualSettings();
 };
 
+// Netplay: values every instance must use while a session runs, whatever the
+// usual or per-game settings say (so all computers set up their consoles the
+// same way). Full config paths, as for game settings. Sets of these paths
+// change the session's value and leave the usual settings alone.
+void SetSessionOverrides(const QVariantMap& values);
+void ClearSessionOverrides();
+bool SessionActive();
+
 Table GetLocalTable(int instance);
 inline Table GetGlobalTable() { return GetLocalTable(-1); }
 

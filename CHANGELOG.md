@@ -6,6 +6,27 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 - **MINOR** goes up for feature releases.
 - **PATCH** goes up for small updates and bug fixes.
 
+## Unreleased
+
+- **Experimental menu.** New features that are still being tried out go in a menu of their own, next
+  to Help.
+- **Netplay (experimental).** Play games with local wireless multiplayer (trading, battles, racing)
+  with up to 4 players over the internet. Experimental → Host Netplay Game... opens a room for a
+  game from your list; other players use Join Netplay Game... with your IP address and port.
+  Everyone needs the same melonRA version and an identical copy of the game, which is found in their
+  game list automatically. Each player plays with their own save and DS settings (nickname,
+  birthday...), and their save is updated as they play.
+  - Hosting from outside your home network needs the port (UDP 7066 by default) forwarded on your
+    router.
+  - Every computer runs every player's console and only buttons and touches travel, so games behave
+    as if the consoles were side by side. The input delay setting trades responsiveness for
+    smoothness on slower connections.
+  - melonRA warns if the consoles ever stop matching.
+  - While a netplay game runs, savestates, pausing, fast forward, cheats, the microphone and the
+    internet connection of the games are off, and the DS runs at its own speed with the software
+    renderer.
+  - Doesn't work in Hardcore mode until RetroAchievements says whether netplay is allowed there.
+
 ## 0.4.0
 
 - **Discord Rich Presence.** Your Discord profile shows the game you're playing and for how long,

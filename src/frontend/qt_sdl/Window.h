@@ -156,7 +156,13 @@ private slots:
 public:
     // a game's own settings were switched on or off: show and apply them
     void onGameSettingsApplied(bool glchange);
+
+    // netplay: the session's game started on this computer, or it ended
+    void onNetplayStarted();
+    void onNetplayEnded();
 private slots:
+    void onNetplayHost();
+    void onNetplayJoin();
     void onMPNewInstance();
     void onLANStartHost();
     void onLANStartClient();
@@ -339,6 +345,13 @@ public:
     QAction* actAudioSync;
 
     QAction* actAbout;
+
+    QAction* actNetplayHost;
+    QAction* actNetplayJoin;
+    QAction* actNetplayRoom;
+    QAction* actNetplayLeave;
+    void lockForNetplay();
+    bool netplayRefuses(const char* what);
 
     // RetroAchievements menu (first instance only)
     QAction* actRAStatus = nullptr;

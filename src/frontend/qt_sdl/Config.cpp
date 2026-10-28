@@ -23,6 +23,7 @@
 #include <iostream>
 #include <cctype>
 #include <fstream>
+#include <atomic>
 #include <mutex>
 #include <filesystem>
 #include <regex>
@@ -604,6 +605,62 @@ static toml::value* gameValue(const std::string& fullPath)
     return &game->at(fullPath);
 }
 
+// --- netplay session overrides ---
+
+static std::mutex sessionLock;
+static std::atomic<bool> sessionActive {false};
+static std::unordered_map<std::string, toml::value> sessionValues;
+
+void SetSessionOverrides(const QVariantMap& values)
+{
+    std::lock_guard<std::mutex> guard(sessionLock);
+    sessionValues.clear();
+    for (auto it = values.begin(); it != values.end(); ++it)
+    {
+        const std::string key = it.key().toStdString();
+        const QVariant& v = it.value();
+        if (v.typeId() == QMetaType::Bool) sessionValues[key] = v.toBool();
+        else if (v.typeId() == QMetaType::QString) sessionValues[key] = v.toString().toStdString();
+        else sessionValues[key] = (int64_t)v.toLongLong();
+    }
+    sessionActive = !sessionValues.empty();
+}
+
+void ClearSessionOverrides()
+{
+    std::lock_guard<std::mutex> guard(sessionLock);
+    sessionValues.clear();
+    sessionActive = false;
+}
+
+bool SessionActive()
+{
+    return sessionActive;
+}
+
+// the session's value for this setting, if it has one (a copy: other threads
+// may change it)
+static bool sessionValue(const std::string& fullPath, toml::value& out)
+{
+    if (!sessionActive || usualDepth > 0) return false;
+    std::lock_guard<std::mutex> guard(sessionLock);
+    auto it = sessionValues.find(fullPath);
+    if (it == sessionValues.end()) return false;
+    out = it->second;
+    return true;
+}
+
+template<typename T>
+static bool setSessionValue(const std::string& fullPath, const T& val)
+{
+    if (!sessionActive) return false;
+    std::lock_guard<std::mutex> guard(sessionLock);
+    auto it = sessionValues.find(fullPath);
+    if (it == sessionValues.end()) return false;
+    it->second = val;
+    return true;
+}
+
 bool HasGameSettings(const std::string& id)
 {
     toml::value* game = gameTable(id);
@@ -694,7 +751,10 @@ Table Table::GetTable(const std::string& path, const std::string& defpath)
 int Table::GetInt(const std::string& path)
 {
     int ret;
-    if (toml::value* game = gameValue(PathPrefix + path); game && game->is_integer())
+    toml::value sess;
+    if (sessionValue(PathPrefix + path, sess) && sess.is_integer())
+        ret = (int)sess.as_integer();
+    else if (toml::value* game = gameValue(PathPrefix + path); game && game->is_integer())
         ret = (int)game->as_integer();
     else
     {
@@ -725,6 +785,8 @@ int64_t Table::GetInt64(const std::string& path)
 
 bool Table::GetBool(const std::string& path)
 {
+    if (toml::value sess; sessionValue(PathPrefix + path, sess) && sess.is_boolean())
+        return sess.as_boolean();
     if (toml::value* game = gameValue(PathPrefix + path); game && game->is_boolean())
         return game->as_boolean();
 
@@ -737,6 +799,8 @@ bool Table::GetBool(const std::string& path)
 
 std::string Table::GetString(const std::string& path)
 {
+    if (toml::value sess; sessionValue(PathPrefix + path, sess) && sess.is_string())
+        return sess.as_string();
     if (toml::value* game = gameValue(PathPrefix + path); game && game->is_string())
         return game->as_string();
 
@@ -765,6 +829,8 @@ void Table::SetInt(const std::string& path, int val)
         val = std::clamp(val, std::get<0>(range), std::get<1>(range));
     }
 
+    if (setSessionValue(PathPrefix + path, val)) return;
+
     // a setting the running game has its own value for: change the game's
     if (toml::value* game = gameValue(PathPrefix + path)) { *game = val; return; }
 
@@ -780,6 +846,7 @@ void Table::SetInt64(const std::string& path, int64_t val)
 
 void Table::SetBool(const std::string& path, bool val)
 {
+    if (setSessionValue(PathPrefix + path, val)) return;
     if (toml::value* game = gameValue(PathPrefix + path)) { *game = val; return; }
 
     toml::value& tval = ResolvePath(path);
@@ -788,6 +855,7 @@ void Table::SetBool(const std::string& path, bool val)
 
 void Table::SetString(const std::string& path, const std::string& val)
 {
+    if (setSessionValue(PathPrefix + path, val)) return;
     if (toml::value* game = gameValue(PathPrefix + path)) { *game = val; return; }
 
     toml::value& tval = ResolvePath(path);

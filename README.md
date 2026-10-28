@@ -33,6 +33,7 @@ regular melonDS desktop app.
 - **Discord Rich Presence** with the game, play time and, for games with achievements, RetroAchievements status
 - **Online play server picker** (Wiimmfi, Kaeru WFC or a custom DNS) in Wi-Fi Settings
 - **Built-in updater** with Stable and Nightly channels
+- **Experimental: netplay** for games with local wireless play, with up to 4 players over the internet, joined by IP address
 
 ## Getting started
 
@@ -145,6 +146,9 @@ is in `src/rcheevos/`. [RETROACHIEVEMENTS.md](./RETROACHIEVEMENTS.md) covers:
 - the DS memory map and the savestate format
 - the offline unlock queue
 - the hardcore compliance checklist
+
+[NETPLAY.md](./NETPLAY.md) explains how netplay keeps every computer's consoles identical, its network
+protocol and the security rules any change to it has to keep.
 
 ## Privacy and licenses
 

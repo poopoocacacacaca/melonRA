@@ -30,6 +30,7 @@
 #include "Window.h"
 #include "Config.h"
 #include "SaveManager.h"
+#include "Netplay/NetplayConsole.h"
 
 const int kMaxWindows = 4;
 
@@ -97,7 +98,8 @@ struct CartGameInfo
 class EmuInstance
 {
 public:
-    EmuInstance(int inst);
+    // netplay: the console this instance runs in a session, if any
+    EmuInstance(int inst, std::unique_ptr<Netplay::Console> netplayConsole = nullptr);
     ~EmuInstance();
 
     int getInstanceID() { return instanceID; }
@@ -184,6 +186,31 @@ public:
     int micReadInput(melonDS::s16* data, int maxlength);
 
     QMutex renderLock;
+
+    // --- netplay ---
+
+    // set for the whole life of an instance that runs a netplay console
+    std::unique_ptr<Netplay::Console> netplay;
+
+    // an existing instance joining a session: handed over to `netplay` by
+    // the emulation thread when it boots the console (and dropped by it when
+    // the session ends), so the thread never sees it change mid-frame
+    std::unique_ptr<Netplay::Console> pendingNetplay;
+
+    // this console's ID on the local wireless link: its netplay console
+    // number in a session (the same on every computer), else the instance
+    int mpInstance() const { return netplay ? netplay->index : instanceID; }
+
+    // a netplay console not played on this computer: runs hidden and silent
+    bool netplayHidden() const { return netplay && !netplay->local; }
+
+    // sets the console up for its session from this ROM, with the save and
+    // settings the session decided; doesn't start it
+    bool netplayBoot(const QStringList& path, QString& error);
+
+    // the save file this instance uses for a ROM, and the ROM's contents
+    std::string saveFileFor(const QStringList& path);
+    bool readROMFile(const QStringList& path, std::vector<melonDS::u8>& data, std::string& romname);
 
 private:
     static int lastSep(const std::string& path);

@@ -101,8 +101,8 @@ void EmuInstance::audioDeInit()
 
 void EmuInstance::updateAudioMuteByWindowFocus()
 {
-    audioMutedByWindowFocus = false;
-    if (numEmuInstances() < 2) return;
+    audioMutedByWindowFocus = netplayHidden();
+    if (netplay || numEmuInstances() < 2) return;
 
     switch (mpAudioMode)
     {
@@ -378,6 +378,9 @@ int EmuInstance::micReadInput(s16* data, int maxlength)
         return 0;
 
     bool cmd = hotkeyDown(HK_Mic);
+
+    // the microphone isn't shared in netplay: every console hears silence
+    if (netplay) type = micInputType_Silence;
 
     if ((!micBuffer) ||
         ((type != micInputType_External) && (!cmd)))

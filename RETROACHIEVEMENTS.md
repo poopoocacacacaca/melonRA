@@ -137,6 +137,7 @@ applying.
 | C. Unique, numeric User-Agent | `melonRA/x.y.z`; never used another client's UA |
 | D. 6 months public | Via upstream melonDS |
 | E. Hardcore on by default, mode shown at game start | Yes |
+| Netplay (experimental) | Can't be started in Hardcore mode until RetroAchievements says whether it's allowed |
 | Blocked features explain themselves | A short on-screen note ("Loading save states doesn't work in Hardcore mode") for hotkeys and menus alike |
 | F. No monetization; licenses list; privacy policy | [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md), [PRIVACY.md](PRIVACY.md) |
 

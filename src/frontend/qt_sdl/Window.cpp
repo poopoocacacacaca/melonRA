@@ -79,6 +79,8 @@
 #include "ArchiveUtil.h"
 #include "CameraManager.h"
 #include "Window.h"
+#include "Netplay/NetplayRunner.h"
+#include "Netplay/NetplayDialogs.h"
 #include "AboutDialog.h"
 #include "RetroAchievements/RAClient.h"
 #include "DiscordPresence.h"
@@ -860,6 +862,32 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             raToolkitMenu->menuAction()->setVisible(false);
         }
         {
+            // features that are still being tried out
+            QMenu * menu = menubar->addMenu("Experimental");
+
+            actNetplayHost = menu->addAction("Host Netplay Game...");
+            connect(actNetplayHost, &QAction::triggered, this, &MainWindow::onNetplayHost);
+            actNetplayJoin = menu->addAction("Join Netplay Game...");
+            connect(actNetplayJoin, &QAction::triggered, this, &MainWindow::onNetplayJoin);
+            menu->addSeparator();
+            actNetplayRoom = menu->addAction("Show Netplay Room");
+            connect(actNetplayRoom, &QAction::triggered, this, [this]
+            {
+                if (Netplay::Runner::current()) Netplay::RoomDialog::open(this, Netplay::Runner::current());
+            });
+            actNetplayLeave = menu->addAction("Leave Netplay Session");
+            connect(actNetplayLeave, &QAction::triggered, this, [this]
+            {
+                if (Netplay::RoomDialog* room = Netplay::RoomDialog::current()) room->close();
+                else if (Netplay::Runner* r = Netplay::Runner::current()) { r->leave(); r->deleteLater(); }
+            });
+            actNetplayRoom->setEnabled(false);
+            actNetplayLeave->setEnabled(false);
+
+            // only the first instance's window hosts or joins
+            menu->menuAction()->setVisible(emuInstance->getInstanceID() == 0);
+        }
+        {
             QMenu * menu = menubar->addMenu("Help");
             actAbout = menu->addAction("About...");
             connect(actAbout, &QAction::triggered, this, [&]
@@ -910,7 +938,9 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
         connect(gameList, &GameList::Widget::settingsRequested, this, &MainWindow::onOpenPathSettings);
     }
 
-    show();
+    // a netplay console played on another computer runs without a window
+    if (!emuInstance->netplayHidden())
+        show();
 
     panel = nullptr;
     createScreenPanel();
@@ -1091,6 +1121,13 @@ void MainWindow::closeEvent(QCloseEvent* event)
                 event->ignore();
                 return;
             }
+        }
+
+        // a netplay session ends before the windows go away
+        if (Netplay::Runner* r = Netplay::Runner::current())
+        {
+            r->leave();
+            delete r;
         }
     }
 
@@ -1781,6 +1818,8 @@ void MainWindow::onClickRecentFile()
 
 bool MainWindow::bootROMPath(const QString& filename)
 {
+    if (netplayRefuses("Starting another game"))
+        return false;
     if (!verifySetup())
         return false;
 
@@ -2058,6 +2097,13 @@ void MainWindow::onReset()
 void MainWindow::onStop()
 {
     if (!emuThread->emuIsActive()) return;
+
+    // stopping a netplay game means leaving the session
+    if (emuInstance->netplay)
+    {
+        if (Netplay::RoomDialog* room = Netplay::RoomDialog::current()) room->close();
+        return;
+    }
 
     emuThread->emuStop(true);
 }
@@ -2876,6 +2922,7 @@ void MainWindow::onEmuStart()
 
     actTitleManager->setEnabled(false);
 
+    lockForNetplay();
     updateCentralView();
 }
 
@@ -2907,6 +2954,136 @@ void MainWindow::onEmuStop()
 
     actTitleManager->setEnabled(!globalCfg.GetString("DSi.NANDPath").empty());
 
+    updateCentralView();
+}
+
+// netplay: actions that would make this computer's consoles differ from the
+// other players' stay off while the session's game runs
+void MainWindow::lockForNetplay()
+{
+    if (!hasMenu || !emuInstance->netplay) return;
+
+    for (int i = 0; i < 9; i++)
+    {
+        actSaveState[i]->setEnabled(false);
+        actLoadState[i]->setEnabled(false);
+    }
+    actUndoStateLoad->setEnabled(false);
+    actPause->setEnabled(false);
+    actReset->setEnabled(false);
+    actFrameStep->setEnabled(false);
+    actOpenROM->setEnabled(false);
+    actBootFirmware->setEnabled(false);
+    recentMenu->setEnabled(false);
+    actInsertCart->setEnabled(false);
+    actEjectCart->setEnabled(false);
+    actInsertGBACart->setEnabled(false);
+    for (QAction* a : actInsertGBAAddon) a->setEnabled(false);
+    actEjectGBACart->setEnabled(false);
+    actImportSavefile->setEnabled(false);
+    actEnableCheats->setEnabled(false);
+    actSetupCheats->setEnabled(false);
+    actPowerManagement->setEnabled(false);
+    actDateTime->setEnabled(false);
+}
+
+bool MainWindow::netplayRefuses(const char* what)
+{
+    if (!Netplay::Runner::current()) return false;
+    QMessageBox::information(this, "melonRA",
+        QString("%1 doesn't work while a netplay session is open. Leave it first (Experimental → Leave Netplay Session).").arg(what));
+    return true;
+}
+
+void MainWindow::onNetplayHost()
+{
+    QString why = Netplay::Runner::cantStart(emuInstance);
+    if (!why.isEmpty())
+    {
+        QMessageBox::information(this, "Netplay", why);
+        return;
+    }
+    if (!verifySetup())
+        return;
+
+    Netplay::HostDialog dlg(this);
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+
+    if (emuThread->emuIsActive() &&
+        QMessageBox::question(this, "Netplay", "The game that's running will stop when the netplay game starts. Continue?",
+                              QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes) != QMessageBox::Yes)
+        return;
+
+    auto* runner = new Netplay::Runner(this);
+    QString err;
+    if (!runner->host(dlg.romPath(), dlg.name(), dlg.port(), dlg.inputDelay(), err))
+    {
+        delete runner;
+        QMessageBox::warning(this, "Netplay", err);
+        return;
+    }
+
+    Netplay::RoomDialog::open(this, runner);
+    actNetplayHost->setEnabled(false);
+    actNetplayJoin->setEnabled(false);
+    actNetplayRoom->setEnabled(true);
+    actNetplayLeave->setEnabled(true);
+}
+
+void MainWindow::onNetplayJoin()
+{
+    QString why = Netplay::Runner::cantStart(emuInstance);
+    if (!why.isEmpty())
+    {
+        QMessageBox::information(this, "Netplay", why);
+        return;
+    }
+
+    Netplay::JoinDialog dlg(this);
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+
+    auto* runner = new Netplay::Runner(this);
+    QString err;
+    if (!runner->join(dlg.address(), dlg.port(), dlg.name(), err))
+    {
+        delete runner;
+        QMessageBox::warning(this, "Netplay", err);
+        return;
+    }
+
+    Netplay::RoomDialog::open(this, runner);
+    actNetplayHost->setEnabled(false);
+    actNetplayJoin->setEnabled(false);
+    actNetplayRoom->setEnabled(true);
+    actNetplayLeave->setEnabled(true);
+}
+
+void MainWindow::onNetplayStarted()
+{
+    lockForNetplay();
+    updateCentralView();
+}
+
+void MainWindow::onNetplayEnded()
+{
+    if (!hasMenu) return;
+
+    actOpenROM->setEnabled(true);
+    actBootFirmware->setEnabled(true);
+    recentMenu->setEnabled(true);
+    actInsertCart->setEnabled(true);
+    actInsertGBACart->setEnabled(true);
+    for (QAction* a : actInsertGBAAddon) a->setEnabled(true);
+    actDateTime->setEnabled(true);
+    updateCartInserted(false);
+    updateCartInserted(true);
+
+    actNetplayHost->setEnabled(true);
+    actNetplayJoin->setEnabled(true);
+    actNetplayRoom->setEnabled(false);
+    actNetplayLeave->setEnabled(false);
     updateCentralView();
 }
 

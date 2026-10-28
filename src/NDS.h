@@ -448,6 +448,7 @@ public: // TODO: Encapsulate the rest of these members
 
     u32 GetPC(u32 cpu) const;
     u64 GetSysClockCycles(int num);
+    u64 GetSysTimestamp() const noexcept { return SysTimestamp; }
     void NocashPrint(u32 cpu, u32 addr, bool appendNewline = true);
 
     void MonitorARM9Jump(u32 addr);

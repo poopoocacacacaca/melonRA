@@ -140,6 +140,23 @@ bool createEmuInstance()
     return true;
 }
 
+EmuInstance* createNetplayInstance(std::unique_ptr<Netplay::Console> console)
+{
+    for (int i = 0; i < kMaxEmuInstances; i++)
+    {
+        if (emuInstances[i]) continue;
+        emuInstances[i] = new EmuInstance(i, std::move(console));
+        return emuInstances[i];
+    }
+    return nullptr;
+}
+
+EmuInstance* emuInstanceAt(int id)
+{
+    if (id < 0 || id >= kMaxEmuInstances) return nullptr;
+    return emuInstances[id];
+}
+
 void deleteEmuInstance(int id)
 {
     auto inst = emuInstances[id];

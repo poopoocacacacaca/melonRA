@@ -448,6 +448,10 @@ void WriteFirmware(const Firmware& firmware, u32 writeoffset, u32 writelen, void
 void WriteDateTime(int year, int month, int day, int hour, int minute, int second, void* userdata)
 {
     EmuInstance* inst = (EmuInstance*)userdata;
+
+    // a netplay console's clock is part of the session, not the user's settings
+    if (inst->netplay) return;
+
     QDateTime hosttime = QDateTime::currentDateTime();
     QDateTime time = QDateTime(QDate(year, month, day), QTime(hour, minute, second));
     auto& cfg = inst->getLocalConfig();
@@ -459,61 +463,64 @@ void WriteDateTime(int year, int month, int day, int hour, int minute, int secon
 
 void MP_Begin(void* userdata)
 {
-    int inst = ((EmuInstance*)userdata)->getInstanceID();
+    int inst = ((EmuInstance*)userdata)->mpInstance();
     MPInterface::Get().Begin(inst);
 }
 
 void MP_End(void* userdata)
 {
-    int inst = ((EmuInstance*)userdata)->getInstanceID();
+    int inst = ((EmuInstance*)userdata)->mpInstance();
     MPInterface::Get().End(inst);
 }
 
 int MP_SendPacket(u8* data, int len, u64 timestamp, void* userdata)
 {
-    int inst = ((EmuInstance*)userdata)->getInstanceID();
+    int inst = ((EmuInstance*)userdata)->mpInstance();
     return MPInterface::Get().SendPacket(inst, data, len, timestamp);
 }
 
 int MP_RecvPacket(u8* data, u64* timestamp, void* userdata)
 {
-    int inst = ((EmuInstance*)userdata)->getInstanceID();
+    int inst = ((EmuInstance*)userdata)->mpInstance();
     return MPInterface::Get().RecvPacket(inst, data, timestamp);
 }
 
 int MP_SendCmd(u8* data, int len, u64 timestamp, void* userdata)
 {
-    int inst = ((EmuInstance*)userdata)->getInstanceID();
+    int inst = ((EmuInstance*)userdata)->mpInstance();
     return MPInterface::Get().SendCmd(inst, data, len, timestamp);
 }
 
 int MP_SendReply(u8* data, int len, u64 timestamp, u16 aid, void* userdata)
 {
-    int inst = ((EmuInstance*)userdata)->getInstanceID();
+    int inst = ((EmuInstance*)userdata)->mpInstance();
     return MPInterface::Get().SendReply(inst, data, len, timestamp, aid);
 }
 
 int MP_SendAck(u8* data, int len, u64 timestamp, void* userdata)
 {
-    int inst = ((EmuInstance*)userdata)->getInstanceID();
+    int inst = ((EmuInstance*)userdata)->mpInstance();
     return MPInterface::Get().SendAck(inst, data, len, timestamp);
 }
 
 int MP_RecvHostPacket(u8* data, u64* timestamp, void* userdata)
 {
-    int inst = ((EmuInstance*)userdata)->getInstanceID();
+    int inst = ((EmuInstance*)userdata)->mpInstance();
     return MPInterface::Get().RecvHostPacket(inst, data, timestamp);
 }
 
 u16 MP_RecvReplies(u8* data, u64 timestamp, u16 aidmask, void* userdata)
 {
-    int inst = ((EmuInstance*)userdata)->getInstanceID();
+    int inst = ((EmuInstance*)userdata)->mpInstance();
     return MPInterface::Get().RecvReplies(inst, data, timestamp, aidmask);
 }
 
 
 int Net_SendPacket(u8* data, int len, void* userdata)
 {
+    // netplay consoles have no internet: what arrives would differ between computers
+    if (((EmuInstance*)userdata)->netplay) return 0;
+
     int inst = ((EmuInstance*)userdata)->getInstanceID();
     net.SendPacket(data, len, inst);
     return 0;
@@ -521,6 +528,8 @@ int Net_SendPacket(u8* data, int len, void* userdata)
 
 int Net_RecvPacket(u8* data, void* userdata)
 {
+    if (((EmuInstance*)userdata)->netplay) return 0;
+
     int inst = ((EmuInstance*)userdata)->getInstanceID();
     return net.RecvPacket(data, inst);
 }

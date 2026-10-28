@@ -57,6 +57,9 @@
 
 #include "EmuInstance.h"
 #include "RetroAchievements/RAClient.h"
+#include "Netplay/NetplaySession.h"
+#include "LockstepMP.h"
+#include "xxhash/xxhash.h"
 
 using namespace melonDS;
 
@@ -172,21 +175,34 @@ void EmuThread::run()
         if (emuInstance->instanceID == 0)
             MPInterface::Get().Process();
 
-        emuInstance->inputProcess();
+        // netplay consoles played elsewhere take no input from this computer
+        Netplay::Console* np = emuInstance->netplay.get();
+        if (!emuInstance->netplayHidden())
+            emuInstance->inputProcess();
 
-        if (emuInstance->hotkeyPressed(HK_FrameLimitToggle)) emit windowLimitFPSChange();
+        // things that would make this computer's consoles differ from the
+        // others' don't work in netplay
+        auto netplayBlocks = [&](int hotkey, const char* what) -> bool
+        {
+            if (!np) return false;
+            if (emuInstance->hotkeyPressed(hotkey)) netplayNote(what);
+            return true;
+        };
+
+        if (!netplayBlocks(HK_FrameLimitToggle, "Turning off the speed limit"))
+            if (emuInstance->hotkeyPressed(HK_FrameLimitToggle)) emit windowLimitFPSChange();
 
         RA::Manager* ra = raFor(emuInstance);
         bool hardcore = ra && ra->hardcoreActive();
 
-        if (emuInstance->hotkeyPressed(HK_Pause))
+        if (!netplayBlocks(HK_Pause, "Pausing") && emuInstance->hotkeyPressed(HK_Pause))
         {
             // hardcore throttles pausing so it can't be used as slow motion
             if (emuStatus == emuStatus_Paused || !ra || ra->canPause())
                 emuTogglePause();
         }
-        if (emuInstance->hotkeyPressed(HK_Reset)) emuReset();
-        if (emuInstance->hotkeyPressed(HK_FrameStep))
+        if (!netplayBlocks(HK_Reset, "Resetting") && emuInstance->hotkeyPressed(HK_Reset)) emuReset();
+        if (!netplayBlocks(HK_FrameStep, "Frame advance") && emuInstance->hotkeyPressed(HK_FrameStep))
         {
             if (hardcore) ra->notifyBlocked("Frame advance");
             else emuFrameStep();
@@ -204,7 +220,12 @@ void EmuThread::run()
         {
             if (emuStatus == emuStatus_FrameStep) emuStatus = emuStatus_Paused;
 
-            if (emuInstance->hotkeyPressed(HK_SolarSensorDecrease))
+            if (np)
+            {
+                netplayBlocks(HK_SolarSensorDecrease, "The solar sensor");
+                netplayBlocks(HK_SolarSensorIncrease, "The solar sensor");
+            }
+            else if (emuInstance->hotkeyPressed(HK_SolarSensorDecrease))
             {
                 int level = emuInstance->nds->GBACartSlot.SetInput(GBACart::Input_SolarSensorDown, true);
                 if (level != -1)
@@ -284,14 +305,28 @@ void EmuThread::run()
             }
 
             // process input and hotkeys
-            emuInstance->nds->SetKeyMask(emuInstance->inputMask);
-
-            if (emuInstance->isTouching)
-                emuInstance->nds->TouchScreen(emuInstance->touchX, emuInstance->touchY);
+            if (np)
+            {
+                if (!netplayInput(np))
+                {
+                    // the session ended; wait to be stopped
+                    handleMessages();
+                    SDL_Delay(10);
+                    continue;
+                }
+                netplayBlocks(HK_Lid, "Closing the lid");
+            }
             else
-                emuInstance->nds->ReleaseScreen();
+            {
+                emuInstance->nds->SetKeyMask(emuInstance->inputMask);
 
-            if (emuInstance->hotkeyPressed(HK_Lid))
+                if (emuInstance->isTouching)
+                    emuInstance->nds->TouchScreen(emuInstance->touchX, emuInstance->touchY);
+                else
+                    emuInstance->nds->ReleaseScreen();
+            }
+
+            if (!np && emuInstance->hotkeyPressed(HK_Lid))
             {
                 bool lid = !emuInstance->nds->IsLidClosed();
                 emuInstance->nds->SetLidClosed(lid);
@@ -345,6 +380,8 @@ void EmuThread::run()
                 // evaluate achievements every emulated frame, including
                 // fast-forwarded ones
                 if (ra) ra->doFrame();
+
+                if (np) netplayFrameDone(np);
             }
 
             if (emuInstance->ndsSave)
@@ -369,8 +406,20 @@ void EmuThread::run()
                 winUpdateCount = 0;
             }
             
-            if (emuInstance->hotkeyPressed(HK_FastForwardToggle)) emuInstance->fastForwardToggled = !emuInstance->fastForwardToggled;
-            if (emuInstance->hotkeyPressed(HK_SlowMoToggle)) emuInstance->slowmoToggled = !emuInstance->slowmoToggled;
+            if (np)
+            {
+                if (emuInstance->hotkeyPressed(HK_FastForward) || emuInstance->hotkeyPressed(HK_FastForwardToggle))
+                    netplayNote("Fast forward");
+                if (emuInstance->hotkeyPressed(HK_SlowMo) || emuInstance->hotkeyPressed(HK_SlowMoToggle))
+                    netplayNote("Slow motion");
+                emuInstance->fastForwardToggled = false;
+                emuInstance->slowmoToggled = false;
+            }
+            else
+            {
+                if (emuInstance->hotkeyPressed(HK_FastForwardToggle)) emuInstance->fastForwardToggled = !emuInstance->fastForwardToggled;
+                if (emuInstance->hotkeyPressed(HK_SlowMoToggle)) emuInstance->slowmoToggled = !emuInstance->slowmoToggled;
+            }
 
             // slow motion is not allowed in hardcore (fast forward is fine)
             if (hardcore)
@@ -382,8 +431,8 @@ void EmuThread::run()
 
             if (emuInstance->hotkeyPressed(HK_AudioMuteToggle)) emuInstance->toggleAudioMute();
 
-            bool enablefastforward = emuInstance->hotkeyDown(HK_FastForward) | emuInstance->fastForwardToggled;
-            bool enableslowmo = (emuInstance->hotkeyDown(HK_SlowMo) | emuInstance->slowmoToggled) && !hardcore;
+            bool enablefastforward = (emuInstance->hotkeyDown(HK_FastForward) | emuInstance->fastForwardToggled) && !np;
+            bool enableslowmo = (emuInstance->hotkeyDown(HK_SlowMo) | emuInstance->slowmoToggled) && !hardcore && !np;
 
             if (useOpenGL)
             {
@@ -431,6 +480,9 @@ void EmuThread::run()
             else
                 speedFloorWarned = false;
 
+            // netplay: every console runs at the DS's own speed
+            if (np) emuInstance->curFPS = kFullSpeed;
+
             if (emuInstance->audioDSiVolumeSync && emuInstance->nds->ConsoleType == 1)
             {
                 DSi* dsi = static_cast<DSi*>(emuInstance->nds);
@@ -444,7 +496,7 @@ void EmuThread::run()
                 emuInstance->audioVolume = volumeLevel * (256.0 / 31.0);
             }
 
-            if (emuInstance->doAudioSync && !(fastforward || slowmo))
+            if (emuInstance->doAudioSync && !(fastforward || slowmo) && !emuInstance->netplayHidden())
                 emuInstance->audioSync();
 
             double frametimeStep = nlines / (emuInstance->curFPS * 263.0);
@@ -517,6 +569,67 @@ void EmuThread::run()
     }
 }
 
+bool EmuThread::netplayInput(Netplay::Console* np)
+{
+    Netplay::Session* session = np->session;
+
+    if (np->local)
+    {
+        Netplay::InputFrame mine;
+        mine.Keys = emuInstance->inputMask & 0xFFF;
+        mine.Touching = emuInstance->isTouching;
+        mine.TouchX = (u8)std::min<int>(emuInstance->touchX, 255);
+        mine.TouchY = (u8)std::min<int>(emuInstance->touchY, 191);
+        session->submitLocalInput(np->frame, mine);
+
+        // tell the player when the game is waiting on someone else's input
+        bool ready = session->inputReady(np->index, np->frame);
+        if (!ready && !netplayWaitShown)
+        {
+            emuInstance->osdAddMessage(0, "Waiting for the other players...");
+            netplayWaitShown = true;
+        }
+        else if (ready)
+            netplayWaitShown = false;
+    }
+
+    Netplay::InputFrame in;
+    if (!session->waitInput(np->index, np->frame, in))
+        return false;
+
+    emuInstance->nds->SetKeyMask(in.Keys);
+    if (in.Touching)
+        emuInstance->nds->TouchScreen(in.TouchX, in.TouchY);
+    else
+        emuInstance->nds->ReleaseScreen();
+    return true;
+}
+
+void EmuThread::netplayFrameDone(Netplay::Console* np)
+{
+    NDS* nds = emuInstance->nds;
+
+    if (MPInterface::GetType() == MPInterface_Netplay)
+        static_cast<LockstepMP&>(MPInterface::Get()).Publish(np->index, nds->GetSysTimestamp());
+
+    if (np->frame % Netplay::kHashInterval == 0)
+    {
+        u64 hash = XXH3_64bits(nds->MainRAM, nds->MainRAMMask + 1);
+        hash ^= nds->GetSysTimestamp() * 0x9E3779B97F4A7C15ULL;
+        np->session->reportHash(np->index, np->frame, hash);
+    }
+
+    np->frame++;
+}
+
+void EmuThread::netplayNote(const char* what)
+{
+    double now = SDL_GetPerformanceCounter() / (double)SDL_GetPerformanceFrequency();
+    if (now - netplayNoteTime < 2.0) return;
+    netplayNoteTime = now;
+    emuInstance->osdAddMessage(0, "%s doesn't work in netplay", what);
+}
+
 void EmuThread::sendMessage(Message msg)
 {
     msgMutex.lock();
@@ -552,7 +665,7 @@ void EmuThread::handleMessages()
             emuPauseStack = emuPauseStackRunning;
 
             emuInstance->audioDisable();
-            MPInterface::Get().End(emuInstance->instanceID);
+            MPInterface::Get().End(emuInstance->mpInstance());
             break;
 
         case msg_EmuRun:
@@ -657,6 +770,26 @@ void EmuThread::handleMessages()
             msgResult = 1;
 
             if (RA::Manager* ra = raFor(emuInstance)) ra->onROMStarted();
+            break;
+
+        case msg_NetplayBoot:
+            msgResult = 0;
+            if (emuInstance->pendingNetplay)
+                emuInstance->netplay = std::move(emuInstance->pendingNetplay);
+            if (!emuInstance->netplayBoot(msg.param.value<QStringList>(), msgError))
+                break;
+
+            emuInstance->nds->Start();
+            msgResult = 1;
+
+            if (RA::Manager* ra = raFor(emuInstance)) ra->onROMStarted();
+            break;
+
+        case msg_NetplayEnd:
+            emuInstance->netplay = nullptr;
+            emuInstance->pendingNetplay = nullptr;
+            netplayWaitShown = false;
+            emuInstance->updateAudioMuteByWindowFocus();
             break;
 
         case msg_BootFirmware:
@@ -872,6 +1005,20 @@ int EmuThread::bootROM(const QStringList& filename, QString& errorstr)
     waitMessage();
     errorstr = "";
     return msgResult;
+}
+
+int EmuThread::netplayBoot(const QStringList& filename, QString& errorstr)
+{
+    sendMessage({.type = msg_NetplayBoot, .param = filename});
+    waitMessage();
+    errorstr = msgResult ? "" : msgError;
+    return msgResult;
+}
+
+void EmuThread::netplayEnd()
+{
+    sendMessage(msg_NetplayEnd);
+    waitMessage();
 }
 
 int EmuThread::bootFirmware(QString& errorstr)
