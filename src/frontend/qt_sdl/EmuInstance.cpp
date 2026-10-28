@@ -757,7 +757,7 @@ bool EmuInstance::loadState(const std::string& filename)
     RA::Manager* ra = raFor(this);
     if (ra && ra->hardcoreActive())
     {
-        // always blocked in hardcore; the UI offers to switch to casual first
+        // not allowed in hardcore
         ra->notifyBlocked("Loading save states");
         return false;
     }

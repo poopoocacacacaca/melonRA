@@ -243,8 +243,7 @@ Config::Table globalConfig()
     return Config::GetGlobalTable();
 }
 
-// column order, widths, visibility and sorting. (Renamed when the title
-// column stopped stretching, so layouts from before start over.)
+// column order, widths, visibility and sorting
 const char* const kColumnsKey = "GameList.ColumnLayout";
 
 }
@@ -837,8 +836,8 @@ QVariant Model::data(const QModelIndex& index, int role) const
         if (pr.mastered()) tip += "\nMastered";
         else
         {
-            if (pr.hardcore) tip += QString("\n%1 in Hardcore Mode").arg(pr.hardcore);
-            if (pr.completed()) tip += "\nCompleted (unlock them all in Hardcore Mode to master it)";
+            if (pr.hardcore) tip += QString("\n%1 in Hardcore mode").arg(pr.hardcore);
+            if (pr.completed()) tip += "\nCompleted (unlock them all in Hardcore mode to master it)";
         }
         return tip;
     }
@@ -959,8 +958,6 @@ private:
 
 }
 
-// The list's cells: no hover effect, and the selected row in the theme's
-// selection color with its selected-text color, so it stands out clearly.
 // a small gear, marking games with their own settings
 static void drawGear(QPainter* p, const QRectF& r, const QColor& color)
 {
@@ -1006,6 +1003,8 @@ static void drawStar(QPainter* p, const QRectF& r, const QColor& fill)
     p->restore();
 }
 
+// The list's cells: no hover effect, and the selected row in the theme's
+// selection color with its selected-text color, so it stands out clearly.
 class RowDelegate : public QStyledItemDelegate
 {
 public:
@@ -1036,9 +1035,9 @@ public:
         const QWidget* w = option.widget;
         QStyle* style = w ? w->style() : QApplication::style();
 
-        const bool title_ = index.column() == Model::Col_Title;
-        const bool star = title_ && index.data(Model::StarRole).toBool();
-        const bool gear = title_ && index.data(Model::HasSettingsRole).toBool();
+        const bool isTitle = index.column() == Model::Col_Title;
+        const bool star = isTitle && index.data(Model::StarRole).toBool();
+        const bool gear = isTitle && index.data(Model::HasSettingsRole).toBool();
         if (!star && !gear)
         {
             style->drawControl(QStyle::CE_ItemViewItem, &opt, p, w);

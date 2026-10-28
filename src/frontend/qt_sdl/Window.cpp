@@ -1933,7 +1933,7 @@ void MainWindow::onLoadState()
     int slot = ((QAction*)sender())->data().toInt();
 
     if (RA::Manager* ra = RA::Manager::get(); ra && ra->isAttached(emuInstance))
-        if (!ra->requestHardcoreExemption(this, "Loading save states"))
+        if (!ra->allowedInHardcore("Loading save states"))
             return;
 
     QString filename;
@@ -1978,7 +1978,7 @@ void MainWindow::onLoadState()
 void MainWindow::onUndoStateLoad()
 {
     if (RA::Manager* ra = RA::Manager::get(); ra && ra->isAttached(emuInstance))
-        if (!ra->requestHardcoreExemption(this, "Undoing a state load"))
+        if (!ra->allowedInHardcore("Undoing a state load"))
             return;
 
     emuThread->undoStateLoad();
@@ -2067,7 +2067,7 @@ void MainWindow::onFrameStep()
     if (!emuThread->emuIsActive()) return;
 
     if (RA::Manager* ra = RA::Manager::get(); ra && ra->isAttached(emuInstance))
-        if (!ra->requestHardcoreExemption(this, "Frame advance"))
+        if (!ra->allowedInHardcore("Frame advance"))
             return;
 
     emuThread->emuFrameStep();
@@ -2098,7 +2098,7 @@ void MainWindow::onEnableCheats(bool checked)
     {
         if (RA::Manager* ra = RA::Manager::get(); ra && ra->isAttached(emuInstance))
         {
-            if (!ra->requestHardcoreExemption(this, "Cheats"))
+            if (!ra->allowedInHardcore("Cheats"))
             {
                 actEnableCheats->setChecked(false);
                 return;
@@ -2156,7 +2156,7 @@ void MainWindow::onRAMInfo()
 {
     // memory viewers/editors are not allowed in hardcore
     if (RA::Manager* ra = RA::Manager::get(); ra && ra->isAttached(emuInstance))
-        if (!ra->requestHardcoreExemption(this, "RAM Search"))
+        if (!ra->allowedInHardcore("RAM Search"))
             return;
 
     RAMInfoDialog* dlg = RAMInfoDialog::openDlg(this);

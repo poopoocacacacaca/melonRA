@@ -19,6 +19,7 @@ local-multiplayer instances play without them.
 | Saved server answers for offline sessions | `RetroAchievements/RAOfflineCache.*` |
 | Overlay widgets (popups, indicators, trackers) | `RetroAchievements/RAOverlay.*` |
 | Login, settings, achievements/leaderboards windows | `RetroAchievements/RADialogs.*` |
+| Game list matched to RetroAchievements, progress per game | `RetroAchievements/RALibrary.*` |
 
 **Hooks into melonDS**
 
@@ -34,7 +35,8 @@ local-multiplayer instances play without them.
   - blocks state loading, undo, cheats and the GDB stub in hardcore
 - `Window.cpp`
   - adds the *RetroAchievements* menu
-  - when a blocked feature is used in hardcore, offers to switch to casual mode
+  - when a blocked feature is used in hardcore, shows a short note on screen
+    instead
 - `Screen.cpp` draws the overlay. The OpenGL path renders it into a texture
   and reuses melonDS's OSD shader.
 
@@ -118,25 +120,25 @@ applying.
 
 | Requirement | Status |
 |---|---|
-| A. Achievement list accessible in-emulator | ✅ RetroAchievements → Achievements… |
-| A. Triggers, measured progress, challenge indicators | ✅ |
-| A. Rich Presence and leaderboards | ✅ |
-| A. Offline queueing | ✅ Unlocks and leaderboard entries are saved to disk before sending. If the app closes before they're delivered, they're resubmitted (re-signed) at the next login or reconnect; see [Offline queue](#offline-queue). Sessions can also start offline from saved data; see [Offline sessions](#offline-sessions). |
-| A. Hit counts in savestates | ✅ |
-| A. Toolkit (RAIntegration) support | ✅ Windows x86/x64; includes downloader/updater |
-| A. Standard save file formats | ✅ unchanged melonDS `.sav` |
-| B. Cheats, rewind, slow motion, frame advance blocked | ✅ Cheats (menu, cheat files, per-game Game Settings) stay off; slow motion and frame advance blocked; the game runs at the DS's own speed and only fast forward changes it (a custom target speed is ignored, a fast-forward speed below full speed is raised); melonDS has no rewind |
-| B. Loading states always blocked; saving allowed | ✅ |
-| B. Rich Presence and leaderboards can't be disabled in hardcore | ✅ (trackers forced visible) |
-| B. Casual → hardcore resets the game | ✅ |
-| B. Quick resume switches to casual | ✅ not applicable: melonDS has no resume feature |
-| B. Pausing can't be used as slowdown | ✅ pausing is rate-limited with rcheevos' `rc_client_can_pause` |
-| B. Memory editors, debuggers, input playback blocked | ✅ RAM search and GDB stub blocked; melonDS has no input playback |
-| C. Unique, numeric User-Agent | ✅ `melonRA/x.y.z`; never used another client's UA |
-| D. 6 months public | ✅ via upstream melonDS |
-| E. Hardcore on by default, mode shown at game start | ✅ |
-| Blocked features explain themselves | ✅ a short on-screen note ("Loading save states doesn't work in Hardcore mode") for hotkeys and menus alike |
-| F. No monetization; licenses list; privacy policy | ✅ [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md), [PRIVACY.md](PRIVACY.md) |
+| A. Achievement list accessible in-emulator | RetroAchievements → Achievements… |
+| A. Triggers, measured progress, challenge indicators | Yes |
+| A. Rich Presence and leaderboards | Yes |
+| A. Offline queueing | Unlocks and leaderboard entries are saved to disk before sending. If the app closes before they're delivered, they're resubmitted (re-signed) at the next login or reconnect; see [Offline queue](#offline-queue). Sessions can also start offline from saved data; see [Offline sessions](#offline-sessions). |
+| A. Hit counts in savestates | Yes |
+| A. Toolkit (RAIntegration) support | Windows x86/x64; includes downloader/updater |
+| A. Standard save file formats | Unchanged melonDS `.sav` |
+| B. Cheats, rewind, slow motion, frame advance blocked | Cheats (menu, cheat files, per-game Game Settings) stay off; slow motion and frame advance blocked; the game runs at the DS's own speed and only fast forward changes it (a custom target speed is ignored, a fast-forward speed below full speed is raised); melonDS has no rewind |
+| B. Loading states always blocked; saving allowed | Yes |
+| B. Rich Presence and leaderboards can't be disabled in hardcore | Yes (trackers forced visible) |
+| B. Casual → hardcore resets the game | Yes |
+| B. Quick resume switches to casual | Not applicable: melonDS has no resume feature |
+| B. Pausing can't be used as slowdown | Pausing is rate-limited with rcheevos' `rc_client_can_pause` |
+| B. Memory editors, debuggers, input playback blocked | RAM search and GDB stub blocked; melonDS has no input playback |
+| C. Unique, numeric User-Agent | `melonRA/x.y.z`; never used another client's UA |
+| D. 6 months public | Via upstream melonDS |
+| E. Hardcore on by default, mode shown at game start | Yes |
+| Blocked features explain themselves | A short on-screen note ("Loading save states doesn't work in Hardcore mode") for hotkeys and menus alike |
+| F. No monetization; licenses list; privacy policy | [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md), [PRIVACY.md](PRIVACY.md) |
 
 ## Building
 

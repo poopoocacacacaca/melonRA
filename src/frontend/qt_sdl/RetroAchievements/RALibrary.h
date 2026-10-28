@@ -39,7 +39,8 @@ namespace RA
 class Manager;
 
 // The games in the game list, matched to RetroAchievements, so the
-// achievements window can show any of them without loading it.
+// achievements window can show any of them without loading it, and the game
+// list can show the player's progress.
 //
 // Each ROM is fingerprinted once (cached on disk), the fingerprints are looked
 // up in RetroAchievements' list of DS fingerprints (one request), and the

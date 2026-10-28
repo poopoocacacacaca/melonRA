@@ -347,8 +347,7 @@ void GameSettingsDialog::addCheatsTab(QTabWidget* tabs)
         note->setText("This game is running: change its cheats in System → Set Up Cheat Codes.");
     }
     else
-        note->setText("Checked cheats are active when cheats are on. They're always off in RetroAchievements "
-                      "hardcore mode.");
+        note->setText("Checked cheats are active when cheats are on. They're always off in Hardcore mode.");
 
     connect(cheatTree, &QTreeWidget::itemChanged, this, [this](QTreeWidgetItem* item)
     {

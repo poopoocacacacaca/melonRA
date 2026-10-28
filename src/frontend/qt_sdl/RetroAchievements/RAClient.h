@@ -148,9 +148,9 @@ public:
     // True while emulator features that give an advantage must be blocked.
     bool hardcoreActive() const;
 
-    // Called when the user tries to do something hardcore forbids. Asks
-    // whether to switch to casual mode; returns true if the action may proceed.
-    bool requestHardcoreExemption(QWidget* parent, const QString& action);
+    // Whether an action that hardcore forbids may go ahead: true outside
+    // hardcore, otherwise false after a short note on screen.
+    bool allowedInHardcore(const QString& action);
 
     // Shows the standard "not available in hardcore" OSD message.
     void notifyBlocked(const QString& action);
@@ -196,7 +196,7 @@ public:
     uint32_t gameId() const;
     // e.g. "12/50"; empty if the game has no achievements
     QString achievementCount() const;
-    // every achievement of the game (not its subsets) unlocked in Hardcore Mode
+    // every achievement of the game (not its subsets) unlocked in Hardcore mode
     bool isMastered() const;
     QString hardcoreStatusText() const;
 

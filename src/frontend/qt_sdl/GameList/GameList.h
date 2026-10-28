@@ -157,7 +157,7 @@ public:
         enum State { Unknown, NotOnRA, Known } state = Unknown;
         uint32_t total = 0;      // 0: on RetroAchievements but no achievements yet
         uint32_t unlocked = 0;   // in either mode
-        uint32_t hardcore = 0;   // in Hardcore Mode
+        uint32_t hardcore = 0;   // in Hardcore mode
         bool mastered() const { return state == Known && total && hardcore >= total; }
         bool completed() const { return state == Known && total && unlocked >= total; }
     };

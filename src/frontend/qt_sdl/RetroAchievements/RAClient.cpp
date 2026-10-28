@@ -870,7 +870,7 @@ void Manager::setHardcorePreferred(bool enabled)
 
     osd(enabled ? kColorWarn : kColorInfo,
         enabled ? "RetroAchievements: Hardcore mode enabled"
-                : "RetroAchievements: Hardcore mode disabled (casual mode)");
+                : "RetroAchievements: Hardcore mode disabled (Casual mode)");
 
     reloadDisplayOptions();
     emit stateChanged();
@@ -1125,9 +1125,8 @@ void Manager::notifyBlocked(const QString& action)
 
 // Menu actions: in hardcore, the action is refused with the same note
 // (Hardcore mode can be turned off in the RetroAchievements menu).
-bool Manager::requestHardcoreExemption(QWidget* parent, const QString& action)
+bool Manager::allowedInHardcore(const QString& action)
 {
-    (void)parent;
     if (!hardcoreActive()) return true;
     notifyBlocked(action);
     return false;

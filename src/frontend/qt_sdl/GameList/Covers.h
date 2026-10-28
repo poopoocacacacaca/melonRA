@@ -47,7 +47,7 @@ struct Game;
 //  3. GameTDB, by game code and region (exact)
 //  4. the libretro thumbnails, by title (for homebrew and anything GameTDB
 //     doesn't have)
-// Downloads happen in the background, one game at a time; covers that can't
+// Downloads happen in the background, two at a time; covers that can't
 // be found are remembered for a week so they aren't requested again.
 class Covers : public QObject
 {
