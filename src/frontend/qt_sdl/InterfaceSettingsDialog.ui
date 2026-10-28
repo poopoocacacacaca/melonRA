@@ -141,7 +141,7 @@
         <item>
          <widget class="QCheckBox" name="cbDiscordCount">
           <property name="toolTip">
-           <string>Adds your achievement count after the game's title, e.g. "Super Mario 64 DS (12/157 🏆)". Also shown in server member lists.</string>
+           <string>Adds your achievement count after the game's title, e.g. "Super Mario 64 DS (12/157 🏆)", with ⭐ instead once the game is mastered. Also shown in server member lists.</string>
           </property>
           <property name="text">
            <string>Show achievement count next to the title</string>

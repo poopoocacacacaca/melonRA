@@ -196,6 +196,8 @@ public:
     uint32_t gameId() const;
     // e.g. "12/50"; empty if the game has no achievements
     QString achievementCount() const;
+    // every achievement of the game (not its subsets) unlocked in Hardcore Mode
+    bool isMastered() const;
     QString hardcoreStatusText() const;
 
 signals:

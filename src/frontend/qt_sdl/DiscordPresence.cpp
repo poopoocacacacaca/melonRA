@@ -256,10 +256,13 @@ QJsonObject Presence::buildActivity() const
             largeImage = badge;
         largeText = details;
 
-        // "Super Mario 64 DS (0/157 🏆)"
+        // "Super Mario 64 DS (12/157 🏆)", or with a star once mastered
         const QString count = ra->achievementCount();
         if (!count.isEmpty() && showsAchievementCount())
-            details += " (" + count + " " + QString::fromUtf8("\xF0\x9F\x8F\x86") + ")";
+        {
+            const char* emoji = ra->isMastered() ? "\xE2\xAD\x90" : "\xF0\x9F\x8F\x86";
+            details += " (" + count + " " + QString::fromUtf8(emoji) + ")";
+        }
 
         smallText = ra->hardcoreStatusText() + " - " + Updater::windowTitle();
 

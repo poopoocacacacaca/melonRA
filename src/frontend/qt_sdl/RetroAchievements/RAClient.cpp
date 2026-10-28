@@ -1318,6 +1318,34 @@ QString Manager::achievementCount() const
     return QString("%1/%2").arg(summary.num_unlocked_achievements).arg(summary.num_promoted_achievements);
 }
 
+bool Manager::isMastered() const
+{
+    const rc_client_game_t* game = rc_client_get_game_info(rcClient);
+    if (!game) return false;
+
+    rc_client_user_game_summary_t summary{};
+    rc_client_get_user_game_summary(rcClient, &summary);
+    if (!summary.num_promoted_achievements) return false;
+
+    rc_client_achievement_list_t* list = rc_client_create_achievement_list(
+        rcClient, RC_CLIENT_ACHIEVEMENT_CATEGORY_PROMOTED, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
+    if (!list) return false;
+
+    uint32_t total = 0, hardcore = 0;
+    for (uint32_t b = 0; b < list->num_buckets; b++)
+    {
+        const rc_client_achievement_bucket_t& bucket = list->buckets[b];
+        if (bucket.subset_id && bucket.subset_id != game->id) continue;
+        for (uint32_t i = 0; i < bucket.num_achievements; i++)
+        {
+            total++;
+            if (bucket.achievements[i]->unlocked & RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE) hardcore++;
+        }
+    }
+    rc_client_destroy_achievement_list(list);
+    return total > 0 && hardcore == total;
+}
+
 QString Manager::hardcoreStatusText() const
 {
     return rc_client_get_hardcore_enabled(rcClient) ? "Hardcore Mode" : "Casual Mode";
