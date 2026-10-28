@@ -81,6 +81,7 @@
 #include "Window.h"
 #include "AboutDialog.h"
 #include "RetroAchievements/RAClient.h"
+#include "DiscordPresence.h"
 #include "RetroAchievements/RADialogs.h"
 #include "Updater/UpdaterDialogs.h"
 #include "GameList/GameList.h"
@@ -1621,6 +1622,10 @@ QStringList MainWindow::pickROM(bool gba)
 
 void MainWindow::updateCartInserted(bool gba)
 {
+    // a cart swapped while the game runs
+    if (!gba && emuThread && emuThread->emuIsActive())
+        updateDiscordPresence();
+
     bool inserted;
     QString label;
     if (gba)
@@ -2832,6 +2837,8 @@ void MainWindow::onScreenSizingCycled()
 
 void MainWindow::onEmuStart()
 {
+    updateDiscordPresence();
+
     if (!hasMenu) return;
 
     for (int i = 1; i < 9; i++)
@@ -2862,6 +2869,9 @@ void MainWindow::onEmuStop()
     // back to the usual settings
     if (emuInstance && windowID == 0)
         emuInstance->applyGameSettings("");
+    if (windowID == 0 && emuInstance && emuInstance->getInstanceID() == 0)
+        if (Discord::Presence* presence = Discord::Presence::get())
+            presence->gameStopped();
 
     if (!hasMenu) return;
 
@@ -2892,8 +2902,24 @@ void MainWindow::onEmuPause(bool pause)
     actPause->setChecked(pause);
 }
 
+void MainWindow::updateDiscordPresence()
+{
+    // the first window of the first instance speaks for melonRA
+    if (windowID != 0 || !emuInstance || emuInstance->getInstanceID() != 0) return;
+    Discord::Presence* presence = Discord::Presence::get();
+    if (!presence) return;
+
+    const CartGameInfo game = emuInstance->cartGame();
+    if (game.title.isEmpty())
+        presence->gameStopped();
+    else
+        presence->gameStarted(game.title, game.subtitle, game.gameCode);
+}
+
 void MainWindow::onEmuReset()
 {
+    updateDiscordPresence();
+
     if (!hasMenu) return;
 
     actUndoStateLoad->setEnabled(false);

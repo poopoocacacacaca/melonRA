@@ -30,6 +30,7 @@
 #include <QFileInfo>
 #include <QRegularExpression>
 #include <QThreadPool>
+#include <QSaveFile>
 #include <QUrl>
 
 #include "Config.h"
@@ -303,20 +304,79 @@ void Covers::setDownloadConsent(const QString& answer)
     globalConfig().SetQString("GameList.CoversDownload", answer);
 }
 
+QStringList Covers::gameTDBUrls(const Game& game) const
+{
+    QStringList urls;
+    if (!validCode(game.gameCode)) return urls;
+    // the ROM's own region first, then the common ones
+    QStringList regions = {gameTDBRegion(game.gameCode[3])};
+    for (const char* r : {"EN", "US", "JA"})
+        if (!regions.contains(r)) regions << r;
+    for (const QString& r : regions)
+        urls << QString(kGameTDB) + r + "/" + game.gameCode.toUpper() + ".png";
+    return urls;
+}
+
+void Covers::onlineCover(const Game& game, std::function<void(const QString&)> done)
+{
+    const QString key = keyFor(game);
+    QFile f(QDir(cacheFolder()).filePath(key + ".url"));
+    if (f.open(QIODevice::ReadOnly))
+    {
+        const QString url = QString::fromUtf8(f.readAll()).trimmed();
+        if (url.startsWith("https://"))
+        {
+            done(url);
+            return;
+        }
+    }
+
+    if (downloadConsent() != "yes" || !useGameTDB() || missing.contains(key))
+    {
+        done({});
+        return;
+    }
+    probeOnline(key, gameTDBUrls(game), std::move(done));
+}
+
+void Covers::probeOnline(const QString& key, QStringList urls, std::function<void(const QString&)> done)
+{
+    if (urls.isEmpty())
+    {
+        done({});
+        return;
+    }
+    const QString url = urls.takeFirst();
+    http->request(url.toStdString(), "", "", [this, key, url, urls, done](const RA::HttpResponse& r)
+    {
+        if (!alive) return;
+        const bool found = r.status == 200 &&
+            !QImage::fromData(QByteArray(r.body.data(), (qsizetype)r.body.size())).isNull();
+        QMetaObject::invokeMethod(this, [this, key, url, urls, done, found]()
+        {
+            if (!found)
+            {
+                probeOnline(key, urls, done);
+                return;
+            }
+            QSaveFile f(QDir(cacheFolder()).filePath(key + ".url"));
+            if (f.open(QIODevice::WriteOnly))
+            {
+                f.write(url.toUtf8());
+                f.commit();
+            }
+            done(url);
+        }, Qt::QueuedConnection);
+    });
+}
+
 void Covers::enqueue(const Game& game, const QString& key)
 {
     auto job = std::make_shared<Job>();
     job->key = key;
 
-    if (useGameTDB() && validCode(game.gameCode))
-    {
-        // the ROM's own region first, then the common ones
-        QStringList regions = {gameTDBRegion(game.gameCode[3])};
-        for (const char* r : {"EN", "US", "JA"})
-            if (!regions.contains(r)) regions << r;
-        for (const QString& r : regions)
-            job->urls << QString(kGameTDB) + r + "/" + game.gameCode.toUpper() + ".png";
-    }
+    if (useGameTDB())
+        job->urls = gameTDBUrls(game);
 
     if (useLibretro())
     {
@@ -370,6 +430,7 @@ void Covers::tryNext(std::shared_ptr<Job> job)
     }
 
     const QString url = job->urls.takeFirst();
+    job->url = url;
     http->request(url.toStdString(), "", "", [this, job](const RA::HttpResponse& r)
     {
         if (!alive) return;
@@ -485,6 +546,13 @@ void Covers::finish(const std::shared_ptr<Job>& job, const QByteArray& data)
         if (img.width() > kMaxCoverWidth)
             img = img.scaledToWidth(kMaxCoverWidth, Qt::SmoothTransformation);
         img.save(dir.filePath(job->key + ".png"), "PNG");
+        // where it came from, so it can be shown elsewhere
+        QSaveFile src(dir.filePath(job->key + ".url"));
+        if (src.open(QIODevice::WriteOnly))
+        {
+            src.write(job->url.toUtf8());
+            src.commit();
+        }
         QFile::remove(dir.filePath(job->key + ".none"));
         img = img.convertToFormat(QImage::Format_ARGB32_Premultiplied);
         memory.insert(job->key, new QImage(img), std::max<qsizetype>(1, img.sizeInBytes() / 1024));

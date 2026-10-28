@@ -21,6 +21,8 @@
 
 #include <SDL2/SDL.h>
 
+#include <mutex>
+
 #include "Platform.h"
 #include "main.h"
 #include "NDS.h"
@@ -82,6 +84,14 @@ enum
 
 bool isRightModKey(QKeyEvent* event);
 int getEventKeyVal(QKeyEvent* event);
+
+// the DS game in the cart slot, as its banner names it
+struct CartGameInfo
+{
+    QString title;     // empty if there is no game
+    QString subtitle;
+    QString gameCode;
+};
 
 class EmuInstance
 {
@@ -217,6 +227,7 @@ private:
     void ejectCart();
     bool cartInserted();
     QString cartLabel();
+    CartGameInfo cartGame();
 
     bool loadGBAROM(QStringList filepath, QString& errorstr);
     void loadGBAAddon(int type, QString& errorstr);
@@ -286,6 +297,8 @@ private:
     std::string baseROMDir;
     std::string baseROMName;
     std::string baseAssetName;
+    std::mutex cartGameLock;
+    CartGameInfo cartGameInfo;
     bool changeCart;
     std::unique_ptr<melonDS::NDSCart::CartCommon> nextCart;
 

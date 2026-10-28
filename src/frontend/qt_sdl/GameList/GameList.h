@@ -77,6 +77,8 @@ QString settingsId(const Game& game);
 
 // Reads a DS ROM's header and banner. Returns false if it isn't one.
 bool readGame(const QString& path, Game& game);
+// Same, for a ROM already in memory (`fileName` is only used as a last-resort title).
+bool readGame(const QByteArray& rom, const QString& fileName, Game& game);
 
 // Finds every DS ROM in the given folders. Entries in `known` whose file
 // hasn't changed (same size and modification time) are reused instead of

@@ -30,6 +30,7 @@ regular melonDS desktop app.
 - **Screen layout hotkeys** to cycle through layouts and sizings while playing
 - **Settings backup and restore** in one file, for moving to another computer
 - **Game Settings** per game (graphics, layout, Wi-Fi, emulation, cheats), from the game list
+- **Discord Rich Presence** with the game, play time and, for games with achievements, RetroAchievements status
 - **Online play server picker** (Wiimmfi, Kaeru WFC or a custom DNS) in Wi-Fi Settings
 - **Built-in updater** with Stable and Nightly channels
 

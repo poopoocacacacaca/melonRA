@@ -9,6 +9,7 @@ set(SOURCES_QT_SDL
     Window.cpp
     SettingsBackup.cpp
     WfcServers.cpp
+    DiscordPresence.cpp
     GameSettingsDialog.cpp
     EmuInstance.cpp
     EmuInstanceAudio.cpp

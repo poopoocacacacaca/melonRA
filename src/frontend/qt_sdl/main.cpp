@@ -51,6 +51,7 @@
 
 #include "main.h"
 #include "RetroAchievements/RAClient.h"
+#include "DiscordPresence.h"
 #include "RetroAchievements/RADialogs.h"
 #include "Updater/UpdaterDialogs.h"
 #include "version.h"
@@ -413,6 +414,7 @@ int main(int argc, char** argv)
     RA::Manager::create();
     RA::SoundPlayer* raSounds = new RA::SoundPlayer(&melon);
     QObject::connect(RA::Manager::get(), &RA::Manager::playSound, raSounds, &RA::SoundPlayer::play);
+    Discord::Presence::create();
 
     createEmuInstance();
 
@@ -466,6 +468,7 @@ int main(int argc, char** argv)
     // but with this we make extra sure they are all deleted
     deleteAllEmuInstances();
 
+    Discord::Presence::destroy();
     RA::Manager::destroy();
 
     delete camManager[0];

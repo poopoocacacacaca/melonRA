@@ -19,7 +19,7 @@
   <property name="windowTitle">
    <string>Interface Settings - melonRA</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0">
    <property name="sizeConstraint">
     <enum>QLayout::SizeConstraint::SetFixedSize</enum>
    </property>
@@ -96,6 +96,42 @@
          <string>Mute audio while fast forwarding</string>
         </property>
        </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBoxDiscord">
+     <property name="title">
+      <string>Discord</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayoutDiscord">
+      <item>
+       <widget class="QCheckBox" name="cbDiscordEnabled">
+        <property name="toolTip">
+         <string>Shows the game you're playing, and for how long, on your Discord profile. Only works while the Discord app is open on this computer.</string>
+        </property>
+        <property name="text">
+         <string>Show what I'm playing on Discord</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayoutDiscord">
+        <property name="leftMargin">
+         <number>18</number>
+        </property>
+        <item>
+         <widget class="QCheckBox" name="cbDiscordAchievements">
+          <property name="toolTip">
+           <string>For games with achievements: what RetroAchievements says you're doing (Rich Presence), your progress and the game's icon.</string>
+          </property>
+          <property name="text">
+           <string>Include RetroAchievements status</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>

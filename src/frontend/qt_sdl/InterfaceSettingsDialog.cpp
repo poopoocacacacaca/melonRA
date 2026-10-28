@@ -19,6 +19,7 @@
 #include <QStyleFactory>
 #include "InterfaceSettingsDialog.h"
 #include "ui_InterfaceSettingsDialog.h"
+#include "DiscordPresence.h"
 
 #include "types.h"
 #include "Platform.h"
@@ -40,6 +41,10 @@ InterfaceSettingsDialog::InterfaceSettingsDialog(QWidget* parent) : QDialog(pare
     ui->spinMouseHideSeconds->setValue(cfg.GetInt("Mouse.HideSeconds"));
     ui->cbPauseLostFocus->setChecked(cfg.GetBool("PauseLostFocus"));
     ui->cbMuteFastForward->setChecked(cfg.GetBool("MuteFastForward"));
+    ui->cbDiscordEnabled->setChecked(cfg.GetBool("Discord.Enabled"));
+    ui->cbDiscordAchievements->setChecked(cfg.GetBool("Discord.ShowAchievements"));
+    ui->cbDiscordAchievements->setEnabled(ui->cbDiscordEnabled->isChecked());
+    connect(ui->cbDiscordEnabled, &QCheckBox::toggled, ui->cbDiscordAchievements, &QCheckBox::setEnabled);
     ui->spinTargetFPS->setValue(cfg.GetDouble("TargetFPS"));
     ui->spinFFW->setValue(cfg.GetDouble("FastForwardFPS"));
     ui->spinSlow->setValue(cfg.GetDouble("SlowmoFPS"));
@@ -120,6 +125,8 @@ void InterfaceSettingsDialog::done(int r)
         cfg.SetInt("Mouse.HideSeconds", ui->spinMouseHideSeconds->value());
         cfg.SetBool("PauseLostFocus", ui->cbPauseLostFocus->isChecked());
         cfg.SetBool("MuteFastForward", ui->cbMuteFastForward->isChecked());
+        cfg.SetBool("Discord.Enabled", ui->cbDiscordEnabled->isChecked());
+        cfg.SetBool("Discord.ShowAchievements", ui->cbDiscordAchievements->isChecked());
 
         double val = ui->spinTargetFPS->value();
         if (val == 0.0) cfg.SetDouble("TargetFPS", 0.0001);
@@ -142,6 +149,9 @@ void InterfaceSettingsDialog::done(int r)
             qApp->setStyle(themeName);
         else
             qApp->setStyle(*systemThemeName);
+
+        if (Discord::Presence* presence = Discord::Presence::get())
+            presence->reloadSettings();
 
         emit updateInterfaceSettings();
     }

@@ -6,6 +6,13 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 - **MINOR** goes up for feature releases.
 - **PATCH** goes up for small updates and bug fixes.
 
+## Unreleased
+
+- **Discord Rich Presence.** Your Discord profile shows the game you're playing and for how long,
+  with its box art when there is one online. For games with achievements it shows what
+  RetroAchievements says you're doing, your progress, the game's icon and a link to the game's page.
+  Both can be turned off in Config → Interface Settings. Only works while the Discord app is open.
+
 ## 0.3.0
 
 - **Play offline.** Games you've played online once keep their achievements without an internet

@@ -129,6 +129,8 @@ DefaultList<bool> DefaultBools =
     {"RetroAchievements.ShowAccountOnStart", true},
     {"RetroAchievements.OfflineSessions", true},
     {"KeepRunningInSettings", true},
+    {"Discord.Enabled", true},
+    {"Discord.ShowAchievements", true},
     {"GameList.Enabled", true},
     {"GameList.SearchSubfolders", true},
     {"GameList.RegionNames", true},

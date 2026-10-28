@@ -49,6 +49,7 @@
 #include "FreeBIOS.h"
 #include "main.h"
 #include "RetroAchievements/RAClient.h"
+#include "GameList/GameList.h"
 
 #include "NDSCart/CartSD.h"
 
@@ -2036,12 +2037,21 @@ bool EmuInstance::loadROM(QStringList filepath, bool reset, QString& errorstr)
             .SRAMLength = savelen,
     };
 
+    GameList::Game banner;
+    GameList::readGame(QByteArray::fromRawData((const char*)filedata.get(), (qsizetype)filelen),
+                       QString::fromStdString(romname), banner);
+
     auto cart = NDSCart::ParseROM(std::move(filedata), filelen, this, std::move(cartargs));
     if (!cart)
     {
         // If we couldn't parse the ROM...
         errorstr = "Failed to load the DS ROM.";
         return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> guard(cartGameLock);
+        cartGameInfo = {banner.title, banner.subtitle, banner.gameCode};
     }
 
     // the game's own settings (Game Settings in the game list), before the
@@ -2118,11 +2128,20 @@ void EmuInstance::ejectCart()
     baseROMDir = "";
     baseROMName = "";
     baseAssetName = "";
+
+    std::lock_guard<std::mutex> guard(cartGameLock);
+    cartGameInfo = {};
 }
 
 bool EmuInstance::cartInserted()
 {
     return cartType != -1;
+}
+
+CartGameInfo EmuInstance::cartGame()
+{
+    std::lock_guard<std::mutex> guard(cartGameLock);
+    return cartGameInfo;
 }
 
 QString EmuInstance::cartLabel()

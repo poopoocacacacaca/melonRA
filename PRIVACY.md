@@ -57,6 +57,21 @@ time), melonRA downloads box art for the games it shows from **GameTDB** (`art.g
 thumbnails** (`thumbnails.libretro.com`, by title). Both can be turned off in
 View → Game Covers. The covers are kept in the `covers` folder.
 
+### Discord
+
+While the Discord app is open on your computer, melonRA tells it which game you're
+playing, since when, and for games with achievements, the RetroAchievements Rich
+Presence text, your achievement progress and Hardcore or Casual mode. Discord shows
+this on your profile. melonRA talks only to the Discord app on your own computer,
+never to Discord's servers. The images are links to the game's box art (GameTDB or
+libretro thumbnails), its RetroAchievements icon and the melonRA logo on GitHub,
+which Discord loads. If cover downloads are allowed and a game's cover wasn't
+downloaded yet, melonRA checks GameTDB for it. Turn this off in Config →
+Interface Settings.
+
+Discord's handling of it is covered by the
+[Discord privacy policy](https://discord.com/privacy).
+
 ### Online play servers
 
 If you pick an online play server in Config → Wi-Fi Settings (Wiimmfi, Kaeru

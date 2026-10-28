@@ -20,6 +20,7 @@
 #define GAMELIST_COVERS_H
 
 #include <deque>
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -82,6 +83,12 @@ public:
 
     QString cacheFolder() const;
 
+    // A web address of the game's cover, for showing it elsewhere (Discord):
+    // where its downloaded cover came from or, if downloads are allowed, the
+    // first GameTDB cover that exists. Empty if there is none. `done` runs on
+    // this thread, possibly right away.
+    void onlineCover(const Game& game, std::function<void(const QString&)> done);
+
     // settings
     static bool useGameTDB();
     static void setUseGameTDB(bool on);
@@ -106,6 +113,7 @@ private:
         QStringList urls;      // still to try
         QStringList names;     // titles to look up in the libretro index
         QString region;        // preferred libretro region tag ("USA", ...)
+        QString url;           // being tried now
         bool libretroDone = false;
         // a request failed for a reason other than "not there" (offline,
         // server trouble): only skip the game for this session
@@ -121,6 +129,8 @@ private:
     void finish(const std::shared_ptr<Job>& job, const QByteArray& data);
     bool resolveLibretro(Job& job);
     void loadLibretroIndex();
+    QStringList gameTDBUrls(const Game& game) const;
+    void probeOnline(const QString& key, QStringList urls, std::function<void(const QString&)> done);
 
     std::unique_ptr<RA::Http> http;
     QCache<QString, QImage> memory;

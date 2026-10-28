@@ -223,6 +223,8 @@ private:
     void pauseForSettingsWindow();
     void resumeAfterSettingsWindow();
     int settingsWindowPauses = 0;
+    // what Discord shows for the running game
+    void updateDiscordPresence();
     virtual void closeEvent(QCloseEvent* event) override;
 
     QStringList currentROM;

@@ -35,6 +35,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QDirIterator>
+#include <QBuffer>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -245,22 +246,16 @@ const char* const kColumnsKey = "GameList.ColumnLayout";
 
 }
 
-bool readGame(const QString& path, Game& game)
+namespace
 {
-    QFile f(path);
-    if (!f.open(QIODevice::ReadOnly))
-        return false;
 
+// the header and banner of a ROM in `f`; the file details are filled in by the caller
+bool readGameFrom(QIODevice& f, const QString& fileName, Game& game)
+{
     const qint64 size = f.size();
     QByteArray header = f.read(kHeaderSize);
     if (header.size() < kHeaderSize)
         return false;
-
-    QFileInfo info(path);
-    game.path = info.absoluteFilePath();
-    game.fileName = info.fileName();
-    game.size = size;
-    game.modified = info.lastModified().toMSecsSinceEpoch();
 
     const QString code = latin(header, kHdrGameCode, 4);
     game.gameCode = code;
@@ -343,7 +338,7 @@ bool readGame(const QString& path, Game& game)
     if (game.title.isEmpty())
         game.title = latin(header, kHdrTitle, 12);
     if (game.title.isEmpty())
-        game.title = info.completeBaseName();
+        game.title = QFileInfo(fileName).completeBaseName();
 
     if (game.developer.isEmpty())
     {
@@ -353,6 +348,34 @@ bool readGame(const QString& path, Game& game)
     }
 
     return true;
+}
+
+}
+
+bool readGame(const QString& path, Game& game)
+{
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly))
+        return false;
+
+    QFileInfo info(path);
+    game.path = info.absoluteFilePath();
+    game.fileName = info.fileName();
+    game.size = f.size();
+    game.modified = info.lastModified().toMSecsSinceEpoch();
+    return readGameFrom(f, game.fileName, game);
+}
+
+bool readGame(const QByteArray& rom, const QString& fileName, Game& game)
+{
+    QBuffer buf;
+    buf.setData(rom);
+    if (!buf.open(QIODevice::ReadOnly))
+        return false;
+
+    game.fileName = fileName;
+    game.size = rom.size();
+    return readGameFrom(buf, fileName, game);
 }
 
 std::vector<Game> scanFolders(const QStringList& dirs, bool recursive, const std::atomic<bool>& cancel,

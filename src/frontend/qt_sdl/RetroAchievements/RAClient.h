@@ -193,6 +193,9 @@ public:
     QString gameTitle() const;
     std::string gameBadgeUrl() const;
     QString richPresence() const;
+    uint32_t gameId() const;
+    // e.g. "12 of 50 achievements"; empty if the game has none
+    QString achievementProgress() const;
     QString hardcoreStatusText() const;
 
 signals:

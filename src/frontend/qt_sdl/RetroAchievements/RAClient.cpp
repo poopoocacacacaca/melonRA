@@ -1304,6 +1304,20 @@ QString Manager::richPresence() const
     return QString();
 }
 
+uint32_t Manager::gameId() const
+{
+    const rc_client_game_t* game = rc_client_get_game_info(rcClient);
+    return game ? game->id : 0;
+}
+
+QString Manager::achievementProgress() const
+{
+    rc_client_user_game_summary_t summary{};
+    rc_client_get_user_game_summary(rcClient, &summary);
+    if (!summary.num_promoted_achievements) return {};
+    return QString("%1 of %2 achievements").arg(summary.num_unlocked_achievements).arg(summary.num_promoted_achievements);
+}
+
 QString Manager::hardcoreStatusText() const
 {
     return rc_client_get_hardcore_enabled(rcClient) ? "Hardcore Mode" : "Casual Mode";
