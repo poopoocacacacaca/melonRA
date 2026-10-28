@@ -259,6 +259,8 @@ QJsonObject Presence::buildActivity() const
     }
 
     activity["type"] = 0; // "Playing"
+    // the members list says the game ("details") instead of "melonRA"
+    activity["status_display_type"] = 2;
     activity["details"] = fit(details);
     if (!state.trimmed().isEmpty())
         activity["state"] = fit(state);
