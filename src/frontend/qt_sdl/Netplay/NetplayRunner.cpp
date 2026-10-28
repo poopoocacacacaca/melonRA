@@ -86,7 +86,7 @@ bool Runner::readGame(const QStringList& romPath, std::vector<u8>& rom, RoomInfo
     }
 
     QByteArray sha = QCryptographicHash::hash(
-        QByteArrayView((const char*)rom.data(), (qsizetype)rom.size()), QCryptographicHash::Sha1);
+        QByteArray::fromRawData((const char*)rom.data(), (qsizetype)rom.size()), QCryptographicHash::Sha1);
     memcpy(room.ROMHash.data(), sha.constData(), 20);
     room.ROMSize = (u32)rom.size();
 

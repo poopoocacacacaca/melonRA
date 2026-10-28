@@ -47,6 +47,11 @@ jobs:
       run: |
         cmake --build build
         DESTDIR=AppDir cmake --install build
+    - name: Show build errors
+      if: failure()
+      shell: bash
+      run: |
+        cmake --build build -- -k 0 2>&1 | grep -E "error[: ]" | head -40 | sed 's/^/::error::/' || true
     - uses: actions/upload-artifact@v7
       with:
         name: melonRA-ubuntu-${{ matrix.arch.name }}
