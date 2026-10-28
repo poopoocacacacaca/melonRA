@@ -61,7 +61,7 @@ namespace Updater
 namespace
 {
 
-constexpr const char* kDefaultRepo = "poopoocacacacaca/melonRA";
+constexpr const char* kDefaultRepo = "ppkkkkk/melonRA";
 constexpr int kApiTimeoutMs = 10000;
 constexpr int kDownloadTimeoutMs = 30000;  // with no data arriving
 constexpr int kMaxListedCommits = 30;
@@ -360,6 +360,22 @@ QJsonObject parseObject(const QByteArray& body)
     return QJsonDocument::fromJson(body).object();
 }
 
+// "owner/name" of the repository a release belongs to, as GitHub reports it.
+// It differs from repo() once the repository was renamed or moved: GitHub
+// redirects the old address and answers with the new one.
+QString releaseRepo(const QJsonObject& json)
+{
+    const QString prefix = "https://github.com/";
+    const QString url = json["html_url"].toString();
+    if (url.startsWith(prefix))
+    {
+        const QStringList parts = url.mid(prefix.size()).split('/');
+        if (parts.size() >= 2 && !parts[0].isEmpty() && !parts[1].isEmpty())
+            return parts[0] + "/" + parts[1];
+    }
+    return repo();
+}
+
 // finds this platform's package; returns its label (the nightly's labels
 // carry the commit each file was built from)
 QString fillAsset(Release& rel, const QJsonObject& json)
@@ -376,7 +392,8 @@ QString fillAsset(Release& rel, const QJsonObject& json)
             rel.assetUrl = asset["browser_download_url"].toString();
             rel.assetSize = (qint64)asset["size"].toDouble();
             // only this repository's release files, over HTTPS
-            if (!rel.assetUrl.startsWith("https://github.com/" + repo() + "/releases/download/", Qt::CaseInsensitive))
+            if (!rel.assetUrl.startsWith("https://github.com/" + releaseRepo(json) + "/releases/download/",
+                                         Qt::CaseInsensitive))
                 rel.assetUrl.clear();
             const QString digest = asset["digest"].toString();
             if (digest.startsWith("sha256:", Qt::CaseInsensitive))

@@ -43,7 +43,7 @@ namespace
 
 // the "melonRA" application on Discord's developer portal
 const char* const kApplicationId = "1565031795559501885";
-const char* const kLogoUrl = "https://raw.githubusercontent.com/poopoocacacacaca/melonRA/master/res/melon512.png";
+const char* const kLogoUrl = "https://raw.githubusercontent.com/ppkkkkk/melonRA/master/res/melon512.png";
 
 enum Opcode
 {

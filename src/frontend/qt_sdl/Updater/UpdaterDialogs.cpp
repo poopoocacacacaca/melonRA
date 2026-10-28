@@ -106,7 +106,7 @@ bool runTask(QWidget* parent, const QString& label, int showAfterMs, const Work&
 void openPage(const Release& rel)
 {
     QString url = rel.pageUrl;
-    if (url.isEmpty()) url = "https://github.com/poopoocacacacaca/melonRA/releases";
+    if (url.isEmpty()) url = "https://github.com/ppkkkkk/melonRA/releases";
     QDesktopServices::openUrl(QUrl(url));
 }
 

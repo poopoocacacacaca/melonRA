@@ -25,6 +25,9 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 - **Rotate screens hotkey.** Config → Input and Hotkeys → General Hotkeys has a "Rotate screens" hotkey
   that turns the screens a quarter turn each press, for games played sideways (like Mario & Luigi:
   Bowser's Inside Story), with an on-screen message showing the angle. Unassigned until you pick a key.
+- **New address.** melonRA now lives at <https://github.com/ppkkkkk/melonRA>; the app ID on Linux
+  and macOS is now `io.github.ppkkkkk.melonRA`. The updater follows the repository if it's ever
+  renamed or moved again.
 
 ## 0.3.0
 

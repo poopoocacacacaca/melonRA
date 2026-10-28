@@ -2,7 +2,7 @@
 
 melonRA as a whole is distributed under the **GNU General Public License v3.0 or later**
 (see [LICENSE](LICENSE)), the same license as melonDS. Its complete source code is
-available at <https://github.com/poopoocacacacaca/melonRA>.
+available at <https://github.com/ppkkkkk/melonRA>.
 
 melonRA is a single emulator built on melonDS; it doesn't ship separate emulator cores.
 The following components are included in, or linked into, melonRA builds.

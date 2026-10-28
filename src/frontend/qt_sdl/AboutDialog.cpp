@@ -71,5 +71,5 @@ void AboutDialog::openGitHub()
 
 void AboutDialog::openMelonRAGitHub()
 {
-    QDesktopServices::openUrl(QUrl("https://github.com/poopoocacacacaca/melonRA"));
+    QDesktopServices::openUrl(QUrl("https://github.com/ppkkkkk/melonRA"));
 }

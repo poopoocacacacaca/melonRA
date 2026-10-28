@@ -16,7 +16,7 @@
    * Arch Linux: `sudo pacman -S base-devel cmake extra-cmake-modules git libpcap sdl2 qt6-{base,multimedia,svg} libarchive enet zstd faad2`
 2. Download the melonRA repository and prepare:
    ```bash
-   git clone https://github.com/poopoocacacacaca/melonRA
+   git clone https://github.com/ppkkkkk/melonRA
    cd melonRA
    ```
 3. Compile:
@@ -34,7 +34,7 @@
 4. Install git and clone the repository
    ```bash
    pacman -S git
-   git clone https://github.com/poopoocacacacaca/melonRA
+   git clone https://github.com/ppkkkkk/melonRA
    cd melonRA
    ```
 5. Install dependencies:  
@@ -59,7 +59,7 @@ If everything went well, melonRA should now be in the `build` folder. For dynami
 2. Install dependencies: `brew install git pkg-config cmake sdl2 qt@6 libarchive enet zstd faad2`
 3. Download the melonRA repository and prepare:
    ```zsh
-   git clone https://github.com/poopoocacacacaca/melonRA
+   git clone https://github.com/ppkkkkk/melonRA
    cd melonRA
    ```
 4. Compile:
@@ -77,5 +77,5 @@ If you want an app bundle that can be distributed to other computers without nee
 
 melonRA provides a Nix flake with support for both macOS and Linux. The [Nix package manager](https://nixos.org) needs to be installed to use it.
 
-* To run melonRA, just type `nix run github:poopoocacacacaca/melonRA`.
+* To run melonRA, just type `nix run github:ppkkkkk/melonRA`.
 * To get a shell for development, clone the melonRA repository and type `nix develop` in its directory.

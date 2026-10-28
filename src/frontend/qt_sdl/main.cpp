@@ -247,7 +247,7 @@ MelonApplication::MelonApplication(int& argc, char** argv)
 #if !defined(Q_OS_APPLE)
     setWindowIcon(QIcon(":/melon-icon"));
     #if defined(Q_OS_UNIX)
-        setDesktopFileName(QString("io.github.poopoocacacacaca.melonRA"));
+        setDesktopFileName(QString("io.github.ppkkkkk.melonRA"));
     #endif
 #endif
 }

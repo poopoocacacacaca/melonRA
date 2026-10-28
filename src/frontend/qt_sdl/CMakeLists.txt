@@ -301,10 +301,10 @@ if (UNIX AND NOT APPLE)
     foreach(SIZE 16 32 48 64 128 256)
         install(FILES ${CMAKE_SOURCE_DIR}/res/icon/melon_${SIZE}x${SIZE}.png
             DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/${SIZE}x${SIZE}/apps
-            RENAME io.github.poopoocacacacaca.melonRA.png)
+            RENAME io.github.ppkkkkk.melonRA.png)
     endforeach()
 
-    install(FILES ${CMAKE_SOURCE_DIR}/res/io.github.poopoocacacacaca.melonRA.desktop DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications)
+    install(FILES ${CMAKE_SOURCE_DIR}/res/io.github.ppkkkkk.melonRA.desktop DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications)
     install(TARGETS melonDS BUNDLE DESTINATION ${CMAKE_BINARY_DIR} RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
     if (NOT USE_QT6)

@@ -5,10 +5,10 @@
 <a href="https://github.com/melonDS-emu/melonDS"><img src="https://img.shields.io/badge/based%20on-melonDS%201.1-%235c913b.svg"></a>
 <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPL%20v3-%23ff554d.svg"></a>
 <br>
-<a href="https://github.com/poopoocacacacaca/melonRA/actions/workflows/build-windows.yml"><img src="https://github.com/poopoocacacacaca/melonRA/actions/workflows/build-windows.yml/badge.svg" /></a>
-<a href="https://github.com/poopoocacacacaca/melonRA/actions/workflows/build-ubuntu.yml"><img src="https://github.com/poopoocacacacaca/melonRA/actions/workflows/build-ubuntu.yml/badge.svg" /></a>
-<a href="https://github.com/poopoocacacacaca/melonRA/actions/workflows/build-macos.yml"><img src="https://github.com/poopoocacacacaca/melonRA/actions/workflows/build-macos.yml/badge.svg" /></a>
-<a href="https://github.com/poopoocacacacaca/melonRA/actions/workflows/build-bsd.yml"><img src="https://github.com/poopoocacacacaca/melonRA/actions/workflows/build-bsd.yml/badge.svg" /></a>
+<a href="https://github.com/ppkkkkk/melonRA/actions/workflows/build-windows.yml"><img src="https://github.com/ppkkkkk/melonRA/actions/workflows/build-windows.yml/badge.svg" /></a>
+<a href="https://github.com/ppkkkkk/melonRA/actions/workflows/build-ubuntu.yml"><img src="https://github.com/ppkkkkk/melonRA/actions/workflows/build-ubuntu.yml/badge.svg" /></a>
+<a href="https://github.com/ppkkkkk/melonRA/actions/workflows/build-macos.yml"><img src="https://github.com/ppkkkkk/melonRA/actions/workflows/build-macos.yml/badge.svg" /></a>
+<a href="https://github.com/ppkkkkk/melonRA/actions/workflows/build-bsd.yml"><img src="https://github.com/ppkkkkk/melonRA/actions/workflows/build-bsd.yml/badge.svg" /></a>
 </p>
 
 melonRA is [melonDS](https://github.com/melonDS-emu/melonDS), the Nintendo DS/DSi emulator, with
@@ -36,10 +36,10 @@ regular melonDS desktop app.
 
 ## Getting started
 
-1. Download the [latest release](https://github.com/poopoocacacacaca/melonRA/releases/latest):
+1. Download the [latest release](https://github.com/ppkkkkk/melonRA/releases/latest):
    `melonRA-<version>-windows-x86_64.zip` for Windows, or the Linux AppImage. Unzip it anywhere and run
    `melonRA.exe`. To try the newest changes before a release, use the
-   [nightly build](https://github.com/poopoocacacacaca/melonRA/releases/tag/nightly) (Windows and Linux),
+   [nightly build](https://github.com/ppkkkkk/melonRA/releases/tag/nightly) (Windows and Linux),
    or build it yourself (see below).
 2. Set up melonDS as usual (BIOS/firmware are optional, see the original README below).
    Click **Add Folder...** on the main screen (or the **Game folders** list in **Config → Path Settings**) to list your
@@ -69,7 +69,7 @@ When a new version is out, melonRA asks whether to update now, skip that version
 time. **Config → Update Settings** has the rest:
 
 - **Update Channel:** *Stable* follows the releases. *Nightly* follows the
-  [nightly build](https://github.com/poopoocacacacaca/melonRA/releases/tag/nightly), a new build for every
+  [nightly build](https://github.com/ppkkkkk/melonRA/releases/tag/nightly), a new build for every
   change.
 - **Always update to the latest version** downloads and installs updates on startup, before melonRA opens.
 - **Never ask about updates** stops the check at startup. You can still check from the same window.
@@ -92,7 +92,7 @@ tree, so there are **no extra dependencies**.
    ```
 4. Clone and build:
    ```bash
-   git clone https://github.com/poopoocacacacaca/melonRA
+   git clone https://github.com/ppkkkkk/melonRA
    cd melonRA
    cmake -B build
    cmake --build build
@@ -106,7 +106,7 @@ Install the same dependencies as for melonDS. On Ubuntu 24.04:
 ```bash
 sudo apt install cmake extra-cmake-modules libcurl4-gnutls-dev libpcap0.8-dev libsdl2-dev libarchive-dev \
   libenet-dev libzstd-dev libfaad-dev qt6-{base,base-private,multimedia,svg}-dev
-git clone https://github.com/poopoocacacacaca/melonRA
+git clone https://github.com/ppkkkkk/melonRA
 cd melonRA
 cmake -B build
 cmake --build build -j$(nproc --all)
@@ -116,7 +116,7 @@ cmake --build build -j$(nproc --all)
 
 ```zsh
 brew install git pkg-config cmake sdl2 qt@6 libarchive enet zstd faad2
-git clone https://github.com/poopoocacacacaca/melonRA
+git clone https://github.com/ppkkkkk/melonRA
 cd melonRA
 cmake -B build -DCMAKE_PREFIX_PATH="$(brew --prefix qt@6);$(brew --prefix libarchive)"
 cmake --build build -j$(sysctl -n hw.logicalcpu)

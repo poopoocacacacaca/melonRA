@@ -166,7 +166,7 @@ set(MELONDS_GIT_HASH "$ENV{MELONDS_GIT_HASH}" CACHE STRING "The hash of the Git 
 set(MELONDS_BUILD_PROVIDER "$ENV{MELONDS_BUILD_PROVIDER}" CACHE STRING "The name of the provider of this build")
 set(MELONDS_GIT_REPO "$ENV{MELONDS_GIT_REPO}" CACHE STRING "The GitHub repository (owner/name) this build comes from")
 if (NOT MELONDS_GIT_REPO)
-    set(MELONDS_GIT_REPO "poopoocacacacaca/melonRA")
+    set(MELONDS_GIT_REPO "ppkkkkk/melonRA")
 endif()
 
 if (MELONDS_EMBED_BUILD_INFO)
