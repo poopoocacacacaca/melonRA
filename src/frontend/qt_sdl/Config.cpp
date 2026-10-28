@@ -136,6 +136,7 @@ DefaultList<bool> DefaultBools =
     {"GameList.Enabled", true},
     {"GameList.SearchSubfolders", true},
     {"GameList.RegionNames", true},
+    {"GameList.MasteryStars", true},
     {"GameList.CoversGameTDB", true},
     {"GameList.CoversLibretro", true},
     {"RetroAchievements.NotificationsBold", true},

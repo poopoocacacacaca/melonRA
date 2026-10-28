@@ -15,6 +15,12 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   off, or just the achievement status, the count or the small melonRA icon. Only works while the
   Discord app is open.
 
+- **Achievement progress in the game list.** A new Achievements column (right-click the column
+  headers to show it) has a bar for each game that fills up as you unlock its achievements, turning
+  gold once they're all unlocked. Games you've mastered get a ⭐ in front of their title, in the list
+  and on their cover in the grid; "Show Mastery Stars" in the game list's right-click menu turns the
+  stars off. Progress updates when you stop playing.
+
 ## 0.3.0
 
 - **Play offline.** Games you've played online once keep their achievements without an internet

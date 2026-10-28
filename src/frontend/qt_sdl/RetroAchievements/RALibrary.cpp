@@ -129,6 +129,11 @@ Library::Library(Manager& manager) : m(manager)
 {
     loadHashCache();
     connect(GameList::notifier(), &GameList::Notifier::gamesChanged, this, &Library::refresh);
+    // waiting for the login (at startup, or after logging in later)
+    connect(&m, &Manager::loginFinished, this, [this](bool success, QString)
+    {
+        if (success && active && waitingForLogin) refresh();
+    });
 }
 
 Library::~Library()
@@ -150,6 +155,13 @@ void Library::activate()
 {
     active = true;
     refresh();
+}
+
+void Library::refreshProgress()
+{
+    if (!active || hashLibrary.empty() || !m.isLoggedIn()) return;
+    detailCache.clear();
+    fetchProgress();
 }
 
 void Library::refresh()
@@ -348,6 +360,7 @@ void Library::match()
         std::transform(h.begin(), h.end(), h.begin(), ::tolower);
         auto it = hashLibrary.find(h);
         g.gameId = (it != hashLibrary.end()) ? it->second : 0;
+        g.matched = true; // no fingerprint: not a game RetroAchievements could know
     }
     setStatus({});
     fetchTitles();

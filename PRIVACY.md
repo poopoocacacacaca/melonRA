@@ -27,7 +27,8 @@ logged in. All of it goes over HTTPS to **RetroAchievements.org** (`retroachieve
 melonRA also downloads achievement badges, game icons and user avatars from
 `media.retroachievements.org`.
 
-When you open the Achievements window, melonRA downloads RetroAchievements'
+When you open the Achievements window, or while the game list shows achievement
+progress (its Achievements column or the mastery stars), melonRA downloads RetroAchievements'
 list of DS game fingerprints and matches the games in your game list against
 it on your computer (the fingerprints of your ROMs aren't uploaded), and
 fetches your progress for DS games. Selecting a game fetches its achievements

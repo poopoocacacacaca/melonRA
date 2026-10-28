@@ -26,7 +26,7 @@ regular melonDS desktop app.
   - customizable overlay: position, style, size, colored or black and white
   - achievements and leaderboards browser for every game in your list
   - optional RAIntegration developer toolkit (Windows)
-- **Game list** with icons, region flags, search and sorting, plus a grid view with box art
+- **Game list** with icons, region flags, search and sorting, a grid view with box art, and achievement progress bars with stars for mastered games
 - **Screen layout hotkeys** to cycle through layouts and sizings while playing
 - **Settings backup and restore** in one file, for moving to another computer
 - **Game Settings** per game (graphics, layout, Wi-Fi, emulation, cheats), from the game list

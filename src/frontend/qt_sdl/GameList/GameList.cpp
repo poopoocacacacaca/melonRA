@@ -20,6 +20,7 @@
 #include "Platform.h"
 
 #include <algorithm>
+#include <cmath>
 #include <mutex>
 #include <set>
 
@@ -75,6 +76,8 @@
 
 #include "Config.h"
 #include "Covers.h"
+#include "RetroAchievements/RAClient.h"
+#include "RetroAchievements/RALibrary.h"
 
 namespace GameList
 {
@@ -595,6 +598,16 @@ void setShowSearchBar(bool show)
     globalConfig().SetBool("GameList.SearchBar", show);
 }
 
+bool showMasteryStars()
+{
+    return globalConfig().GetBool("GameList.MasteryStars");
+}
+
+void setShowMasteryStars(bool show)
+{
+    globalConfig().SetBool("GameList.MasteryStars", show);
+}
+
 bool showRegionNames()
 {
     return globalConfig().GetBool("GameList.RegionNames");
@@ -657,6 +670,24 @@ void Model::refreshSettingsMarks()
             emit dataChanged(index((int)i, Col_Title), index((int)i, Col_Title), {HasSettingsRole});
         }
     }
+}
+
+void Model::setProgress(const QHash<QString, Progress>& byPath)
+{
+    progress = byPath;
+    if (!list.empty())
+    {
+        emit dataChanged(index(0, Col_Title), index((int)list.size() - 1, Col_Title), {StarRole});
+        emit dataChanged(index(0, Col_Achievements), index((int)list.size() - 1, Col_Achievements));
+    }
+}
+
+void Model::setShowStars(bool show)
+{
+    if (show == stars) return;
+    stars = show;
+    if (!list.empty())
+        emit dataChanged(index(0, Col_Title), index((int)list.size() - 1, Col_Title), {StarRole});
 }
 
 QString settingsId(const Game& game)
@@ -791,6 +822,26 @@ QVariant Model::data(const QModelIndex& index, int role) const
         return coverKeys[index.row()];
     if (role == HasSettingsRole)
         return (size_t)index.row() < hasSettings.size() && hasSettings[index.row()];
+    if (role == StarRole)
+        return stars && progress.value(g.path).mastered();
+    if (role == ProgressRole)
+        return QVariant::fromValue(progress.value(g.path));
+
+    if (role == Qt::ToolTipRole && index.column() == Col_Achievements)
+    {
+        const Progress pr = progress.value(g.path);
+        if (pr.state == Progress::NotOnRA) return "Not on RetroAchievements";
+        if (pr.state != Progress::Known) return {};
+        if (!pr.total) return "No achievements yet";
+        QString tip = QString("%1 of %2 achievements unlocked").arg(pr.unlocked).arg(pr.total);
+        if (pr.mastered()) tip += "\nMastered";
+        else
+        {
+            if (pr.hardcore) tip += QString("\n%1 in Hardcore Mode").arg(pr.hardcore);
+            if (pr.completed()) tip += "\nCompleted (unlock them all in Hardcore Mode to master it)";
+        }
+        return tip;
+    }
 
     if (role == Qt::ToolTipRole)
     {
@@ -838,6 +889,15 @@ QVariant Model::data(const QModelIndex& index, int role) const
         if (role == Qt::DisplayRole) return g.fileName;
         if (role == SortRole) return g.fileName.toCaseFolded();
         break;
+    case Col_Achievements:
+        if (role == SortRole)
+        {
+            // by how far along, then by how many; games without any last
+            const Progress pr = progress.value(g.path);
+            if (pr.state != Progress::Known || !pr.total) return pr.state == Progress::NotOnRA ? -2.0 : -1.0;
+            return (double)pr.unlocked / pr.total + (pr.mastered() ? 0.5 : 0.0) + pr.unlocked * 1e-6;
+        }
+        break;
     }
     return {};
 }
@@ -855,6 +915,7 @@ QVariant Model::headerData(int section, Qt::Orientation orientation, int role) c
     case Col_Platform:  return "Platform";
     case Col_Size:      return "Size";
     case Col_FileName:  return "File Name";
+    case Col_Achievements: return "Achievements";
     }
     return {};
 }
@@ -921,6 +982,30 @@ static void drawGear(QPainter* p, const QRectF& r, const QColor& color)
     p->restore();
 }
 
+// gold, for mastered games
+static const QColor kGold(245, 197, 24);
+
+// a five-pointed star, marking mastered games
+static void drawStar(QPainter* p, const QRectF& r, const QColor& fill)
+{
+    p->save();
+    p->setRenderHint(QPainter::Antialiasing);
+    const QPointF c = r.center() + QPointF(0, r.height() * 0.04);
+    const qreal outer = std::min(r.width(), r.height()) / 2;
+    const qreal inner = outer * 0.45;
+    QPolygonF star;
+    for (int i = 0; i < 10; i++)
+    {
+        const qreal a = (i * 36 - 90) * 3.14159265358979 / 180.0;
+        const qreal rad = (i & 1) ? inner : outer;
+        star << c + QPointF(std::cos(a) * rad, std::sin(a) * rad);
+    }
+    p->setPen(QPen(fill.darker(150), std::max<qreal>(1.0, outer / 8), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    p->setBrush(fill);
+    p->drawPolygon(star);
+    p->restore();
+}
+
 class RowDelegate : public QStyledItemDelegate
 {
 public:
@@ -951,26 +1036,39 @@ public:
         const QWidget* w = option.widget;
         QStyle* style = w ? w->style() : QApplication::style();
 
-        const bool gear = index.column() == Model::Col_Title && index.data(Model::HasSettingsRole).toBool();
-        if (!gear)
+        const bool title_ = index.column() == Model::Col_Title;
+        const bool star = title_ && index.data(Model::StarRole).toBool();
+        const bool gear = title_ && index.data(Model::HasSettingsRole).toBool();
+        if (!star && !gear)
         {
             style->drawControl(QStyle::CE_ItemViewItem, &opt, p, w);
             return;
         }
 
-        // the gear goes in front of the title: draw the icon without the
-        // text, then the gear, then the title after it
+        // the marks go in front of the title: draw the icon without the
+        // text, then the star and the gear, then the title after them
         const QRect text = style->subElementRect(QStyle::SE_ItemViewItemText, &opt, w);
         const QString title = opt.text;
         opt.text.clear();
         style->drawControl(QStyle::CE_ItemViewItem, &opt, p, w);
 
         const int g = std::max(10, opt.fontMetrics.height() - 4);
-        QColor c = opt.palette.color(QPalette::Text);
-        c.setAlphaF(0.75);
-        drawGear(p, QRectF(text.left() + 1, opt.rect.center().y() - g / 2.0, g, g), c);
+        const qreal top = opt.rect.center().y() - g / 2.0;
+        int x = text.left() + 1;
+        if (star)
+        {
+            drawStar(p, QRectF(x - 1, top - 1, g + 2, g + 2), kGold);
+            x += g + 5;
+        }
+        if (gear)
+        {
+            QColor c = opt.palette.color(QPalette::Text);
+            c.setAlphaF(0.75);
+            drawGear(p, QRectF(x, top, g, g), c);
+            x += g + 5;
+        }
 
-        QRect rest = text.adjusted(g + 6, 0, 0, 0);
+        QRect rest = text.adjusted(x - text.left() + 1, 0, 0, 0);
         p->save();
         p->setFont(opt.font);
         p->setPen(opt.palette.color(QPalette::Text));
@@ -982,13 +1080,85 @@ public:
     bool helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option,
                    const QModelIndex& index) override
     {
-        if (event->type() == QEvent::ToolTip && index.column() == Model::Col_Title &&
-            index.data(Model::HasSettingsRole).toBool())
+        if (event->type() == QEvent::ToolTip && index.column() == Model::Col_Title)
         {
-            QToolTip::showText(event->globalPos(), "This game has its own settings (right-click > Game Settings)", view);
-            return true;
+            QStringList lines;
+            if (index.data(Model::StarRole).toBool())
+                lines << "Mastered on RetroAchievements";
+            if (index.data(Model::HasSettingsRole).toBool())
+                lines << "This game has its own settings (right-click > Game Settings)";
+            if (!lines.isEmpty())
+            {
+                QToolTip::showText(event->globalPos(), lines.join('\n'), view);
+                return true;
+            }
         }
         return QStyledItemDelegate::helpEvent(event, view, option, index);
+    }
+};
+
+// the Achievements column: "30/90" and a percentage over a bar that fills up,
+// gold once every achievement is unlocked
+class AchievementsDelegate : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    void paint(QPainter* p, const QStyleOptionViewItem& option, const QModelIndex& index) const override
+    {
+        QStyleOptionViewItem opt = RowDelegate::prepare(p, option);
+        initStyleOption(&opt, index);
+        opt.text.clear();
+        const QWidget* w = option.widget;
+        QStyle* style = w ? w->style() : QApplication::style();
+        style->drawControl(QStyle::CE_ItemViewItem, &opt, p, w);
+
+        const auto pr = index.data(Model::ProgressRole).value<Model::Progress>();
+        if (pr.state == Model::Progress::Unknown) return;
+
+        QColor text = opt.palette.color(QPalette::Text);
+        const QRect r = opt.rect.adjusted(8, 0, -8, 0);
+        p->save();
+        p->setFont(opt.font);
+
+        if (pr.state == Model::Progress::NotOnRA || !pr.total)
+        {
+            QColor dim = text;
+            dim.setAlphaF(0.45);
+            p->setPen(dim);
+            p->drawText(r, Qt::AlignCenter, QString::fromUtf8("\xE2\x80\x94")); // em dash
+            p->restore();
+            return;
+        }
+
+        const QFontMetrics& fm = opt.fontMetrics;
+        const int barH = std::max(4, fm.height() / 3);
+        const int gap = 3;
+        const int blockH = fm.height() + gap + barH;
+        const int y = opt.rect.center().y() - blockH / 2;
+        const QRect line(r.left(), y, r.width(), fm.height());
+
+        const bool done = pr.completed();
+        const int percent = done ? 100 : (int)((uint64_t)pr.unlocked * 100 / pr.total);
+        p->setPen(text);
+        p->drawText(line, Qt::AlignLeft | Qt::AlignVCenter, QString("%1/%2").arg(pr.unlocked).arg(pr.total));
+        p->drawText(line, Qt::AlignRight | Qt::AlignVCenter, QString("%1%").arg(percent));
+
+        p->setRenderHint(QPainter::Antialiasing);
+        const QRectF bar(r.left(), y + fm.height() + gap, r.width(), barH);
+        QColor track = text;
+        track.setAlphaF(0.18);
+        p->setPen(Qt::NoPen);
+        p->setBrush(track);
+        p->drawRoundedRect(bar, barH / 2.0, barH / 2.0);
+        if (pr.unlocked)
+        {
+            QRectF fill = bar;
+            fill.setWidth(std::max<qreal>(barH, bar.width() * std::min(1.0, (double)pr.unlocked / pr.total)));
+            p->setBrush(done ? kGold : QColor(40, 140, 230));
+            p->drawRoundedRect(fill, barH / 2.0, barH / 2.0);
+        }
+        p->restore();
     }
 };
 
@@ -1137,6 +1307,17 @@ public:
             drawGear(p, badge.adjusted(2, 2, -2, -2), QColor(255, 255, 255, 230));
         }
 
+        // mastered: a star in the other corner
+        if (index.data(Model::StarRole).toBool() && !frame.isNull())
+        {
+            const int g = std::clamp(frame.width() / 7, 12, 22);
+            const QRectF badge(frame.left() + 1, frame.top() + 3, g + 2, g + 2);
+            p->setPen(Qt::NoPen);
+            p->setBrush(QColor(0, 0, 0, 150));
+            p->drawEllipse(badge);
+            drawStar(p, badge.adjusted(2, 2, -2, -2), kGold);
+        }
+
         // selected: an outline in the theme's selection color around the cover
         if (option.state & QStyle::State_Selected)
         {
@@ -1257,6 +1438,8 @@ Widget::Widget(QWidget* parent) : QWidget(parent)
     view->header()->setDefaultAlignment(Qt::AlignCenter);
     view->setItemDelegate(new RowDelegate(view));
     view->setItemDelegateForColumn(Model::Col_Region, new CenteredDelegate(view));
+    view->setItemDelegateForColumn(Model::Col_Achievements, new AchievementsDelegate(view));
+    model->setShowStars(showMasteryStars());
     // no hover effect: nothing to redraw while the mouse moves over the list
     view->viewport()->setAttribute(Qt::WA_Hover, false);
     model->setShowRegionNames(showRegionNames());
@@ -1436,7 +1619,66 @@ Widget::Widget(QWidget* parent) : QWidget(parent)
     });
 
     restoreHeader();
+
+    // RetroAchievements progress for the Achievements column and the stars
+    if (RA::Manager* ra = RA::Manager::get())
+    {
+        connect(&ra->library(), &RA::Library::changed, this, &Widget::pushProgress);
+        connect(ra, &RA::Manager::stateChanged, this, [this, ra]()
+        {
+            // back from playing: the unlocks may have changed
+            const bool loaded = ra->isGameLoaded();
+            if (raGameWasLoaded && !loaded)
+                ra->library().refreshProgress();
+            raGameWasLoaded = loaded;
+            updateAchievements();
+        });
+        updateAchievements();
+    }
+
     refresh();
+}
+
+bool Widget::wantsAchievements() const
+{
+    return !view->header()->isSectionHidden(Model::Col_Achievements) || showMasteryStars();
+}
+
+void Widget::updateAchievements()
+{
+    RA::Manager* ra = RA::Manager::get();
+    if (!ra) return;
+    // the library only goes online once something here shows its results
+    if (ra->isEnabled() && wantsAchievements() && !ra->library().isActive())
+        ra->library().activate();
+    pushProgress();
+}
+
+void Widget::pushProgress()
+{
+    RA::Manager* ra = RA::Manager::get();
+    QHash<QString, Model::Progress> byPath;
+    if (ra && ra->isEnabled() && ra->isLoggedIn() && ra->library().isActive())
+    {
+        for (const RA::Library::Game& g : ra->library().games())
+        {
+            Model::Progress pr;
+            if (!g.matched) continue;
+            if (!g.gameId)
+                pr.state = Model::Progress::NotOnRA;
+            else if (g.hasProgress)
+            {
+                pr.state = Model::Progress::Known;
+                pr.total = g.numAchievements;
+                pr.unlocked = g.numUnlocked;
+                pr.hardcore = g.numUnlockedHardcore;
+            }
+            else
+                continue;
+            byPath.insert(g.path, pr);
+        }
+    }
+    model->setProgress(byPath);
 }
 
 Widget::~Widget()
@@ -1780,6 +2022,17 @@ void Widget::addViewOptions(QMenu& menu)
         setSearchBarVisible(on);
         if (on) search->setFocus();
     });
+
+    QAction* stars = menu.addAction("Show Mastery Stars");
+    stars->setCheckable(true);
+    stars->setChecked(showMasteryStars());
+    stars->setToolTip("A star in front of games you've mastered on RetroAchievements");
+    connect(stars, &QAction::toggled, this, [this](bool on)
+    {
+        setShowMasteryStars(on);
+        model->setShowStars(on);
+        updateAchievements();
+    });
 }
 
 void Widget::setSearchBarVisible(bool visible)
@@ -1811,6 +2064,7 @@ void Widget::showHeaderMenu(const QPoint& pos)
         {
             header->setSectionHidden(c, !on);
             saveHeader();
+            if (c == Model::Col_Achievements) updateAchievements();
         });
     }
 
@@ -1856,6 +2110,7 @@ void Widget::saveHeader()
 {
     QByteArray state = view->header()->saveState();
     globalConfig().SetString(kColumnsKey, state.toBase64().toStdString());
+    globalConfig().SetInt("GameList.ColumnCount", Model::NumColumns);
 }
 
 void Widget::restoreHeader()
@@ -1865,6 +2120,18 @@ void Widget::restoreHeader()
     if (!state.isEmpty() && header->restoreState(state))
     {
         header->setSectionResizeMode(QHeaderView::Interactive);
+        // columns added since the layout was saved start hidden, at the end
+        const int saved = globalConfig().GetInt("GameList.ColumnCount");
+        if (saved < Model::NumColumns)
+        {
+            for (int c = std::max(saved, (int)Model::Col_Achievements); c < Model::NumColumns; c++)
+            {
+                header->moveSection(header->visualIndex(c), Model::NumColumns - 1);
+                header->setSectionHidden(c, true);
+                header->resizeSection(c, 170);
+            }
+            saveHeader();
+        }
         return;
     }
 
@@ -1883,6 +2150,8 @@ void Widget::defaultColumns()
     }
     header->setSectionHidden(Model::Col_Platform, true);
     header->setSectionHidden(Model::Col_FileName, true);
+    header->setSectionHidden(Model::Col_Achievements, true);
+    header->resizeSection(Model::Col_Achievements, 170);
     header->resizeSection(Model::Col_Developer, 160);
     header->resizeSection(Model::Col_Region, 170);
     header->resizeSection(Model::Col_GameCode, 90);

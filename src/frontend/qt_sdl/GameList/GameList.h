@@ -111,6 +111,9 @@ bool showRegionNames();
 void setShowRegionNames(bool show);
 bool showSearchBar();
 void setShowSearchBar(bool show);
+// a star in front of games mastered on RetroAchievements
+bool showMasteryStars();
+void setShowMasteryStars(bool show);
 bool gridMode();
 void setGridMode(bool grid);
 int tileSize();
@@ -130,6 +133,7 @@ public:
         Col_Platform,
         Col_Size,
         Col_FileName,
+        Col_Achievements,
         NumColumns
     };
     // value used for sorting a column
@@ -142,6 +146,21 @@ public:
     static constexpr int CoverKeyRole = Qt::UserRole + 3;
     // whether the game has its own settings (bool), for the gear marker
     static constexpr int HasSettingsRole = Qt::UserRole + 4;
+    // RetroAchievements progress (Progress, see below)
+    static constexpr int ProgressRole = Qt::UserRole + 5;
+    // mastered on RetroAchievements and stars are shown (bool)
+    static constexpr int StarRole = Qt::UserRole + 6;
+
+    // the player's RetroAchievements progress for a game
+    struct Progress
+    {
+        enum State { Unknown, NotOnRA, Known } state = Unknown;
+        uint32_t total = 0;      // 0: on RetroAchievements but no achievements yet
+        uint32_t unlocked = 0;   // in either mode
+        uint32_t hardcore = 0;   // in Hardcore Mode
+        bool mastered() const { return state == Known && total && hardcore >= total; }
+        bool completed() const { return state == Known && total && unlocked >= total; }
+    };
 
     explicit Model(QObject* parent = nullptr);
 
@@ -155,6 +174,9 @@ public:
     const std::vector<Game>& games() const { return list; }
     // looks again at which games have their own settings
     void refreshSettingsMarks();
+    // RetroAchievements progress, by ROM path (empty: none known)
+    void setProgress(const QHash<QString, Progress>& byPath);
+    void setShowStars(bool show);
 
     int rowCount(const QModelIndex& parent = QModelIndex()) const override;
     int columnCount(const QModelIndex& parent = QModelIndex()) const override;
@@ -171,6 +193,8 @@ private:
     std::vector<QString> coverKeys;
     std::vector<QString> sizeTexts;
     std::vector<bool> hasSettings;
+    QHash<QString, Progress> progress;
+    bool stars = true;
     mutable QHash<QString, QPixmap> flags;
     bool regionNames = true;
     bool highResFlags = false;
@@ -229,6 +253,12 @@ private:
     void setSearchBarVisible(bool visible);
     void addViewOptions(QMenu& menu);
 
+    // RetroAchievements progress, for the Achievements column and the stars
+    bool wantsAchievements() const;
+    void updateAchievements();
+    void pushProgress();
+    bool raGameWasLoaded = false;
+
     QStackedWidget* pages;
     QWidget* searchRow;
     QWidget* listPage;
@@ -281,5 +311,7 @@ private:
 };
 
 }
+
+Q_DECLARE_METATYPE(GameList::Model::Progress)
 
 #endif // GAMELIST_H

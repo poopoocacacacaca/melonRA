@@ -59,6 +59,7 @@ public:
 
         std::string hash;
         uint32_t gameId = 0;     // 0: not on RetroAchievements (or not matched yet)
+        bool matched = false;    // looked up on RetroAchievements (gameId is final)
 
         QString raTitle;         // the title on RetroAchievements
         std::string badgeUrl;
@@ -111,7 +112,10 @@ public:
     // then only the (local) fingerprinting runs, so nothing is requested for
     // a window that's never opened.
     void activate();
+    bool isActive() const { return active; }
     bool needsLogin() const { return waitingForLogin; }
+    // fetches the player's progress again (after playing)
+    void refreshProgress();
 
     const std::vector<Game>& games() const { return list; }
     // what's going on, for the window's status line; empty when done
