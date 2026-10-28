@@ -6,7 +6,7 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 - **MINOR** goes up for feature releases.
 - **PATCH** goes up for small updates and bug fixes.
 
-## Unreleased
+## 0.4.0
 
 - **Discord Rich Presence.** Your Discord profile shows the game you're playing and for how long,
   with its box art when there is one online; server member lists show the game's name. For games
