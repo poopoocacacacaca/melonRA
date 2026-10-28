@@ -2001,6 +2001,18 @@ void Widget::showContextMenu(QAbstractItemView* from, const QPoint& pos)
             {
                 emit gameSettingsRequested(id, title, icon, romPath);
             });
+
+            // its achievements, when RetroAchievements is on
+            RA::Manager* ra = RA::Manager::get();
+            if (ra && ra->isEnabled())
+            {
+                const auto pr = model->data(model->index(row, Model::Col_Achievements), Model::ProgressRole)
+                                    .value<Model::Progress>();
+                QAction* ach = menu.addAction(pr.state == Model::Progress::NotOnRA
+                                              ? "Achievements... (not on RetroAchievements)" : "Achievements...");
+                ach->setEnabled(pr.state != Model::Progress::NotOnRA);
+                connect(ach, &QAction::triggered, this, [this, romPath]() { emit achievementsRequested(romPath); });
+            }
             menu.addSeparator();
         }
     }

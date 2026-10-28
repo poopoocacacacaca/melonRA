@@ -903,6 +903,10 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
         connect(gameList, &GameList::Widget::bootRequested, this, &MainWindow::bootROMPath);
         connect(gameList, &GameList::Widget::dsiWareRequested, this, &MainWindow::explainDSiWare);
         connect(gameList, &GameList::Widget::gameSettingsRequested, this, &MainWindow::openGameSettings);
+        connect(gameList, &GameList::Widget::achievementsRequested, this, [this](const QString& path)
+        {
+            RA::AchievementsDialog::openForGame(this, path);
+        });
         connect(gameList, &GameList::Widget::settingsRequested, this, &MainWindow::onOpenPathSettings);
     }
 

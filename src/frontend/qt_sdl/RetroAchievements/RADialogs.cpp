@@ -751,6 +751,13 @@ void AchievementsDialog::open(QWidget* parent, bool leaderboards)
     current->tabs->setCurrentIndex(leaderboards ? 1 : 0);
 }
 
+void AchievementsDialog::openForGame(QWidget* parent, const QString& romPath)
+{
+    open(parent, false);
+    current->wantedPath = romPath;
+    current->rebuildSidebar();
+}
+
 AchievementsDialog::AchievementsDialog(QWidget* parent) : QDialog(parent)
 {
     setAttribute(Qt::WA_DeleteOnClose);
@@ -990,6 +997,29 @@ void AchievementsDialog::rebuildSidebar()
     sidebarStatus->setText(status);
     sidebarStatus->setVisible(!status.isEmpty());
 
+    // a game asked for from the game list, once it's been looked up
+    if (!wantedPath.isEmpty())
+    {
+        for (const Library::Game& g : lib.games())
+        {
+            if (g.path != wantedPath) continue;
+            if (!g.matched) break; // not yet: wait for the next rebuild
+            wantedPath.clear();
+            if (!g.gameId) break;  // not on RetroAchievements
+            for (int i = 0; i < sidebar->count(); i++)
+            {
+                QListWidgetItem* it = sidebar->item(i);
+                const bool now = it->data(Qt::UserRole + 1).toBool();
+                if ((now && g.gameId == playingId) || (!now && it->data(Qt::UserRole).toUInt() == g.gameId))
+                {
+                    toSelect = it;
+                    break;
+                }
+            }
+            break;
+        }
+    }
+
     // keep the selection; otherwise the game being played, or the first game
     if (!toSelect)
     {
@@ -1006,6 +1036,7 @@ void AchievementsDialog::rebuildSidebar()
         sidebar->blockSignals(same);
         sidebar->setCurrentItem(toSelect);
         sidebar->blockSignals(false);
+        sidebar->scrollToItem(toSelect);
     }
     else if (showingLibrary)
     {

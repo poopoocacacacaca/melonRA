@@ -227,6 +227,8 @@ signals:
     void gameSettingsRequested(const QString& id, const QString& title, const QIcon& icon, const QString& path);
     // the game folders are set in Path Settings, which the window opens
     void settingsRequested();
+    // Achievements... for a game: the achievements window, on that game
+    void achievementsRequested(const QString& path);
 
 public:
     // after a game's settings changed

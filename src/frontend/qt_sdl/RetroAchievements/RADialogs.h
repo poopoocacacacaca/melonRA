@@ -175,6 +175,8 @@ class AchievementsDialog : public QDialog
 public:
     explicit AchievementsDialog(QWidget* parent);
     static void open(QWidget* parent, bool leaderboards = false);
+    // opens on the achievements of a game in the game list (by ROM path)
+    static void openForGame(QWidget* parent, const QString& romPath);
 
 private slots:
     void refresh();
@@ -200,6 +202,8 @@ private:
     bool showingLibrary = false;
     uint32_t shownLibraryGame = 0;
     bool rebuilding = false;
+    // a game to select once the library knows it (openForGame)
+    QString wantedPath;
 
     QLabel* gameIcon;
     QLabel* gameTitle;
