@@ -11,10 +11,9 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 - **Discord Rich Presence.** Your Discord profile shows the game you're playing and for how long,
   with its box art when there is one online; server member lists show the game's name. For games
   with achievements it shows what RetroAchievements says you're doing, your achievement count next to
-  the title (with a ⭐ once the game is mastered), the game's icon and a link to the game's page. Config → Interface Settings can turn it
-  off, or just the achievement status, the count or the small melonRA icon. Only works while the
-  Discord app is open.
-
+  the title (with a ⭐ once the game is mastered), the game's icon and a link to the game's page.
+  Config → Interface Settings can turn it off, or just the achievement status, the count or the small
+  melonRA icon. Only works while the Discord app is open.
 - **Achievement progress in the game list.** A new Achievements column (right-click the column
   headers to show it) has a bar for each game that fills up as you unlock its achievements, turning
   gold once they're all unlocked. Games you've mastered get a ⭐ in front of their title, in the list
@@ -28,6 +27,8 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 - **New address.** melonRA now lives at <https://github.com/ppkkkkk/melonRA>; the app ID on Linux
   and macOS is now `io.github.ppkkkkk.melonRA`. The updater follows the repository if it's ever
   renamed or moved again.
+- **melonDS fix merged:** the OpenGL renderers start from a clean state, which avoids stray OpenGL
+  errors when switching renderers.
 
 ## 0.3.0
 
