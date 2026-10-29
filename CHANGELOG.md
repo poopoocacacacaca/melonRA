@@ -31,6 +31,10 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
     renderer.
   - Doesn't work in Hardcore mode until RetroAchievements says whether netplay is allowed there.
   - Right-click a game in the list → Start Netplay... hosts a room for it.
+  - **The room** shows each player's status and ping, says what to do next, and gives the host the
+    address to share (with a Copy button). It has a chat, which also shows on the game screen while
+    playing. The host can remove a player before starting, and change the input delay in the room or
+    during the game, with a suggested value worked out from everyone's ping.
 
 ## 0.4.0
 

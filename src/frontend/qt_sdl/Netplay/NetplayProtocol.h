@@ -39,7 +39,7 @@ using melonDS::u32;
 using melonDS::u64;
 
 constexpr u32 kMagic = 0x504E524D;  // "MRNP"
-constexpr u16 kProtocolVersion = 1;
+constexpr u16 kProtocolVersion = 2;
 constexpr u16 kDefaultPort = 7066;
 constexpr int kMaxPlayers = 4;
 
@@ -53,6 +53,9 @@ constexpr u32 kSaveChunk = 32 * 1024;
 constexpr int kMaxInputDelay = 15;
 constexpr int kMaxInputBatch = 32;
 constexpr int kHashInterval = 60;     // frames between desync checks
+constexpr int kMaxChat = 200;         // bytes of UTF-8 per chat message
+constexpr int kChatBurst = 5;         // chat messages a player may send...
+constexpr int kChatWindowMs = 5000;   // ...within this time
 
 enum MsgType : u8
 {
@@ -70,6 +73,9 @@ enum MsgType : u8
     Msg_Hash,           // player -> host: state hashes of every console
     Msg_Desync,         // host -> all: consoles stopped matching
     Msg_Bye,            // anyone: leaving, with a reason
+    Msg_Chat,           // player -> host: text; host -> all: sender's slot and text
+    Msg_Delay,          // host -> all: the input delay, in frames
+    Msg_Pings,          // host -> all: each player's round trip to the host, in ms
 };
 
 enum RejectReason : u8
@@ -207,13 +213,14 @@ private:
     bool Good = true;
 };
 
-// what a peer chose as its name, made safe to show: valid UTF-8 only, no
-// control or formatting characters, trimmed, never empty
-inline std::string CleanName(const std::string& in, const std::string& fallback)
+// text from a peer (a name, a title, a chat message), made safe to show:
+// valid UTF-8 only, no control or formatting characters, at most maxBytes,
+// trimmed, never empty
+inline std::string CleanText(const std::string& in, const std::string& fallback, size_t maxBytes)
 {
     std::string out;
     size_t i = 0;
-    while (i < in.size() && out.size() < (size_t)kMaxName)
+    while (i < in.size() && out.size() < maxBytes)
     {
         u8 c = (u8)in[i];
         size_t len = c < 0x80 ? 1 : (c >> 5) == 6 ? 2 : (c >> 4) == 14 ? 3 : (c >> 3) == 30 ? 4 : 0;
@@ -233,7 +240,7 @@ inline std::string CleanName(const std::string& in, const std::string& fallback)
                        (cp >= 0x200B && cp <= 0x200F) || (cp >= 0x202A && cp <= 0x202E) ||
                        (cp >= 0x2066 && cp <= 0x2069) || cp == 0xFEFF || cp > 0x10FFFF ||
                        (cp >= 0xD800 && cp <= 0xDFFF);
-        if (!control && out.size() + len <= (size_t)kMaxName)
+        if (!control && out.size() + len <= maxBytes)
             out.append(in, i, len);
         i += len;
     }
@@ -242,6 +249,19 @@ inline std::string CleanName(const std::string& in, const std::string& fallback)
     size_t start = out.find_first_not_of(' ');
     out = (start == std::string::npos) ? "" : out.substr(start);
     return out.empty() ? fallback : out;
+}
+
+inline std::string CleanName(const std::string& in, const std::string& fallback)
+{
+    return CleanText(in, fallback, kMaxName);
+}
+
+// the input delay that covers a one-way trip of this many milliseconds, with
+// some room for jitter
+inline int DelayForTrip(int oneWayMs)
+{
+    int frames = (oneWayMs + 20 + 16) / 17;
+    return std::clamp(frames, 1, kMaxInputDelay);
 }
 
 // the DS nickname and message only hold printable text

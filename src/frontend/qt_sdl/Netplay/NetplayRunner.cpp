@@ -59,6 +59,19 @@ Runner::Runner(MainWindow* win) : QObject(win), Win(win), Inst(win->getEmuInstan
     connect(&Sess, &Session::ended, this, &Runner::onEnded);
     connect(&Sess, &Session::desync, this, &Runner::onDesync);
     connect(&Sess, &Session::roomReceived, this, &Runner::needROM);
+
+    // while playing, the room is out of sight: chat and delay changes show
+    // up on the game screen
+    connect(&Sess, &Session::chat, this, [this](const QString& name, const QString& text)
+    {
+        if (ConsolesUp)
+            Inst->osdAddMessage(0, "%s: %s", name.toUtf8().constData(), text.toUtf8().constData());
+    });
+    connect(&Sess, &Session::delayChanged, this, [this](int frames)
+    {
+        if (ConsolesUp)
+            Inst->osdAddMessage(0, "Netplay input delay: %d frames", frames);
+    });
 }
 
 Runner::~Runner()

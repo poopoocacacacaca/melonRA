@@ -74,6 +74,16 @@ Messages start with a type byte; numbers are little-endian.
 6. Each frame, each player sends `Input` for frame *f* + input delay; the first frames are neutral.
 7. `Hash` every 60 frames; `Desync` from the host when they differ.
 
+At any time: `Chat` (to the host, which relays it with the sender's slot), `Delay` from the host
+when it changes the input delay, and `Pings` from the host every second with each player's round
+trip to it (ENet's measurement). The suggested delay covers half the two largest round trips (inputs
+between two players pass through the host) plus 20 ms.
+
+**Changing the input delay during the game** needs no coordination. Only a console's owner decides
+which frame each of their inputs lands on; everyone else just plays the inputs that arrive. When the
+delay goes up, the owner fills the frames in between with their last input; when it goes down, they
+skip sending until the new delay catches up. Every computer still receives exactly the same inputs.
+
 Disconnects carry a reason (left, room closed, removed). If a player leaves during the game, the
 session ends for everyone.
 
@@ -88,13 +98,16 @@ Everything from the network is untrusted. Changes must keep these:
   savestates, no code or mods, no file names or paths. The only blob is a player's save, limited to
   32 MB, kept in memory and never written over anyone's files; only this computer's own console writes
   to this player's own save file.
-- **Text from peers is shown as plain text.** Names and titles are cut to length and stripped of
-  control and direction-override characters (`CleanName`, `CleanDSText`), and every label or message
-  box that shows them uses `Qt::PlainText`.
+- **Text from peers is shown as plain text.** Names, titles and chat are cut to length and stripped
+  of control and direction-override characters (`CleanText`, `CleanName`, `CleanDSText`), and every
+  label, message box or chat line that shows them uses plain text.
+- **Chat is rate-limited** by the host: a player gets 5 messages per 5 seconds, the rest is dropped.
+  Messages are at most 200 bytes.
 - **No account data.** Nothing about the RetroAchievements login is sent. Netplay can't start in
   Hardcore mode.
 - **Flood limits.** Connections that don't introduce themselves within 10 s are dropped, pending
-  connections are capped, and rooms refuse joins once the game has started.
+  connections are capped, and rooms refuse joins once the game has started. The host can remove a
+  player before the game starts.
 - **Peers only affect the session.** A misbehaving player can desync or end the game, never change
   anything outside it.
 

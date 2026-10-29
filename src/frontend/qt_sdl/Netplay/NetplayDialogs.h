@@ -28,9 +28,10 @@
 class QComboBox;
 class QLabel;
 class QLineEdit;
-class QListWidget;
+class QPlainTextEdit;
 class QPushButton;
 class QSpinBox;
+class QTreeWidget;
 class MainWindow;
 
 namespace Netplay
@@ -103,15 +104,21 @@ protected:
 
 private slots:
     void refresh();
+    void refreshDelay();
     void onNotice(const QString& text);
+    void onChat(const QString& name, const QString& text);
     void onNeedROM(const Netplay::RoomInfo& room);
     void onGo();
     void onDesync(int frame, int console);
     void onFinished(const QString& reason);
+    void sendChat();
 
 private:
     RoomDialog(MainWindow* win, Runner* runner);
     ~RoomDialog() override;
+
+    QWidget* makeAddressBox();
+    void addLine(const QString& text, bool dim);
 
     static RoomDialog* Current;
 
@@ -120,7 +127,13 @@ private:
     QLabel* Game;
     QLabel* Status;
     QLabel* Note;
-    QListWidget* Players;
+    QTreeWidget* Players;
+    QPushButton* RemoveBtn;
+    QSpinBox* DelaySpin = nullptr;
+    QLabel* DelayInfo;
+    QPushButton* UseSuggested = nullptr;
+    QPlainTextEdit* ChatLog;
+    QLineEdit* ChatInput;
     QPushButton* StartBtn;
     QPushButton* LeaveBtn;
     bool Closing = false;

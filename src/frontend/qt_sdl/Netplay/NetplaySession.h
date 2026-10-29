@@ -23,6 +23,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <deque>
 #include <functional>
 #include <map>
 #include <mutex>
@@ -54,7 +55,11 @@ struct PlayerView
     int Slot;
     QString Name;
     bool Ready;     // its DS settings and save have arrived
+    int Ping;       // round trip to the host in ms; -1 for the host or unknown
 };
+
+// melonRA version (and commit for nightlies): everyone in a session needs the same
+std::string BuildId();
 
 // One netplay session, hosting or joined.
 //
@@ -63,9 +68,6 @@ struct PlayerView
 // played with that player's inputs; only inputs travel during the game. The
 // network runs on its own thread; signals are delivered on the thread that
 // created the session (the UI thread).
-// melonRA version (and commit for nightlies): everyone in a session needs the same
-std::string BuildId();
-
 class Session : public QObject
 {
     Q_OBJECT
@@ -97,6 +99,24 @@ public:
     void loaded();
 
     void leave();
+
+    // chat with the room, before and during the game
+    void sendChat(const QString& text);
+
+    // host: how many frames ahead inputs are sent, in the room or during the
+    // game (each player switches as soon as they hear of it; see
+    // submitLocalInput for why that keeps the consoles identical)
+    void setInputDelay(int frames);
+    int inputDelay() const;
+    // what the players' pings call for
+    int suggestedDelay() const;
+
+    // host, before the game starts: send a player away
+    bool removePlayer(int slot);
+
+    // where the session runs: the host's port, or the address a client joined
+    u16 port() const { return Port; }
+    QString address() const { return Address; }
 
     State state() const { return CurState; }
     bool isHost() const { return IsHost; }
@@ -139,6 +159,9 @@ signals:
     void desync(int frame, int slot);
     void ended(const QString& reason);
     void notice(const QString& text);
+    void chat(const QString& name, const QString& text);
+    void delayChanged(int frames);
+    void pingsChanged();
 
 private:
     struct Player
@@ -153,6 +176,8 @@ private:
         u32 SaveReceived = 0;
         bool Loaded = false;
         bool HostReady = false;   // client: what the host's roster says
+        int Ping = -1;            // round trip to the host, ms
+        std::deque<std::chrono::steady_clock::time_point> ChatTimes;  // host: for the rate limit
     };
 
     struct Pending           // host: a connection that hasn't joined yet
@@ -187,6 +212,9 @@ private:
     int freeSlot() const;
     void checkHashes(u32 frame);
     void emitLater(std::function<void()> fn);
+    void relayChat(int slot, const std::string& text);
+    void sendPings();
+    void applyDelay(int frames);
 
     melonDS::NetplayLink Link;
     std::thread NetThread;
@@ -209,6 +237,10 @@ private:
 
     std::vector<int> Order;               // slots, in console order
     int MyConsole = -1;
+    u16 Port = 0;
+    QString Address;
+    int Delay = 3;                        // during the game: frames ahead this player sends
+    std::chrono::steady_clock::time_point LastPings;
 
     // inputs, by console, indexed by frame
     std::array<std::vector<InputFrame>, kMaxPlayers> Inputs;

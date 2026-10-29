@@ -18,19 +18,28 @@
 
 #include <algorithm>
 
+#include <QClipboard>
 #include <QCloseEvent>
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFormLayout>
+#include <QGridLayout>
+#include <QGroupBox>
+#include <QGuiApplication>
 #include <QHBoxLayout>
+#include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
-#include <QListWidget>
 #include <QMessageBox>
+#include <QNetworkInterface>
+#include <QPlainTextEdit>
 #include <QPushButton>
+#include <QScrollBar>
 #include <QSpinBox>
+#include <QTextCursor>
+#include <QTreeWidget>
 #include <QVBoxLayout>
 
 #include "NetplayDialogs.h"
@@ -282,22 +291,95 @@ RoomDialog::RoomDialog(MainWindow* win, Runner* runner) : QDialog(win), Win(win)
 {
     setWindowTitle(tr("Netplay Room"));
     setAttribute(Qt::WA_DeleteOnClose);
+    Session* s = runner->session();
 
     Game = plainLabel(QString(), this);
     QFont f = Game->font();
     f.setBold(true);
+    f.setPointSizeF(f.pointSizeF() * 1.25);
     Game->setFont(f);
     Status = plainLabel(QString(), this);
     Note = plainLabel(QString(), this);
     Note->setStyleSheet("color: palette(placeholder-text);");
+    Note->hide();
 
-    Players = new QListWidget(this);
-    Players->setSelectionMode(QAbstractItemView::NoSelection);
-    Players->setMinimumHeight(110);
+    // players
+    Players = new QTreeWidget(this);
+    Players->setColumnCount(3);
+    Players->setHeaderLabels({tr("Player"), tr("Status"), tr("Ping")});
+    Players->setRootIsDecorated(false);
+    Players->setSelectionMode(QAbstractItemView::SingleSelection);
+    Players->setStyleSheet("QTreeWidget::item { padding: 3px 2px; }");
+    // room for everyone a room can hold, and no more
+    const int rowH = Players->fontMetrics().height() + 8;
+    Players->setFixedHeight(Players->header()->sizeHint().height() + kMaxPlayers * rowH + 2 * Players->frameWidth() + 2);
+    Players->header()->setStretchLastSection(false);
+    Players->header()->setSectionResizeMode(0, QHeaderView::Stretch);
+    Players->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    Players->header()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
 
-    StartBtn = new QPushButton(tr("Start"), this);
-    LeaveBtn = new QPushButton(tr("Leave"), this);
-    StartBtn->setVisible(runner->session()->isHost());
+    RemoveBtn = new QPushButton(tr("Remove Player"), this);
+    RemoveBtn->setVisible(s->isHost());
+    RemoveBtn->setEnabled(false);
+    connect(Players, &QTreeWidget::itemSelectionChanged, this, &RoomDialog::refresh);
+    connect(RemoveBtn, &QPushButton::clicked, this, [this]
+    {
+        if (!Run) return;
+        QTreeWidgetItem* item = Players->currentItem();
+        if (item) Run->session()->removePlayer(item->data(0, Qt::UserRole).toInt());
+    });
+
+    // input delay
+    QHBoxLayout* delayRow = new QHBoxLayout();
+    delayRow->addWidget(new QLabel(tr("Input delay:"), this));
+    if (s->isHost())
+    {
+        DelaySpin = new QSpinBox(this);
+        DelaySpin->setRange(1, kMaxInputDelay);
+        DelaySpin->setSuffix(tr(" frames"));
+        DelaySpin->setValue(s->inputDelay());
+        connect(DelaySpin, &QSpinBox::valueChanged, this, [this](int v)
+        {
+            if (Run && v != Run->session()->inputDelay()) Run->session()->setInputDelay(v);
+        });
+        delayRow->addWidget(DelaySpin);
+    }
+    DelayInfo = plainLabel(QString(), this);
+    delayRow->addWidget(DelayInfo, 1);
+    if (s->isHost())
+    {
+        UseSuggested = new QPushButton(this);
+        connect(UseSuggested, &QPushButton::clicked, this, [this]
+        {
+            if (Run) DelaySpin->setValue(Run->session()->suggestedDelay());
+        });
+        delayRow->addWidget(UseSuggested);
+    }
+    QWidget* delayHelp = plainLabel(tr("How many frames ahead everyone's buttons are sent. Higher is smoother on "
+                                       "slow connections; lower reacts faster. It can be changed during the game."),
+                                    this);
+    delayHelp->setStyleSheet("color: palette(placeholder-text);");
+
+    // chat
+    ChatLog = new QPlainTextEdit(this);
+    ChatLog->setReadOnly(true);
+    ChatLog->setMaximumBlockCount(500);
+    ChatLog->setMinimumHeight(90);
+    ChatInput = new QLineEdit(this);
+    ChatInput->setMaxLength(kMaxChat);
+    ChatInput->setPlaceholderText(tr("Message everyone in the room"));
+    QPushButton* sendBtn = new QPushButton(tr("Send"), this);
+    connect(ChatInput, &QLineEdit::returnPressed, this, &RoomDialog::sendChat);
+    connect(sendBtn, &QPushButton::clicked, this, &RoomDialog::sendChat);
+    QHBoxLayout* chatRow = new QHBoxLayout();
+    chatRow->addWidget(ChatInput, 1);
+    chatRow->addWidget(sendBtn);
+
+    StartBtn = new QPushButton(tr("Start Game"), this);
+    LeaveBtn = new QPushButton(s->isHost() ? tr("Close Room") : tr("Leave"), this);
+    StartBtn->setVisible(s->isHost());
+    StartBtn->setDefault(false);
+    StartBtn->setAutoDefault(false);
     connect(StartBtn, &QPushButton::clicked, this, [this]
     {
         if (Run) Run->startGame();
@@ -305,21 +387,38 @@ RoomDialog::RoomDialog(MainWindow* win, Runner* runner) : QDialog(win), Win(win)
     connect(LeaveBtn, &QPushButton::clicked, this, &RoomDialog::close);
 
     QHBoxLayout* buttons = new QHBoxLayout();
+    buttons->addWidget(RemoveBtn);
     buttons->addStretch(1);
     buttons->addWidget(StartBtn);
     buttons->addWidget(LeaveBtn);
 
+    QGroupBox* playersBox = new QGroupBox(tr("Players"), this);
+    QVBoxLayout* pl = new QVBoxLayout(playersBox);
+    pl->addWidget(Players, 1);
+    pl->addLayout(delayRow);
+    pl->addWidget(delayHelp);
+
+    QGroupBox* chatBox = new QGroupBox(tr("Chat"), this);
+    QVBoxLayout* cl = new QVBoxLayout(chatBox);
+    cl->addWidget(ChatLog, 1);
+    cl->addLayout(chatRow);
+
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->addWidget(Game);
     layout->addWidget(Status);
-    layout->addWidget(Players, 1);
+    layout->addWidget(makeAddressBox());
+    layout->addWidget(playersBox);
+    layout->addWidget(chatBox, 1);
     layout->addWidget(Note);
     layout->addLayout(buttons);
-    setMinimumWidth(380);
+    setMinimumWidth(500);
+    resize(540, 620);
 
-    Session* s = runner->session();
     connect(s, &Session::rosterChanged, this, &RoomDialog::refresh);
+    connect(s, &Session::pingsChanged, this, &RoomDialog::refresh);
+    connect(s, &Session::delayChanged, this, &RoomDialog::refreshDelay);
     connect(s, &Session::notice, this, &RoomDialog::onNotice);
+    connect(s, &Session::chat, this, &RoomDialog::onChat);
     connect(s, &Session::started, this, &RoomDialog::refresh);
     connect(s, &Session::go, this, &RoomDialog::onGo);
     connect(s, &Session::desync, this, &RoomDialog::onDesync);
@@ -327,6 +426,53 @@ RoomDialog::RoomDialog(MainWindow* win, Runner* runner) : QDialog(win), Win(win)
     connect(runner, &Runner::finished, this, &RoomDialog::onFinished);
 
     refresh();
+    refreshDelay();
+}
+
+// where the others connect (host), or where this player is connected
+QWidget* RoomDialog::makeAddressBox()
+{
+    Session* s = Run->session();
+    QGroupBox* box = new QGroupBox(s->isHost() ? tr("How players join") : tr("Connection"), this);
+    QGridLayout* g = new QGridLayout(box);
+
+    if (!s->isHost())
+    {
+        g->addWidget(plainLabel(tr("Connected to %1, port %2.").arg(s->address()).arg(s->port()), box), 0, 0);
+        return box;
+    }
+
+    // the first private IPv4 address is usually the one on the home network
+    QString local;
+    for (const QHostAddress& a : QNetworkInterface::allAddresses())
+    {
+        if (a.protocol() != QAbstractSocket::IPv4Protocol || a.isLoopback()) continue;
+        quint32 ip = a.toIPv4Address();
+        bool priv = (ip >> 24) == 10 || (ip >> 20) == (172 << 4 | 1) || (ip >> 16) == (192 << 8 | 168);
+        if (priv) { local = a.toString(); break; }
+        if (local.isEmpty()) local = a.toString();
+    }
+
+    int row = 0;
+    if (!local.isEmpty())
+    {
+        QString addr = QString("%1:%2").arg(local).arg(s->port());
+        g->addWidget(new QLabel(tr("Same network:"), box), row, 0);
+        QLineEdit* field = new QLineEdit(addr, box);
+        field->setReadOnly(true);
+        g->addWidget(field, row, 1);
+        QPushButton* copy = new QPushButton(tr("Copy"), box);
+        copy->setAutoDefault(false);
+        connect(copy, &QPushButton::clicked, this, [addr] { QGuiApplication::clipboard()->setText(addr); });
+        g->addWidget(copy, row, 2);
+        row++;
+    }
+    QLabel* internet = plainLabel(tr("Over the internet: players use your public IP address and port %1. "
+                                     "Forward UDP port %1 on your router to this computer first.").arg(s->port()), box);
+    internet->setStyleSheet("color: palette(placeholder-text);");
+    g->addWidget(internet, row, 0, 1, 3);
+    g->setColumnStretch(1, 1);
+    return box;
 }
 
 RoomDialog::~RoomDialog()
@@ -340,37 +486,59 @@ void RoomDialog::refresh()
     Session* s = Run->session();
 
     QString title = QString::fromStdString(s->room().Title);
-    Game->setText(title.isEmpty() ? tr("Netplay") : title);
+    if (!s->room().GameCode.empty())
+        title += QString(" (%1)").arg(QString::fromStdString(s->room().GameCode));
+    Game->setText(title.isEmpty() || s->room().Title.empty() ? tr("Netplay") : title);
 
-    Players->clear();
-    for (const PlayerView& p : s->roster())
+    // keep the selection across refreshes
+    int selected = Players->currentItem() ? Players->currentItem()->data(0, Qt::UserRole).toInt() : -1;
     {
-        QStringList tags;
-        if (p.Slot == 0) tags << tr("host");
-        if (p.Slot == s->mySlot()) tags << tr("you");
-        QString line = p.Name;
-        if (!tags.isEmpty()) line += QString(" (%1)").arg(tags.join(", "));
-        if (!p.Ready) line += tr(" - sending their save...");
-        Players->addItem(line);
+        QSignalBlocker block(Players);
+        Players->clear();
+        for (const PlayerView& p : s->roster())
+        {
+            QString name = p.Name;
+            if (p.Slot == s->mySlot()) name += tr(" (you)");
+            QString status = p.Slot == 0 ? tr("Host") : p.Ready ? tr("Ready") : tr("Sending their save...");
+            QString ping = p.Ping >= 0 ? tr("%1 ms").arg(p.Ping) : QString::fromUtf8("\xE2\x80\x94");
+
+            auto* item = new QTreeWidgetItem(Players, {name, status, ping});
+            item->setData(0, Qt::UserRole, p.Slot);
+            item->setTextAlignment(2, Qt::AlignRight | Qt::AlignVCenter);
+            if (p.Slot == selected) Players->setCurrentItem(item);
+        }
+        if (selected < 0)
+        {
+            Players->setCurrentItem(nullptr);
+            Players->clearSelection();
+        }
     }
 
+    const bool lobby = s->state() == Session::State::Lobby;
     switch (s->state())
     {
     case Session::State::Connecting:
-        Status->setText(tr("Connecting..."));
+        Status->setText(tr("Connecting to the host..."));
         break;
     case Session::State::Lobby:
         if (s->isHost())
-            Status->setText(s->players() < 2 ? tr("Waiting for players to join...")
-                                             : tr("Start when everyone is here."));
+        {
+            if (s->players() < 2)
+                Status->setText(tr("Step 1 of 2: give the other players your address (below), then wait for them to join."));
+            else if (!s->canStart())
+                Status->setText(tr("Waiting for everyone's save to arrive..."));
+            else
+                Status->setText(tr("Step 2 of 2: when everyone is here, press Start Game."));
+        }
         else
-            Status->setText(s->mySlot() < 0 ? tr("Joining...") : tr("Waiting for the host to start..."));
+            Status->setText(s->mySlot() < 0 ? tr("Joining the room...")
+                                             : tr("You're in. The game starts when the host presses Start Game."));
         break;
     case Session::State::Loading:
-        Status->setText(tr("Starting..."));
+        Status->setText(tr("Starting the game..."));
         break;
     case Session::State::Playing:
-        Status->setText(tr("Playing."));
+        Status->setText(tr("Playing. This window can stay closed; chat also shows up on the game screen."));
         break;
     case Session::State::Ended:
         Status->setText(tr("The session has ended."));
@@ -379,12 +547,66 @@ void RoomDialog::refresh()
         break;
     }
 
+    QTreeWidgetItem* cur = Players->currentItem();
+    RemoveBtn->setEnabled(s->isHost() && lobby && cur && cur->data(0, Qt::UserRole).toInt() != 0);
     StartBtn->setEnabled(s->isHost() && s->canStart());
+    if (StartBtn->isEnabled()) StartBtn->setDefault(true);
+    refreshDelay();
+}
+
+void RoomDialog::refreshDelay()
+{
+    if (!Run) return;
+    Session* s = Run->session();
+    int d = s->inputDelay();
+
+    if (DelaySpin && DelaySpin->value() != d)
+    {
+        QSignalBlocker block(DelaySpin);
+        DelaySpin->setValue(d);
+    }
+
+    QString ms = tr("about %1 ms").arg(qRound(d * 1000.0 / 59.8261));
+    if (s->isHost())
+    {
+        DelayInfo->setText(ms);
+        int sug = s->suggestedDelay();
+        UseSuggested->setText(tr("Use suggested (%1)").arg(sug));
+        UseSuggested->setEnabled(sug != d && s->players() >= 2);
+        UseSuggested->setToolTip(tr("Worked out from the slowest players' ping."));
+    }
+    else
+        DelayInfo->setText(tr("%1 frames, %2 (set by the host)").arg(d).arg(ms));
+}
+
+void RoomDialog::addLine(const QString& text, bool dim)
+{
+    // plain text only: names and messages come from other players
+    QTextCharFormat fmt;
+    if (dim) fmt.setForeground(palette().color(QPalette::PlaceholderText));
+    QTextCursor c(ChatLog->document());
+    c.movePosition(QTextCursor::End);
+    if (!ChatLog->document()->isEmpty()) c.insertBlock();
+    c.insertText(text, fmt);
+    ChatLog->verticalScrollBar()->setValue(ChatLog->verticalScrollBar()->maximum());
+}
+
+void RoomDialog::onChat(const QString& name, const QString& text)
+{
+    addLine(QString("%1: %2").arg(name, text), false);
+}
+
+void RoomDialog::sendChat()
+{
+    QString t = ChatInput->text().trimmed();
+    if (t.isEmpty() || !Run) return;
+    Run->session()->sendChat(t);
+    ChatInput->clear();
 }
 
 void RoomDialog::onNotice(const QString& text)
 {
-    Note->setText(text);
+    addLine(text, true);
     refresh();
 }
 
@@ -422,7 +644,7 @@ void RoomDialog::onNeedROM(const RoomInfo& room)
 void RoomDialog::onGo()
 {
     refresh();
-    Note->setText(QString());
+    addLine(tr("The game started."), true);
     hide();
 }
 
@@ -433,6 +655,7 @@ void RoomDialog::onDesync(int frame, int console)
     Note->setText(tr("The consoles stopped matching (%1's console, about %2 seconds in). From here the "
                      "game may play out differently on each computer; restarting the session is best.")
                       .arg(who).arg(frame / 60));
+    Note->show();
     show();
     raise();
 }

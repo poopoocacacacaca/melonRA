@@ -70,6 +70,10 @@ public:
     // "1.2.3.4:5678", for showing who is connected
     std::string PeerAddress(int peer);
 
+    // round trip to a peer in milliseconds, as ENet measures it; -1 if not
+    // connected (call from the Service() thread)
+    int PeerRTT(int peer);
+
 private:
     struct Outgoing
     {

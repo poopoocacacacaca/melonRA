@@ -248,4 +248,12 @@ std::string NetplayLink::PeerAddress(int peer)
     return std::string(ip) + ":" + std::to_string(p->address.port);
 }
 
+int NetplayLink::PeerRTT(int peer)
+{
+    if (peer < 0 || peer >= (int)Peers.size() || !Peers[peer]) return -1;
+    ENetPeer* p = (ENetPeer*)Peers[peer];
+    if (p->state != ENET_PEER_STATE_CONNECTED) return -1;
+    return (int)p->roundTripTime;
+}
+
 }

@@ -80,6 +80,7 @@ bool Session::host(u16 port, const QString& name, const RoomInfo& room,
     std::lock_guard<std::mutex> lk(Lock);
     IsHost = true;
     MySlot = 0;
+    Port = port;
     Room = room;
     Room.Build = BuildId();
     Room.InputDelay = std::clamp<u8>(Room.InputDelay, 1, kMaxInputDelay);
@@ -116,6 +117,8 @@ bool Session::join(const QString& address, u16 port, const QString& name, QStrin
     std::lock_guard<std::mutex> lk(Lock);
     IsHost = false;
     MySlot = -1;
+    Port = port;
+    Address = address.trimmed();
     MyName = CleanName(name.toStdString(), "Player");
     CurState = State::Connecting;
     Quit = false;
@@ -217,6 +220,7 @@ void Session::beginLoading()
     for (auto& in : Inputs) in.clear();
     for (size_t c = 0; c < Order.size(); c++)
         Inputs[c].assign(Start.InputDelay, InputFrame());
+    Delay = Start.InputDelay;
 
     for (Player& p : Slots) p.Loaded = false;
     Hashes.clear();
@@ -272,6 +276,113 @@ void Session::leave()
     }
 }
 
+// --- chat, delay, players ---
+
+void Session::sendChat(const QString& text)
+{
+    std::string t = CleanText(text.toStdString(), "", kMaxChat);
+    if (t.empty()) return;
+
+    std::lock_guard<std::mutex> lk(Lock);
+    if (CurState == State::Idle || CurState == State::Ended || CurState == State::Connecting) return;
+    if (IsHost)
+        relayChat(MySlot, t);
+    else if (MySlot >= 0)
+    {
+        Writer w(Msg_Chat);
+        w.Str(t, kMaxChat);
+        sendTo(0, kChanSession, w);
+    }
+}
+
+// with Lock held, host: a chat message to everyone (and to this player)
+void Session::relayChat(int slot, const std::string& text)
+{
+    Writer w(Msg_Chat);
+    w.U8((u8)slot).Str(text, kMaxChat);
+    sendAll(kChanSession, w);
+
+    QString name = QString::fromStdString(Slots[slot].Name);
+    QString t = QString::fromStdString(text);
+    emitLater([this, name, t] { emit chat(name, t); });
+}
+
+void Session::setInputDelay(int frames)
+{
+    frames = std::clamp(frames, 1, kMaxInputDelay);
+    std::lock_guard<std::mutex> lk(Lock);
+    if (!IsHost || CurState == State::Idle || CurState == State::Ended) return;
+
+    Writer w(Msg_Delay);
+    w.U8((u8)frames);
+    sendAll(kChanSession, w);
+    applyDelay(frames);
+}
+
+// with Lock held: the room's delay changed
+void Session::applyDelay(int frames)
+{
+    Room.InputDelay = (u8)frames;
+    if (CurState == State::Playing || CurState == State::Loading)
+        Delay = frames;
+    emitLater([this, frames] { emit delayChanged(frames); });
+}
+
+int Session::inputDelay() const
+{
+    std::lock_guard<std::mutex> lk(Lock);
+    return (CurState == State::Playing || CurState == State::Loading) ? Delay : Room.InputDelay;
+}
+
+int Session::suggestedDelay() const
+{
+    std::lock_guard<std::mutex> lk(Lock);
+
+    // inputs between two players go through the host: the slowest trip is
+    // half of the two largest round trips to the host added up
+    int a = 0, b = 0;
+    for (int i = 1; i < kMaxPlayers; i++)
+    {
+        if (!Slots[i].Present || Slots[i].Ping < 0) continue;
+        int p = Slots[i].Ping;
+        if (p > a) { b = a; a = p; }
+        else if (p > b) b = p;
+    }
+    return DelayForTrip((a + b) / 2);
+}
+
+bool Session::removePlayer(int slot)
+{
+    std::lock_guard<std::mutex> lk(Lock);
+    if (!IsHost || CurState != State::Lobby || slot <= 0 || slot >= kMaxPlayers || !Slots[slot].Present)
+        return false;
+
+    QString name = QString::fromStdString(Slots[slot].Name);
+    Link.Disconnect(Slots[slot].Peer, Bye_Kicked);
+    Slots[slot] = Player();
+    broadcastRoster();
+    emitLater([this, name] { emit notice(tr("%1 was removed from the room.").arg(name)); emit rosterChanged(); });
+    return true;
+}
+
+// with Lock held, host: everyone's round trip, for showing and for the
+// suggested delay
+void Session::sendPings()
+{
+    Writer w(Msg_Pings);
+    int n = 0;
+    for (int i = 1; i < kMaxPlayers; i++) n += Slots[i].Present;
+    w.U8((u8)n);
+    for (int i = 1; i < kMaxPlayers; i++)
+    {
+        if (!Slots[i].Present) continue;
+        Slots[i].Ping = Link.PeerRTT(Slots[i].Peer);
+        w.U8((u8)i).U16((u16)std::clamp(Slots[i].Ping, 0, 9999));
+    }
+    sendAll(kChanSession, w);
+    emitLater([this] { emit pingsChanged(); });
+}
+
 // --- state for the UI ---
 
 int Session::players() const
@@ -292,7 +403,7 @@ std::vector<PlayerView> Session::roster() const
         const Player& p = Slots[i];
         if (!p.Present) continue;
         bool ready = IsHost ? saveComplete(p) : (i == MySlot ? true : p.HostReady);
-        out.push_back({i, QString::fromStdString(p.Name), ready});
+        out.push_back({i, QString::fromStdString(p.Name), ready, i == 0 ? -1 : p.Ping});
     }
     return out;
 }
@@ -337,16 +448,29 @@ void Session::submitLocalInput(u32 frame, const InputFrame& in)
     std::lock_guard<std::mutex> lk(Lock);
     if (CurState != State::Playing || MyConsole < 0) return;
 
+    // Only this player decides which frame their input lands on; everyone
+    // else plays whatever arrives. So when the delay changes, the frames in
+    // between are filled with the last input (delay went up) or this input
+    // is dropped until the new delay catches up (delay went down), and every
+    // computer still gets exactly the same inputs.
     auto& mine = Inputs[MyConsole];
-    u32 target = frame + Start.InputDelay;
-    if (target != mine.size()) return;   // each frame once, in order
+    u32 target = frame + (u32)Delay;
+    if (target < mine.size()) return;
 
+    u32 first = (u32)mine.size();
+    while (mine.size() < target)
+        mine.push_back(mine.empty() ? InputFrame() : mine.back());
     mine.push_back(in);
     InputArrived.notify_all();
 
+    u32 n = (u32)mine.size() - first;
     Writer w(Msg_Input);
-    w.U8((u8)MyConsole).U32(target).U8(1);
-    w.U16(in.Keys).U8(in.Touching ? 1 : 0).U8(in.TouchX).U8(in.TouchY);
+    w.U8((u8)MyConsole).U32(first).U8((u8)n);
+    for (u32 f = first; f < mine.size(); f++)
+    {
+        const InputFrame& i = mine[f];
+        w.U16(i.Keys).U8(i.Touching ? 1 : 0).U8(i.TouchX).U8(i.TouchY);
+    }
     if (IsHost) sendAll(kChanInput, w);
     else sendTo(0, kChanInput, w);
 }
@@ -453,6 +577,13 @@ void Session::runNetwork()
         {
             std::lock_guard<std::mutex> lk(Lock);
             auto now = Clock::now();
+
+            if (now - LastPings > std::chrono::seconds(1) && CurState != State::Ended)
+            {
+                LastPings = now;
+                sendPings();
+            }
+
             for (auto it = PendingPeers.begin(); it != PendingPeers.end(); )
             {
                 auto age = std::chrono::duration_cast<std::chrono::milliseconds>(now - it->second.Since).count();
@@ -682,6 +813,26 @@ void Session::handleHost(int peer, const std::vector<u8>& data)
             return;
         }
 
+    case Msg_Chat:
+        {
+            if (slot < 0) { reject(peer, Reject_Protocol); return; }
+            std::string text = r.Str(kMaxChat);
+            if (!r.AtEnd()) { reject(peer, Reject_Protocol); return; }
+            text = CleanText(text, "", kMaxChat);
+            if (text.empty()) return;
+
+            // a few messages at a time; the rest is dropped
+            auto now = std::chrono::steady_clock::now();
+            auto& times = Slots[slot].ChatTimes;
+            while (!times.empty() && now - times.front() > std::chrono::milliseconds(kChatWindowMs))
+                times.pop_front();
+            if ((int)times.size() >= kChatBurst) return;
+            times.push_back(now);
+
+            relayChat(slot, text);
+            return;
+        }
+
     case Msg_Hash:
         {
             if (slot < 0 || CurState != State::Playing) return;
@@ -722,7 +873,7 @@ void Session::handleClient(const std::vector<u8>& data)
             RoomInfo room;
             room.Build = r.Str(kMaxBuild);
             room.GameCode = r.Str(4);
-            room.Title = CleanName(r.Str(kMaxTitle), "");
+            room.Title = CleanText(r.Str(kMaxTitle), "", kMaxTitle);
             r.Bytes(room.ROMHash.data(), 20);
             room.ROMSize = r.U32();
             room.InputDelay = r.U8();
@@ -874,6 +1025,43 @@ void Session::handleClient(const std::vector<u8>& data)
             u8 console = 0;
             if (r.Left() > 0) console = data[1];
             if (console == MyConsole || !readInputs(r, console)) { bad(); return; }
+            return;
+        }
+
+    case Msg_Chat:
+        {
+            u8 s = r.U8();
+            std::string text = r.Str(kMaxChat);
+            if (!r.AtEnd() || s >= kMaxPlayers) { bad(); return; }
+            text = CleanText(text, "", kMaxChat);
+            if (text.empty()) return;
+            QString name = QString::fromStdString(Slots[s].Present ? Slots[s].Name : "?");
+            QString t = QString::fromStdString(text);
+            emitLater([this, name, t] { emit chat(name, t); });
+            return;
+        }
+
+    case Msg_Delay:
+        {
+            u8 d = r.U8();
+            if (!r.AtEnd() || d < 1 || d > kMaxInputDelay) { bad(); return; }
+            applyDelay(d);
+            return;
+        }
+
+    case Msg_Pings:
+        {
+            u8 n = r.U8();
+            if (n > kMaxPlayers) { bad(); return; }
+            for (int i = 0; i < n; i++)
+            {
+                u8 s = r.U8();
+                u16 ms = r.U16();
+                if (!r.Ok() || s >= kMaxPlayers) { bad(); return; }
+                Slots[s].Ping = ms;
+            }
+            if (!r.AtEnd()) { bad(); return; }
+            emitLater([this] { emit pingsChanged(); });
             return;
         }
 
