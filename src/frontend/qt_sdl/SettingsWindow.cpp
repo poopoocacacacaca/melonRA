@@ -19,11 +19,11 @@
 #include <QBuffer>
 #include <QCloseEvent>
 #include <QDialogButtonBox>
+#include <QFile>
 #include <QHBoxLayout>
 #include <QImageReader>
 #include <QKeyEvent>
 #include <QListWidget>
-#include <QPainter>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QStackedWidget>
@@ -42,66 +42,49 @@ namespace
 struct PageInfo
 {
     const char* Name;
-    const char* Icon;   // SVG shapes on a 24x24 grid, drawn with lines
+    const char* Icon;   // in resources/settings (Lucide icons)
 };
 
 const PageInfo kPages[SettingsWindow::Page_Count] = {
-    {"Emulation",
-     "<rect x='6' y='2.5' width='12' height='8.5' rx='1.5'/><rect x='6' y='13' width='12' height='8.5' rx='1.5'/>"},
-    {"Input and Hotkeys",
-     "<path d='M7 8h10a4 4 0 0 1 3.9 3.1l1 4.6a2.5 2.5 0 0 1-4.3 2.2L15.5 16h-7l-2.1 1.9a2.5 2.5 0 0 1-4.3-2.2l1-4.6A4 4 0 0 1 7 8z'/>"
-     "<path d='M8 10.5v3M6.5 12h3'/><circle cx='15.5' cy='11' r='0.6'/><circle cx='17.5' cy='13' r='0.6'/>"},
-    {"Video",
-     "<rect x='2.5' y='4' width='19' height='13' rx='1.5'/><path d='M8 21h8M12 17v4'/>"},
-    {"Camera",
-     "<path d='M3 8a2 2 0 0 1 2-2h2.5l1.5-2h6l1.5 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/><circle cx='12' cy='12.5' r='3.5'/>"},
-    {"Audio",
-     "<path d='M4 9.5h3.5L12 5.5v13l-4.5-4H4z'/><path d='M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11'/>"},
-    {"Multiplayer",
-     "<circle cx='9' cy='8' r='3'/><path d='M3.5 19a5.5 5.5 0 0 1 11 0'/><circle cx='17' cy='9' r='2.5'/><path d='M15.5 14.2A4.5 4.5 0 0 1 21 18.5'/>"},
-    {"Wi-Fi",
-     "<path d='M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.5 16a5 5 0 0 1 7 0'/><circle cx='12' cy='19' r='0.8'/>"},
-    {"Firmware",
-     "<rect x='6' y='6' width='12' height='12' rx='1.5'/><rect x='9.5' y='9.5' width='5' height='5'/>"
-     "<path d='M9 2.5V6M15 2.5V6M9 18v3.5M15 18v3.5M2.5 9H6M2.5 15H6M18 9h3.5M18 15h3.5'/>"},
-    {"Interface",
-     "<path d='M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1'/><circle cx='15' cy='6' r='2'/><circle cx='9' cy='12' r='2'/><circle cx='17' cy='18' r='2'/>"},
-    {"Paths",
-     "<path d='M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/>"},
-    {"Updates",
-     "<path d='M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5M4 16.5v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2'/>"},
-    {"RetroAchievements",
-     "<path d='M8 4h8v5a4 4 0 0 1-8 0z'/><path d='M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20.5h7M9.5 17h5'/>"},
+    {"Emulation", "emulation"},
+    {"Input and Hotkeys", "input"},
+    {"Video", "video"},
+    {"Camera", "camera"},
+    {"Audio", "audio"},
+    {"Multiplayer", "multiplayer"},
+    {"Wi-Fi", "wifi"},
+    {"Firmware", "firmware"},
+    {"Interface", "interface"},
+    {"Paths", "paths"},
+    {"Updates", "updates"},
+    {"RetroAchievements", "achievements"},
 };
 
-void addLineIcon(QIcon& icon, const char* shapes, const QColor& color, qreal dpr, QIcon::Mode mode)
-{
-    QByteArray svg = QByteArray("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='")
-                   + color.name().toLatin1()
-                   + "' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'>"
-                   + shapes + "</svg>";
+constexpr int kIconSize = 20;
 
-    for (int size : {20, 24, 32})
-    {
-        QBuffer buf(&svg);
-        buf.open(QIODevice::ReadOnly);
-        QImageReader reader(&buf, "svg");
-        int px = qRound(size * dpr);
-        reader.setScaledSize(QSize(px, px));
-        QImage img = reader.read();
-        if (img.isNull()) continue;
-        QPixmap pm = QPixmap::fromImage(img);
-        pm.setDevicePixelRatio(dpr);
-        icon.addPixmap(pm, mode);
-    }
-}
-
-// drawn in the text color, and in the highlighted text color when selected
-QIcon lineIcon(const char* shapes, const QPalette& pal, qreal dpr)
+// a line icon drawn in the text color, at one size; the same picture whether
+// the page is selected or not
+QIcon pageIcon(const char* name, const QColor& color, qreal dpr)
 {
+    QFile file(QString(":/settings/%1.svg").arg(name));
+    if (!file.open(QIODevice::ReadOnly)) return QIcon();
+    QByteArray svg = file.readAll();
+    svg.replace("currentColor", color.name().toLatin1());
+
+    QBuffer buf(&svg);
+    buf.open(QIODevice::ReadOnly);
+    QImageReader reader(&buf, "svg");
+    const int px = qRound(kIconSize * dpr);
+    reader.setScaledSize(QSize(px, px));
+    QImage img = reader.read();
+    if (img.isNull()) return QIcon();
+
+    QPixmap pm = QPixmap::fromImage(img);
+    pm.setDevicePixelRatio(dpr);
     QIcon icon;
-    addLineIcon(icon, shapes, pal.color(QPalette::WindowText), dpr, QIcon::Normal);
-    addLineIcon(icon, shapes, pal.color(QPalette::HighlightedText), dpr, QIcon::Selected);
+    icon.addPixmap(pm, QIcon::Normal);
+    icon.addPixmap(pm, QIcon::Selected);
+    icon.addPixmap(pm, QIcon::Active);
     return icon;
 }
 
@@ -126,7 +109,7 @@ SettingsWindow::SettingsWindow(MainWindow* win) : QDialog(win), Win(win)
 
     List = new QListWidget(this);
     List->setFixedWidth(200);
-    List->setIconSize(QSize(20, 20));
+    List->setIconSize(QSize(kIconSize, kIconSize));
     List->setSpacing(1);
     List->setFrameShape(QFrame::NoFrame);
     List->setStyleSheet("QListWidget { background: transparent; } QListWidget::item { padding: 5px 4px; }");
@@ -176,10 +159,11 @@ SettingsWindow::~SettingsWindow()
 
 void SettingsWindow::updateIcons()
 {
-    qreal dpr = devicePixelRatioF();
+    const QColor color = palette().color(QPalette::WindowText);
+    const qreal dpr = devicePixelRatioF();
     for (int i = 0; i < Page_Count; i++)
         if (QListWidgetItem* item = List->item(i))
-            item->setIcon(lineIcon(kPages[i].Icon, palette(), dpr));
+            item->setIcon(pageIcon(kPages[i].Icon, color, dpr));
 }
 
 void SettingsWindow::changeEvent(QEvent* event)

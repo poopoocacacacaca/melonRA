@@ -166,6 +166,7 @@ melonRA is built on the work of these projects:
   [libarchive](https://www.libarchive.org), [zstd](https://github.com/facebook/zstd), [FAAD2](https://github.com/knik0/faad2)
   and [ENet](http://enet.bespin.org)
 - [famfamfam flag icons](http://www.famfamfam.com/lab/icons/flags/) and [flag-icons](https://github.com/lipis/flag-icons) by lipis
+- [Lucide](https://lucide.dev) icons in the Settings window
 - Box art from [GameTDB](https://www.gametdb.com) and the [libretro thumbnails](https://github.com/libretro-thumbnails/libretro-thumbnails)
 - Ideas borrowed from [DuckStation](https://github.com/stenzek/duckstation), [Dolphin](https://github.com/dolphin-emu/dolphin),
   [RetroArch](https://github.com/libretro/RetroArch) and WatermelonDS

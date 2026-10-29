@@ -99,6 +99,7 @@ set(SOURCES_QT_SDL
     GameList/GameList.cpp
     GameList/GameList.h
     GameList/gamelist.qrc
+    resources/settings/settings.qrc
 
     Updater/Updater.cpp
     Updater/Updater.h

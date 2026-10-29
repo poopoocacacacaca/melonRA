@@ -1,0 +1,17 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+	<qresource prefix="/settings">
+		<file>emulation.svg</file>
+		<file>input.svg</file>
+		<file>video.svg</file>
+		<file>camera.svg</file>
+		<file>audio.svg</file>
+		<file>multiplayer.svg</file>
+		<file>wifi.svg</file>
+		<file>firmware.svg</file>
+		<file>interface.svg</file>
+		<file>paths.svg</file>
+		<file>updates.svg</file>
+		<file>achievements.svg</file>
+	</qresource>
+</RCC>

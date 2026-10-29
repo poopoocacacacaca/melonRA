@@ -27,6 +27,7 @@ The following components are included in, or linked into, melonRA builds.
 | gif-h | GIF writing (`src/frontend/qt_sdl/gif-h`) | Public domain | https://github.com/charlietangora/gif-h |
 | famfamfam flag icons | pixel-art region flags in the game list, for small windows (`src/frontend/qt_sdl/GameList/flags`) | Public domain | http://www.famfamfam.com/lab/icons/flags/ |
 | flag-icons | vector region flags in the game list, for large windows and high-DPI screens (`src/frontend/qt_sdl/GameList/flags-hd`) | MIT | https://github.com/lipis/flag-icons |
+| Lucide | icons in the Settings window (`src/frontend/qt_sdl/resources/settings`) | ISC (some icons MIT, from Feather; see the `LICENSE` there) | https://lucide.dev |
 
 ## Linked libraries (provided by the build environment)
 
