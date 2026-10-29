@@ -89,6 +89,7 @@
 #include "GameList/GameList.h"
 #include "GameList/Covers.h"
 #include "SettingsBackup.h"
+#include "SettingsWindow.h"
 #include "GameSettingsDialog.h"
 
 using namespace melonDS;
@@ -291,6 +292,13 @@ static bool FileIsSupportedFiletype(const QString& filename, bool insideArchive 
 }
 
 
+
+EmuInstance* owningEmuInstance(QWidget* w)
+{
+    for (QObject* o = w ? w->parent() : nullptr; o; o = o->parent())
+        if (auto* win = qobject_cast<MainWindow*>(o)) return win->getEmuInstance();
+    return nullptr;
+}
 
 MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
     QMainWindow(parent),
@@ -799,8 +807,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             actUpdateSettings->setMenuRole(QAction::NoRole);
             connect(actUpdateSettings, &QAction::triggered, this, [this]
             {
-                Updater::UpdateSettingsDialog dlg(this);
-                dlg.exec();
+                SettingsWindow::open(this, SettingsWindow::Page_Updates);
             });
 
             menu->addSeparator();
@@ -855,7 +862,10 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
 
             actRASettings = menu->addAction("Settings...");
             actRASettings->setMenuRole(QAction::NoRole);
-            connect(actRASettings, &QAction::triggered, this, [this]() { RA::SettingsDialog::open(this); });
+            connect(actRASettings, &QAction::triggered, this, [this]()
+            {
+                SettingsWindow::open(this, SettingsWindow::Page_Achievements);
+            });
 
             // filled with the RAIntegration menu once the toolkit DLL loads
             raToolkitMenu = menu->addMenu("Developer Toolkit");
@@ -2463,12 +2473,111 @@ bool MainWindow::lanWarning(bool host)
     return true;
 }
 
+QDialog* MainWindow::createSettingsPage(int page)
+{
+    switch (page)
+    {
+    case SettingsWindow::Page_Emulation:
+        {
+            pauseForSettingsWindow();
+            auto* dlg = new EmuSettingsDialog(this);
+            EmuSettingsDialog::currentDlg = dlg;
+            connect(dlg, &EmuSettingsDialog::finished, this, &MainWindow::onEmuSettingsDialogFinished);
+            return dlg;
+        }
+    case SettingsWindow::Page_Input:
+        {
+            pauseForSettingsWindow();
+            auto* dlg = new InputConfigDialog(this);
+            InputConfigDialog::currentDlg = dlg;
+            connect(dlg, &InputConfigDialog::finished, this, &MainWindow::onInputConfigFinished);
+            return dlg;
+        }
+    case SettingsWindow::Page_Video:
+        {
+            auto* dlg = new VideoSettingsDialog(this);
+            VideoSettingsDialog::currentDlg = dlg;
+            connect(dlg, &VideoSettingsDialog::updateVideoSettings, this, &MainWindow::onUpdateVideoSettings);
+            return dlg;
+        }
+    case SettingsWindow::Page_Camera:
+        {
+            pauseForSettingsWindow();
+            camStarted[0] = camManager[0]->isStarted();
+            camStarted[1] = camManager[1]->isStarted();
+            if (camStarted[0]) camManager[0]->stop();
+            if (camStarted[1]) camManager[1]->stop();
+
+            auto* dlg = new CameraSettingsDialog(this);
+            CameraSettingsDialog::currentDlg = dlg;
+            connect(dlg, &CameraSettingsDialog::finished, this, &MainWindow::onCameraSettingsFinished);
+            return dlg;
+        }
+    case SettingsWindow::Page_Audio:
+        {
+            auto* dlg = new AudioSettingsDialog(this);
+            AudioSettingsDialog::currentDlg = dlg;
+            connect(emuThread, &EmuThread::syncVolumeLevel, dlg, &AudioSettingsDialog::onSyncVolumeLevel);
+            connect(emuThread, &EmuThread::windowEmuStart, dlg, &AudioSettingsDialog::onConsoleReset);
+            connect(dlg, &AudioSettingsDialog::updateAudioVolume, this, &MainWindow::onUpdateAudioVolume);
+            connect(dlg, &AudioSettingsDialog::updateAudioSettings, this, &MainWindow::onUpdateAudioSettings);
+            connect(dlg, &AudioSettingsDialog::finished, this, &MainWindow::onAudioSettingsFinished);
+            return dlg;
+        }
+    case SettingsWindow::Page_Multiplayer:
+        {
+            pauseForSettingsWindow();
+            auto* dlg = new MPSettingsDialog(this);
+            MPSettingsDialog::currentDlg = dlg;
+            connect(dlg, &MPSettingsDialog::finished, this, &MainWindow::onMPSettingsFinished);
+            return dlg;
+        }
+    case SettingsWindow::Page_WiFi:
+        {
+            pauseForSettingsWindow();
+            auto* dlg = new WifiSettingsDialog(this);
+            WifiSettingsDialog::currentDlg = dlg;
+            connect(dlg, &WifiSettingsDialog::finished, this, &MainWindow::onWifiSettingsFinished);
+            return dlg;
+        }
+    case SettingsWindow::Page_Firmware:
+        {
+            pauseForSettingsWindow();
+            auto* dlg = new FirmwareSettingsDialog(this);
+            FirmwareSettingsDialog::currentDlg = dlg;
+            connect(dlg, &FirmwareSettingsDialog::finished, this, &MainWindow::onFirmwareSettingsFinished);
+            return dlg;
+        }
+    case SettingsWindow::Page_Interface:
+        {
+            pauseForSettingsWindow();
+            auto* dlg = new InterfaceSettingsDialog(this);
+            InterfaceSettingsDialog::currentDlg = dlg;
+            connect(dlg, &InterfaceSettingsDialog::finished, this, &MainWindow::onInterfaceSettingsFinished);
+            connect(dlg, &InterfaceSettingsDialog::updateInterfaceSettings, this, &MainWindow::onUpdateInterfaceSettings);
+            return dlg;
+        }
+    case SettingsWindow::Page_Paths:
+        {
+            pauseForSettingsWindow();
+            auto* dlg = new PathSettingsDialog(this);
+            PathSettingsDialog::currentDlg = dlg;
+            connect(dlg, &PathSettingsDialog::finished, this, &MainWindow::onPathSettingsFinished);
+            return dlg;
+        }
+    case SettingsWindow::Page_Updates:
+        return new Updater::UpdateSettingsDialog(this);
+    case SettingsWindow::Page_Achievements:
+        if (!RA::Manager::get()) return nullptr;
+        return new RA::SettingsDialog(this);
+    default:
+        return nullptr;
+    }
+}
+
 void MainWindow::onOpenEmuSettings()
 {
-    pauseForSettingsWindow();
-
-    EmuSettingsDialog* dlg = EmuSettingsDialog::openDlg(this);
-    connect(dlg, &EmuSettingsDialog::finished, this, &MainWindow::onEmuSettingsDialogFinished);
+    SettingsWindow::open(this, SettingsWindow::Page_Emulation);
 }
 
 void MainWindow::onEmuSettingsDialogFinished(int res)
@@ -2501,10 +2610,7 @@ void MainWindow::onEmuSettingsDialogFinished(int res)
 
 void MainWindow::onOpenInputConfig()
 {
-    pauseForSettingsWindow();
-
-    InputConfigDialog* dlg = InputConfigDialog::openDlg(this);
-    connect(dlg, &InputConfigDialog::finished, this, &MainWindow::onInputConfigFinished);
+    SettingsWindow::open(this, SettingsWindow::Page_Input);
 }
 
 void MainWindow::onInputConfigFinished(int res)
@@ -2514,21 +2620,12 @@ void MainWindow::onInputConfigFinished(int res)
 
 void MainWindow::onOpenVideoSettings()
 {
-    VideoSettingsDialog* dlg = VideoSettingsDialog::openDlg(this);
-    connect(dlg, &VideoSettingsDialog::updateVideoSettings, this, &MainWindow::onUpdateVideoSettings);
+    SettingsWindow::open(this, SettingsWindow::Page_Video);
 }
 
 void MainWindow::onOpenCameraSettings()
 {
-    pauseForSettingsWindow();
-
-    camStarted[0] = camManager[0]->isStarted();
-    camStarted[1] = camManager[1]->isStarted();
-    if (camStarted[0]) camManager[0]->stop();
-    if (camStarted[1]) camManager[1]->stop();
-
-    CameraSettingsDialog* dlg = CameraSettingsDialog::openDlg(this);
-    connect(dlg, &CameraSettingsDialog::finished, this, &MainWindow::onCameraSettingsFinished);
+    SettingsWindow::open(this, SettingsWindow::Page_Camera);
 }
 
 void MainWindow::onCameraSettingsFinished(int res)
@@ -2541,20 +2638,12 @@ void MainWindow::onCameraSettingsFinished(int res)
 
 void MainWindow::onOpenAudioSettings()
 {
-    AudioSettingsDialog* dlg = AudioSettingsDialog::openDlg(this);
-    connect(emuThread, &EmuThread::syncVolumeLevel, dlg, &AudioSettingsDialog::onSyncVolumeLevel);
-    connect(emuThread, &EmuThread::windowEmuStart, dlg, &AudioSettingsDialog::onConsoleReset);
-    connect(dlg, &AudioSettingsDialog::updateAudioVolume, this, &MainWindow::onUpdateAudioVolume);
-    connect(dlg, &AudioSettingsDialog::updateAudioSettings, this, &MainWindow::onUpdateAudioSettings);
-    connect(dlg, &AudioSettingsDialog::finished, this, &MainWindow::onAudioSettingsFinished);
+    SettingsWindow::open(this, SettingsWindow::Page_Audio);
 }
 
 void MainWindow::onOpenFirmwareSettings()
 {
-    pauseForSettingsWindow();
-
-    FirmwareSettingsDialog* dlg = FirmwareSettingsDialog::openDlg(this);
-    connect(dlg, &FirmwareSettingsDialog::finished, this, &MainWindow::onFirmwareSettingsFinished);
+    SettingsWindow::open(this, SettingsWindow::Page_Firmware);
 }
 
 void MainWindow::onFirmwareSettingsFinished(int res)
@@ -2567,10 +2656,7 @@ void MainWindow::onFirmwareSettingsFinished(int res)
 
 void MainWindow::onOpenPathSettings()
 {
-    pauseForSettingsWindow();
-
-    PathSettingsDialog* dlg = PathSettingsDialog::openDlg(this);
-    connect(dlg, &PathSettingsDialog::finished, this, &MainWindow::onPathSettingsFinished);
+    SettingsWindow::open(this, SettingsWindow::Page_Paths);
 }
 
 void MainWindow::onPathSettingsFinished(int res)
@@ -2612,10 +2698,7 @@ void MainWindow::onAudioSettingsFinished(int res)
 
 void MainWindow::onOpenMPSettings()
 {
-    pauseForSettingsWindow();
-
-    MPSettingsDialog* dlg = MPSettingsDialog::openDlg(this);
-    connect(dlg, &MPSettingsDialog::finished, this, &MainWindow::onMPSettingsFinished);
+    SettingsWindow::open(this, SettingsWindow::Page_Multiplayer);
 }
 
 void MainWindow::onMPSettingsFinished(int res)
@@ -2629,10 +2712,7 @@ void MainWindow::onMPSettingsFinished(int res)
 
 void MainWindow::onOpenWifiSettings()
 {
-    pauseForSettingsWindow();
-
-    WifiSettingsDialog* dlg = WifiSettingsDialog::openDlg(this);
-    connect(dlg, &WifiSettingsDialog::finished, this, &MainWindow::onWifiSettingsFinished);
+    SettingsWindow::open(this, SettingsWindow::Page_WiFi);
 }
 
 void MainWindow::onWifiSettingsFinished(int res)
@@ -2645,10 +2725,7 @@ void MainWindow::onWifiSettingsFinished(int res)
 
 void MainWindow::onOpenInterfaceSettings()
 {
-    pauseForSettingsWindow();
-    InterfaceSettingsDialog* dlg = InterfaceSettingsDialog::openDlg(this);
-    connect(dlg, &InterfaceSettingsDialog::finished, this, &MainWindow::onInterfaceSettingsFinished);
-    connect(dlg, &InterfaceSettingsDialog::updateInterfaceSettings, this, &MainWindow::onUpdateInterfaceSettings);
+    SettingsWindow::open(this, SettingsWindow::Page_Interface);
 }
 
 void MainWindow::onUpdateInterfaceSettings()

@@ -69,6 +69,9 @@ class UpdateSettingsDialog : public QDialog
 public:
     explicit UpdateSettingsDialog(QWidget* parent);
 
+    // saves the settings, also when OK is pressed in the Settings window
+    void accept() override;
+
 private:
     void updateEnabledStates();
     void save();

@@ -223,7 +223,7 @@ void EmuSettingsDialog::verifyFirmware()
 
 void EmuSettingsDialog::done(int r)
 {
-    if (!((MainWindow*)parent())->getEmuInstance())
+    if (!owningEmuInstance(this))
     {
         QDialog::done(r);
         closeDlg();

@@ -8,6 +8,10 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
 
 ## Unreleased
 
+- **One Settings window.** Every settings page (Emulation, Input and Hotkeys, Video, Camera, Audio,
+  Multiplayer, Wi-Fi, Firmware, Interface, Paths, Updates, RetroAchievements) is in one window with a
+  list on the left, so you can move between them without closing anything. The Config menu items open
+  it on their page. OK saves every page you changed; Cancel undoes them.
 - **Experimental menu.** New features that are still being tried out go in a menu of their own, next
   to Help.
 - **Netplay (experimental).** Play games with local wireless multiplayer (trading, battles, racing)

@@ -121,7 +121,7 @@ void VideoSettingsDialog::on_VideoSettingsDialog_accepted()
 
 void VideoSettingsDialog::on_VideoSettingsDialog_rejected()
 {
-    if (!((MainWindow*)parent())->getEmuInstance())
+    if (!owningEmuInstance(this))
     {
         closeDlg();
         return;

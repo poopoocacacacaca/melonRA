@@ -166,7 +166,7 @@ WifiSettingsDialog::~WifiSettingsDialog()
 
 void WifiSettingsDialog::done(int r)
 {
-    if (!((MainWindow*)parent())->getEmuInstance())
+    if (!owningEmuInstance(this))
     {
         QDialog::done(r);
         closeDlg();

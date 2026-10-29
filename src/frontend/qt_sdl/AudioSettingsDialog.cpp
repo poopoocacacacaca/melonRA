@@ -170,7 +170,7 @@ void AudioSettingsDialog::on_AudioSettingsDialog_accepted()
 
 void AudioSettingsDialog::on_AudioSettingsDialog_rejected()
 {
-    if (!((MainWindow*)parent())->getEmuInstance())
+    if (!owningEmuInstance(this))
     {
         closeDlg();
         return;

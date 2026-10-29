@@ -132,7 +132,7 @@ bool FirmwareSettingsDialog::verifyMAC()
 
 void FirmwareSettingsDialog::done(int r)
 {
-    if (!((MainWindow*)parent())->getEmuInstance())
+    if (!owningEmuInstance(this))
     {
         QDialog::done(r);
         closeDlg();

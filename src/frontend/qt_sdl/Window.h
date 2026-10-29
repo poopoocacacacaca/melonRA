@@ -46,6 +46,10 @@ const int kMaxRecentROMs = 10;
 class QStackedWidget;
 namespace GameList { class Widget; }
 
+// the emulator instance whose main window a widget belongs to, also for
+// settings pages shown inside the Settings window (null while it closes)
+EmuInstance* owningEmuInstance(QWidget* w);
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -156,6 +160,10 @@ private slots:
 public:
     // a game's own settings were switched on or off: show and apply them
     void onGameSettingsApplied(bool glchange);
+
+    // a page of the Settings window (one of the SettingsWindow::Page values),
+    // set up as its menu item used to open it; null if it can't be shown
+    QDialog* createSettingsPage(int page);
 
     // netplay: the session's game started on this computer, or it ended
     void onNetplayStarted();

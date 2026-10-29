@@ -59,7 +59,7 @@ MPSettingsDialog::~MPSettingsDialog()
 
 void MPSettingsDialog::done(int r)
 {
-    if (!((MainWindow*)parent())->getEmuInstance())
+    if (!owningEmuInstance(this))
     {
         QDialog::done(r);
         closeDlg();

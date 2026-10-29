@@ -163,7 +163,7 @@ void CameraSettingsDialog::on_CameraSettingsDialog_accepted()
 
 void CameraSettingsDialog::on_CameraSettingsDialog_rejected()
 {
-    if (!((MainWindow*)parent())->getEmuInstance())
+    if (!owningEmuInstance(this))
     {
         closeDlg();
         return;

@@ -479,7 +479,7 @@ UpdateSettingsDialog::UpdateSettingsDialog(QWidget* parent) : QDialog(parent)
 
     connect(cbAutoUpdate, &QCheckBox::toggled, this, &UpdateSettingsDialog::updateEnabledStates);
     connect(checkButton, &QPushButton::clicked, this, &UpdateSettingsDialog::checkNow);
-    connect(buttons, &QDialogButtonBox::accepted, this, [this] { save(); accept(); });
+    connect(buttons, &QDialogButtonBox::accepted, this, &UpdateSettingsDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 }
 
@@ -489,6 +489,12 @@ void UpdateSettingsDialog::updateEnabledStates()
     bool asks = !cbAutoUpdate->isChecked();
     cbNeverAsk->setEnabled(asks);
     neverAskNote->setEnabled(asks);
+}
+
+void UpdateSettingsDialog::accept()
+{
+    save();
+    QDialog::accept();
 }
 
 void UpdateSettingsDialog::save()

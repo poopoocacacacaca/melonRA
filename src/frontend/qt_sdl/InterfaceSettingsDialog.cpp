@@ -120,7 +120,7 @@ void InterfaceSettingsDialog::on_pbQuarter_clicked()
 
 void InterfaceSettingsDialog::done(int r)
 {
-    if (!((MainWindow*)parent())->getEmuInstance())
+    if (!owningEmuInstance(this))
     {
         QDialog::done(r);
         closeDlg();

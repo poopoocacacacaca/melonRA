@@ -53,6 +53,8 @@ static QLabel* plainLabel(const QString& text, QWidget* parent)
     l->setTextFormat(Qt::PlainText);
     l->setText(text);
     l->setWordWrap(true);
+    // wrapped text needs its height reserved, or the layout squeezes it
+    l->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
     return l;
 }
 
@@ -64,6 +66,13 @@ static void plainMessage(QWidget* parent, QMessageBox::Icon icon, const QString&
     box.setTextFormat(Qt::PlainText);
     box.setText(text);
     box.exec();
+}
+
+// a wrapped explanation that keeps all of its lines at this width
+static void reserveLines(QLabel* l, int width)
+{
+    l->setMinimumWidth(width);
+    l->setMinimumHeight(l->heightForWidth(width));
 }
 
 static QString defaultName()
@@ -132,6 +141,7 @@ HostDialog::HostDialog(MainWindow* parent) : QDialog(parent), Win(parent)
         "Everyone needs the same melonRA version and an identical copy of the game. Each player "
         "brings their own save; yours stays on this computer and is updated as you play."), this);
     help->setStyleSheet("color: palette(placeholder-text);");
+    reserveLines(help, 460);
 
     QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons->button(QDialogButtonBox::Ok)->setText(tr("Host"));
@@ -139,10 +149,11 @@ HostDialog::HostDialog(MainWindow* parent) : QDialog(parent), Win(parent)
     connect(buttons, &QDialogButtonBox::rejected, this, &HostDialog::reject);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
+    layout->setSizeConstraint(QLayout::SetMinimumSize);
     layout->addLayout(form);
     layout->addWidget(help);
     layout->addWidget(buttons);
-    setMinimumWidth(460);
+    setMinimumWidth(480);
 }
 
 void HostDialog::browse()
@@ -219,6 +230,7 @@ JoinDialog::JoinDialog(QWidget* parent) : QDialog(parent)
         "Ask the host for their IP address and port. You need the same melonRA version and an "
         "identical copy of the game; melonRA looks for it in your game list."), this);
     help->setStyleSheet("color: palette(placeholder-text);");
+    reserveLines(help, 400);
 
     QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons->button(QDialogButtonBox::Ok)->setText(tr("Join"));
@@ -226,6 +238,7 @@ JoinDialog::JoinDialog(QWidget* parent) : QDialog(parent)
     connect(buttons, &QDialogButtonBox::rejected, this, &JoinDialog::reject);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
+    layout->setSizeConstraint(QLayout::SetMinimumSize);
     layout->addLayout(form);
     layout->addWidget(help);
     layout->addWidget(buttons);
@@ -332,10 +345,12 @@ void RoomDialog::refresh()
     Players->clear();
     for (const PlayerView& p : s->roster())
     {
+        QStringList tags;
+        if (p.Slot == 0) tags << tr("host");
+        if (p.Slot == s->mySlot()) tags << tr("you");
         QString line = p.Name;
-        if (p.Slot == s->mySlot()) line += tr("  (you)");
-        if (p.Slot == 0) line += tr("  (host)");
-        if (!p.Ready) line += tr("  - sending their save...");
+        if (!tags.isEmpty()) line += QString(" (%1)").arg(tags.join(", "));
+        if (!p.Ready) line += tr(" - sending their save...");
         Players->addItem(line);
     }
 

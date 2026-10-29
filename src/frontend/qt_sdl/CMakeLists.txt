@@ -30,6 +30,8 @@ set(SOURCES_QT_SDL
     AudioSettingsDialog.cpp
     FirmwareSettingsDialog.cpp
     PathSettingsDialog.cpp
+    SettingsWindow.cpp
+    SettingsWindow.h
     MPSettingsDialog.cpp
     WifiSettingsDialog.cpp
     InterfaceSettingsDialog.cpp
