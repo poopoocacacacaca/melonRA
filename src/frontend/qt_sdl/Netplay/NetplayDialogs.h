@@ -99,6 +99,9 @@ public:
     static RoomDialog* open(MainWindow* win, Runner* runner);
     static RoomDialog* current() { return Current; }
 
+    // Leave / Close Room / Leave Game (asks first during the game)
+    void leaveSession();
+
 protected:
     void closeEvent(QCloseEvent* event) override;
 

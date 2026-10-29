@@ -296,17 +296,58 @@ u16 LockstepMP::RecvReplies(int inst, u8* data, u64 timestamp, u16 aidmask)
     std::unique_lock<std::mutex> lk(Lock);
     if (Closed) return 0;
 
+    aidmask &= 0xFFFE;
+
     // a client may answer while the command is still in the air, so the
     // window opens when the command was sent
-    u64 start = CmdClock[inst];
-    u64 end = now(inst) + kReplyWindow;
+    const u64 start = CmdClock[inst];
+    const u64 called = now(inst);
+    const u64 limit = called + kMaxReplyWait;
 
-    // nothing is transmitted during the reply window, so the other consoles
-    // can run up to its end without waiting for this one
-    Floor[inst] = std::max(Floor[inst], end);
-    publishLocked(inst, end);
-    waitOthers(lk, inst, end);
-    if (Closed) return 0;
+    // the expected clients that answered before `until`, and their answers
+    auto answered = [&](u64 until) -> u16
+    {
+        u16 got = 0;
+        for (const auto& [key, pkt] : Replies[inst])
+        {
+            if (key.Clock >= until) break;
+            if (key.Clock < start || pkt.Data.empty()) continue;
+            u32 aid = pkt.Type >> 16;
+            if (aid >= 1 && aid <= 15 && (aidmask & (1 << aid))) got |= (1 << aid);
+        }
+        return got;
+    };
+
+    // Clients answer when their own (slightly behind) wireless clock says so,
+    // which can be well after the host starts listening. melonDS's usual link
+    // simply waits for them in real time; here the window grows in steps of
+    // emulated time instead, until every expected client has answered or
+    // `limit` is reached. Each step depends only on what the clients did
+    // before it, so every computer ends up with the same window. Nothing is
+    // transmitted before the window's end, so the other consoles may run up to
+    // it.
+    u64 end = called + kReplyWindow;
+    for (;;)
+    {
+        Floor[inst] = std::max(Floor[inst], end);
+        publishLocked(inst, end);
+
+        Changed.wait(lk, [&]
+        {
+            if (Closed) return true;
+            if (aidmask && answered(end) == aidmask) return true;
+            for (int i = 0; i < kMax; i++)
+            {
+                if (i == inst || !(Members & (1 << i))) continue;
+                if (Clocks[i] < end) return false;
+            }
+            return true;
+        });
+        if (Closed) return 0;
+
+        if (answered(end) == aidmask || end >= limit) break;
+        end = std::min(end + kReplyStep, limit);
+    }
 
     u16 ret = 0;
     auto& box = Replies[inst];
@@ -315,16 +356,14 @@ u16 LockstepMP::RecvReplies(int inst, u8* data, u64 timestamp, u16 aidmask)
         auto it = box.begin();
         if (it->first.Clock >= end) break;
 
-        if (it->first.Clock >= start)
+        const Packet& pkt = it->second;
+        u32 aid = pkt.Type >> 16;
+        if (it->first.Clock >= start && !pkt.Data.empty() && aid >= 1 && aid <= 15 &&
+            (aidmask & (1 << aid)) && !(ret & (1 << aid)))
         {
-            const Packet& pkt = it->second;
-            u32 aid = pkt.Type >> 16;
-            if (!pkt.Data.empty() && aid >= 1 && aid <= 15)
-            {
-                size_t len = std::min<size_t>(pkt.Data.size(), 1024);
-                memcpy(&data[(aid - 1) * 1024], pkt.Data.data(), len);
-                ret |= (1 << aid);
-            }
+            size_t len = std::min<size_t>(pkt.Data.size(), 1024);
+            memcpy(&data[(aid - 1) * 1024], pkt.Data.data(), len);
+            ret |= (1 << aid);
         }
 
         box.erase(it);

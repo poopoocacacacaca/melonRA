@@ -104,7 +104,6 @@ public:
         return sendMessage({.type = type});
     }
 
-    void changeWindowTitle(char* title);
 
     // to be called from the UI thread
     void emuRun();

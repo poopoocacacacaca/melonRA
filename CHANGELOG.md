@@ -34,7 +34,11 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   - **The room** shows each player's status and ping, says what to do next, and gives the host the
     address to share (with a Copy button). It has a chat, which also shows on the game screen while
     playing. The host can remove a player before starting, and change the input delay in the room or
-    during the game, with a suggested value worked out from everyone's ping.
+    during the game, with a suggested value worked out from everyone's ping. While the game runs the
+    room waits minimized (Experimental → Show Netplay Room brings it back, and closing it only hides
+    it); it closes by itself when the session ends.
+- **Game title in the window title**, e.g. "LEGO Indiana Jones - melonRA 0.4.0 (abc1234)", with
+  "[Netplay]" at the end during netplay.
 
 ## 0.4.0
 

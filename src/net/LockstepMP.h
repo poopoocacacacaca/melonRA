@@ -38,7 +38,8 @@ namespace melonDS
 // A console polling at clock t first waits until every other console has
 // reached t, then receives the packets sent before t, in clock order. While a
 // host waits for MP replies it promises not to transmit before the end of the
-// reply window, so clients can catch up and answer.
+// reply window, so clients can catch up and answer; the window grows until the
+// expected clients have answered (see RecvReplies).
 //
 // Used for netplay, where every computer runs all the consoles and they have
 // to stay identical.
@@ -47,8 +48,12 @@ class LockstepMP : public MPInterface
 public:
     using ClockFn = std::function<u64(int inst)>;
 
-    // reply window after an MP command, in system clock cycles (256 us)
+    // reply window after an MP command, in system clock cycles: it starts
+    // at 256 us and grows 64 us at a time, up to 2 ms, until every expected
+    // client has answered
     static constexpr u64 kReplyWindow = 8580;
+    static constexpr u64 kReplyStep = 2145;
+    static constexpr u64 kMaxReplyWait = 67028;
 
     // packets nobody read within this much emulated time are dropped (1 s)
     static constexpr u64 kStale = 33513982;

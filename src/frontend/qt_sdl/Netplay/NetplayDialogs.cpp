@@ -281,15 +281,26 @@ RoomDialog* RoomDialog::Current = nullptr;
 
 RoomDialog* RoomDialog::open(MainWindow* win, Runner* runner)
 {
-    if (Current) { Current->show(); Current->raise(); return Current; }
+    if (Current)
+    {
+        Current->showNormal();
+        Current->raise();
+        Current->activateWindow();
+        return Current;
+    }
     Current = new RoomDialog(win, runner);
     Current->show();
     return Current;
 }
 
-RoomDialog::RoomDialog(MainWindow* win, Runner* runner) : QDialog(win), Win(win), Run(runner)
+// a window of its own (not kept above the main window), so it can sit
+// minimized on the taskbar while the game runs
+RoomDialog::RoomDialog(MainWindow* win, Runner* runner) : QDialog(nullptr), Win(win), Run(runner)
 {
     setWindowTitle(tr("Netplay Room"));
+    setWindowIcon(win->windowIcon());
+    setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::WindowSystemMenuHint |
+                   Qt::WindowMinimizeButtonHint | Qt::WindowCloseButtonHint);
     setAttribute(Qt::WA_DeleteOnClose);
     Session* s = runner->session();
 
@@ -384,7 +395,7 @@ RoomDialog::RoomDialog(MainWindow* win, Runner* runner) : QDialog(win), Win(win)
     {
         if (Run) Run->startGame();
     });
-    connect(LeaveBtn, &QPushButton::clicked, this, &RoomDialog::close);
+    connect(LeaveBtn, &QPushButton::clicked, this, &RoomDialog::leaveSession);
 
     QHBoxLayout* buttons = new QHBoxLayout();
     buttons->addWidget(RemoveBtn);
@@ -538,7 +549,8 @@ void RoomDialog::refresh()
         Status->setText(tr("Starting the game..."));
         break;
     case Session::State::Playing:
-        Status->setText(tr("Playing. This window can stay closed; chat also shows up on the game screen."));
+        Status->setText(tr("Playing. Closing this window only hides it: it's under Experimental → "
+                           "Show Netplay Room, and chat also shows on the game screen."));
         break;
     case Session::State::Ended:
         Status->setText(tr("The session has ended."));
@@ -546,6 +558,9 @@ void RoomDialog::refresh()
     default:
         break;
     }
+
+    const bool inGame = s->state() == Session::State::Loading || s->state() == Session::State::Playing;
+    LeaveBtn->setText(inGame ? tr("Leave Game") : s->isHost() ? tr("Close Room") : tr("Leave"));
 
     QTreeWidgetItem* cur = Players->currentItem();
     RemoveBtn->setEnabled(s->isHost() && lobby && cur && cur->data(0, Qt::UserRole).toInt() != 0);
@@ -645,7 +660,11 @@ void RoomDialog::onGo()
 {
     refresh();
     addLine(tr("The game started."), true);
-    hide();
+
+    // out of the way, a click away on the taskbar
+    showMinimized();
+    Win->raise();
+    Win->activateWindow();
 }
 
 void RoomDialog::onDesync(int frame, int console)
@@ -656,7 +675,7 @@ void RoomDialog::onDesync(int frame, int console)
                      "game may play out differently on each computer; restarting the session is best.")
                       .arg(who).arg(frame / 60));
     Note->show();
-    show();
+    showNormal();
     raise();
 }
 
@@ -670,11 +689,11 @@ void RoomDialog::onFinished(const QString& reason)
     close();
 }
 
-void RoomDialog::closeEvent(QCloseEvent* event)
+void RoomDialog::leaveSession()
 {
     if (Closing || !Run)
     {
-        event->accept();
+        close();
         return;
     }
 
@@ -684,10 +703,7 @@ void RoomDialog::closeEvent(QCloseEvent* event)
             tr("Leave the game? It ends for every player."),
             QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
         if (res != QMessageBox::Yes)
-        {
-            event->ignore();
             return;
-        }
     }
 
     Closing = true;
@@ -695,7 +711,28 @@ void RoomDialog::closeEvent(QCloseEvent* event)
     disconnect(r, nullptr, this, nullptr);
     r->leave();
     r->deleteLater();
-    event->accept();
+    close();
+}
+
+void RoomDialog::closeEvent(QCloseEvent* event)
+{
+    if (Closing || !Run)
+    {
+        event->accept();
+        return;
+    }
+
+    // during the game, closing only puts the room away
+    if (Run->playing())
+    {
+        event->ignore();
+        hide();
+        return;
+    }
+
+    // before the game, the room is all there is: closing it leaves
+    event->ignore();
+    leaveSession();
 }
 
 }

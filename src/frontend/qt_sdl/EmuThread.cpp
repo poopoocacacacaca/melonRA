@@ -162,8 +162,21 @@ void EmuThread::run()
     u32 winUpdateCount = 0, winUpdateFreq = 1;
     u8 dsiVolumeLevel = 0x1F;
 
-    char melontitle[100];
-    const QByteArray titleBase = Updater::windowTitle().toUtf8();
+    const QString titleBase = Updater::windowTitle();
+
+    // "LEGO Indiana Jones - melonRA 0.4.0 (abc1234) [Netplay]": the game
+    // while one is loaded, then melonRA's version, then the session kind
+    auto fullTitle = [&]() -> QString
+    {
+        QString t = titleBase;
+        if (emuActive)
+        {
+            const QString game = emuInstance->cartGame().title.simplified();
+            if (!game.isEmpty()) t = game + " - " + t;
+        }
+        if (emuInstance->netplay) t += " [Netplay]";
+        return t;
+    };
 
     bool fastforward = false;
     bool slowmo = false;
@@ -541,8 +554,7 @@ void EmuThread::run()
                     winUpdateFreq = 1;
                     
                 double actualfps = (59.8261 * 263.0) / nlines;
-                snprintf(melontitle, sizeof(melontitle), "[%d/%.0f] %s", fps, actualfps, titleBase.constData());
-                changeWindowTitle(melontitle);
+                emit windowTitleChange(QString("[%1/%2] %3").arg(fps).arg(actualfps, 0, 'f', 0).arg(fullTitle()));
             }
         }
         else
@@ -554,8 +566,7 @@ void EmuThread::run()
 
             emit windowUpdate();
 
-            snprintf(melontitle, sizeof(melontitle), "%s", titleBase.constData());
-            changeWindowTitle(melontitle);
+            emit windowTitleChange(fullTitle());
 
             SDL_Delay(75);
 
@@ -891,11 +902,6 @@ void EmuThread::handleMessages()
         glBorrowCond.wait(&glBorrowMutex);
         glBorrowMutex.unlock();
     }
-}
-
-void EmuThread::changeWindowTitle(char* title)
-{
-    emit windowTitleChange(QString(title));
 }
 
 void EmuThread::initContext(int win)

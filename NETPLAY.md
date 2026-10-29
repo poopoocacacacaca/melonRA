@@ -40,9 +40,14 @@ session:
   console's system clock instead (`NDS::GetSysTimestamp()`):
   - a console polling at clock *t* first waits until every other console has reached *t*, then gets
     the packets sent before *t*, ordered by (clock, console, sequence)
-  - a host waiting for MP replies promises not to transmit until the end of a 256 µs reply window
-    (later packets are stamped no earlier than that), so clients can catch up and answer; replies
-    sent from the command's transmission to the end of the window count
+  - a host waiting for MP replies promises not to transmit until the end of a reply window (later
+    packets are stamped no earlier than that), so clients can catch up and answer; replies sent from
+    the command's transmission to the end of the window count
+  - the window starts at 256 µs and grows 64 µs at a time, up to 2 ms, until every client the
+    command expects has answered. A client's wireless clock trails the host's by however late it
+    noticed the association response (up to about half a millisecond), so its reply comes that much
+    later. melonDS's own link waits for replies in real time; this waits in emulated time instead,
+    and each step depends only on what the clients did before it
   - powering the wireless off or leaving is recorded at an emulated time, never a thread's timing
   - unread packets expire after one emulated second
 - **Settings** (`Config::SetSessionOverrides`): DS mode, built-in BIOS and firmware, direct boot,

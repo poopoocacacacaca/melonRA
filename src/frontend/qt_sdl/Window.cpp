@@ -888,7 +888,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             actNetplayLeave = menu->addAction("Leave Netplay Session");
             connect(actNetplayLeave, &QAction::triggered, this, [this]
             {
-                if (Netplay::RoomDialog* room = Netplay::RoomDialog::current()) room->close();
+                if (Netplay::RoomDialog* room = Netplay::RoomDialog::current()) room->leaveSession();
                 else if (Netplay::Runner* r = Netplay::Runner::current()) { r->leave(); r->deleteLater(); }
             });
             actNetplayRoom->setEnabled(false);
@@ -2112,7 +2112,7 @@ void MainWindow::onStop()
     // stopping a netplay game means leaving the session
     if (emuInstance->netplay)
     {
-        if (Netplay::RoomDialog* room = Netplay::RoomDialog::current()) room->close();
+        if (Netplay::RoomDialog* room = Netplay::RoomDialog::current()) room->leaveSession();
         return;
     }
 
@@ -2868,7 +2868,8 @@ void MainWindow::onTitleUpdate(QString title)
 {
     if (!emuInstance) return;
 
-    int numinst = numEmuInstances();
+    // netplay's other consoles are hidden: no player numbers then
+    int numinst = emuInstance->netplay ? 1 : numEmuInstances();
     int numwin = emuInstance->getNumWindows();
     if ((numinst > 1) && (numwin > 1))
     {
