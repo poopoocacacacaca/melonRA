@@ -1141,8 +1141,24 @@ public:
         const bool done = pr.completed();
         const int percent = done ? 100 : (int)((uint64_t)pr.unlocked * 100 / pr.total);
         p->setPen(text);
-        p->drawText(line, Qt::AlignLeft | Qt::AlignVCenter, QString("%1/%2").arg(pr.unlocked).arg(pr.total));
-        p->drawText(line, Qt::AlignRight | Qt::AlignVCenter, QString("%1%").arg(percent));
+
+        // a narrow column drops the percentage first, then the count; the bar
+        // always stays. Measured with the widest text a row can have, so every
+        // row of the column shows the same parts.
+        const QString count = QString("%1/%2").arg(pr.unlocked).arg(pr.total);
+        const QString pct = QString("%1%").arg(percent);
+        const int countW = fm.horizontalAdvance("888/888");
+        const int pctW = fm.horizontalAdvance("100%");
+        const int space = fm.horizontalAdvance(' ') * 2;
+        if (countW + space + pctW <= line.width())
+        {
+            p->drawText(line, Qt::AlignLeft | Qt::AlignVCenter, count);
+            p->drawText(line, Qt::AlignRight | Qt::AlignVCenter, pct);
+        }
+        else if (countW <= line.width())
+            p->drawText(line, Qt::AlignLeft | Qt::AlignVCenter, count);
+        else if (pctW <= line.width())
+            p->drawText(line, Qt::AlignLeft | Qt::AlignVCenter, pct);
 
         p->setRenderHint(QPainter::Antialiasing);
         const QRectF bar(r.left(), y + fm.height() + gap, r.width(), barH);
