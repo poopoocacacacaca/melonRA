@@ -62,8 +62,9 @@ View → Game Covers. The covers are kept in the `covers` folder.
 
 While the Discord app is open on your computer, melonRA tells it which game you're
 playing, since when, and for games with achievements, the RetroAchievements Rich
-Presence text, your achievement progress and Hardcore or Casual mode. Discord shows
-this on your profile. melonRA talks only to the Discord app on your own computer,
+Presence text, your achievement progress and Hardcore or Casual mode. During netplay
+it also says you're in a room and how many players are in it (never their names or
+addresses). Discord shows this on your profile. melonRA talks only to the Discord app on your own computer,
 never to Discord's servers. The images are links to the game's box art (GameTDB or
 libretro thumbnails), its RetroAchievements icon and the melonRA logo on GitHub,
 which Discord loads. If cover downloads are allowed and a game's cover wasn't

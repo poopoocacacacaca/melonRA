@@ -61,6 +61,10 @@ public:
     // something shown may have changed (achievements game loaded, ...)
     void refresh();
 
+    // the game is a netplay session with this many players (0: it isn't);
+    // shown as "In a room (2 of 4)" under the title
+    void setNetplay(int players, int maxPlayers);
+
 private:
     Presence();
     ~Presence() override;
@@ -93,6 +97,10 @@ private:
     QString coverUrl;
     bool coverLooked = false;
     qint64 startTime = 0;        // seconds since the epoch
+
+    int netplayPlayers = 0;
+    int netplayMax = 0;
+    QString netplayParty;        // random, only so Discord groups the count
 };
 
 }

@@ -28,6 +28,7 @@
 #include "Config.h"
 #include "LockstepMP.h"
 #include "GameList/GameList.h"
+#include "DiscordPresence.h"
 #include "RetroAchievements/RAClient.h"
 
 using namespace melonDS;
@@ -371,6 +372,9 @@ void Runner::onGo()
         if (EmuInstance* inst = emuInstanceAt(k))
             inst->getEmuThread()->emuRun();
 
+    if (Discord::Presence* presence = Discord::Presence::get())
+        presence->setNetplay((int)Sess.order().size(), kMaxPlayers);
+
     Inst->osdAddMessage(0, "Netplay started. Open the game's wireless multiplayer mode:");
     Inst->osdAddMessage(0, "one player creates a group, the others join it.");
 
@@ -416,6 +420,9 @@ void Runner::tearDown()
     }
 
     Inst->getEmuThread()->netplayEnd();
+
+    if (Discord::Presence* presence = Discord::Presence::get())
+        presence->setNetplay(0, 0);
 
     if (MPInterface::GetType() == MPInterface_Netplay)
         setMPInterface(MPInterface_Local);

@@ -27,6 +27,7 @@
 #include <QLocalSocket>
 #include <QPointer>
 #include <QStringList>
+#include <QUuid>
 #include <QtEndian>
 
 #include "Config.h"
@@ -275,6 +276,19 @@ QJsonObject Presence::buildActivity() const
         }
     }
 
+    // netplay: "In a room (2 of 4)" under the title, as Dolphin does it; the
+    // achievement status moves to the picture's hover text
+    if (netplayPlayers > 0)
+    {
+        if (!state.trimmed().isEmpty() && state != subtitle)
+            largeText += " - " + state;
+        state = "In a room";
+        activity["party"] = QJsonObject{
+            {"id", netplayParty},
+            {"size", QJsonArray{netplayPlayers, netplayMax}},
+        };
+    }
+
     activity["type"] = 0; // "Playing"
     // the members list says the game ("details") instead of "melonRA"
     activity["status_display_type"] = 2;
@@ -292,6 +306,15 @@ QJsonObject Presence::buildActivity() const
     }
     activity["assets"] = assets;
     return activity;
+}
+
+void Presence::setNetplay(int players, int maxPlayers)
+{
+    if (players > 0 && netplayPlayers == 0)
+        netplayParty = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    netplayPlayers = std::max(players, 0);
+    netplayMax = std::max(maxPlayers, netplayPlayers);
+    refresh();
 }
 
 void Presence::refresh()

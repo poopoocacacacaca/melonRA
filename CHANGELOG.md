@@ -27,6 +27,7 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
     and the room explain this.
   - Hosting from outside your home network needs the port (UDP 7066 by default) forwarded on your
     router.
+  - Discord shows "In a room (2 of 4)" under the game's title during a netplay game.
   - Every computer runs every player's console and only buttons and touches travel, so games behave
     as if the consoles were side by side. The input delay setting trades responsiveness for
     smoothness on slower connections.
