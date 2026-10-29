@@ -156,6 +156,18 @@ void HostDialog::browse()
     Game->setCurrentIndex(Game->count() - 1);
 }
 
+void HostDialog::selectGame(const QString& path)
+{
+    int i = Paths.indexOf(path);
+    if (i < 0)
+    {
+        Game->addItem(QFileInfo(path).fileName());
+        Paths.append(path);
+        i = Paths.size() - 1;
+    }
+    Game->setCurrentIndex(i);
+}
+
 QString HostDialog::name() const { return Name->text().trimmed(); }
 u16 HostDialog::port() const { return (u16)Port->value(); }
 int HostDialog::inputDelay() const { return Delay->value(); }

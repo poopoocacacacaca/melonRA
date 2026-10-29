@@ -26,6 +26,7 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
     internet connection of the games are off, and the DS runs at its own speed with the software
     renderer.
   - Doesn't work in Hardcore mode until RetroAchievements says whether netplay is allowed there.
+  - Right-click a game in the list → Start Netplay... hosts a room for it.
 
 ## 0.4.0
 

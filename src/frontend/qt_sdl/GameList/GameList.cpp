@@ -18,6 +18,7 @@
 
 #include "GameList.h"
 #include "Platform.h"
+#include "Netplay/NetplayRunner.h"
 
 #include <algorithm>
 #include <cmath>
@@ -2012,6 +2013,11 @@ void Widget::showContextMenu(QAbstractItemView* from, const QPoint& pos)
                 ach->setEnabled(pr.state != Model::Progress::NotOnRA);
                 connect(ach, &QAction::triggered, this, [this, romPath]() { emit achievementsRequested(romPath); });
             }
+
+            // host a netplay room for it (DSiWare can't be played that way)
+            QAction* np = menu.addAction("Start Netplay...");
+            np->setEnabled(g.platform != "DSi" && !Netplay::Runner::current());
+            connect(np, &QAction::triggered, this, [this, romPath]() { emit netplayRequested(romPath); });
             menu.addSeparator();
         }
     }

@@ -45,6 +45,9 @@ class HostDialog : public QDialog
 public:
     explicit HostDialog(MainWindow* parent);
 
+    // picks this game (from the game list, or adds it)
+    void selectGame(const QString& path);
+
     QStringList romPath() const { return ROMPath; }
     QString name() const;
     u16 port() const;

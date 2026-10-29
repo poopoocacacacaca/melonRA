@@ -936,6 +936,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             RA::AchievementsDialog::openForGame(this, path);
         });
         connect(gameList, &GameList::Widget::settingsRequested, this, &MainWindow::onOpenPathSettings);
+        connect(gameList, &GameList::Widget::netplayRequested, this, &MainWindow::hostNetplay);
     }
 
     // a netplay console played on another computer runs without a window
@@ -2997,6 +2998,11 @@ bool MainWindow::netplayRefuses(const char* what)
 
 void MainWindow::onNetplayHost()
 {
+    hostNetplay(QString());
+}
+
+void MainWindow::hostNetplay(const QString& romPath)
+{
     QString why = Netplay::Runner::cantStart(emuInstance);
     if (!why.isEmpty())
     {
@@ -3007,6 +3013,7 @@ void MainWindow::onNetplayHost()
         return;
 
     Netplay::HostDialog dlg(this);
+    if (!romPath.isEmpty()) dlg.selectGame(romPath);
     if (dlg.exec() != QDialog::Accepted)
         return;
 

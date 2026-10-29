@@ -229,6 +229,8 @@ signals:
     void settingsRequested();
     // Achievements... for a game: the achievements window, on that game
     void achievementsRequested(const QString& path);
+    // Start Netplay... for a game: host a netplay room for it
+    void netplayRequested(const QString& path);
 
 public:
     // after a game's settings changed
