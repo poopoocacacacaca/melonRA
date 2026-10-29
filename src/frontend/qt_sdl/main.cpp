@@ -237,8 +237,12 @@ void pathInit()
 
 void setMPInterface(MPInterfaceType type)
 {
-    // switch to the requested MP interface
-    MPInterface::Set(type);
+    // switch to the requested MP interface. The first instance's emulation
+    // thread uses it all the time, so it makes the switch itself.
+    if (EmuInstance* first = emuInstances[0])
+        first->getEmuThread()->switchMPInterface(type);
+    else
+        MPInterface::Set(type);
 
     // set receive timeout
     // TODO: different settings per interface?

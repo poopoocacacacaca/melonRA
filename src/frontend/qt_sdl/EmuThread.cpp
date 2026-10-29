@@ -803,6 +803,10 @@ void EmuThread::handleMessages()
             emuInstance->updateAudioMuteByWindowFocus();
             break;
 
+        case msg_SwitchMP:
+            MPInterface::Set((MPInterfaceType)msg.param.toInt());
+            break;
+
         case msg_BootFirmware:
             msgResult = 0;
             if (!emuInstance->bootToMenu(msgError))
@@ -1019,6 +1023,17 @@ int EmuThread::netplayBoot(const QStringList& filename, QString& errorstr)
     waitMessage();
     errorstr = msgResult ? "" : msgError;
     return msgResult;
+}
+
+void EmuThread::switchMPInterface(MPInterfaceType type)
+{
+    if (QThread::currentThread() == this || !isRunning())
+    {
+        MPInterface::Set(type);
+        return;
+    }
+    sendMessage({.type = msg_SwitchMP, .param = (int)type});
+    waitMessage();
 }
 
 void EmuThread::netplayEnd()

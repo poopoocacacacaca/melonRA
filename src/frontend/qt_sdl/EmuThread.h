@@ -33,6 +33,7 @@
 
 #include "NDSCart.h"
 #include "GBACart.h"
+#include "MPInterface.h"
 
 namespace melonDS
 {
@@ -74,6 +75,7 @@ public:
         msg_BootFirmware,
         msg_NetplayBoot,
         msg_NetplayEnd,
+        msg_SwitchMP,
         msg_InsertCart,
         msg_EjectCart,
         msg_InsertGBACart,
@@ -122,6 +124,9 @@ public:
     int netplayBoot(const QStringList& filename, QString& errorstr);
     // the instance leaves its session (emulation must be stopped)
     void netplayEnd();
+
+    // replaces the MP interface from this thread, which uses it every loop
+    void switchMPInterface(melonDS::MPInterfaceType type);
     int insertCart(const QStringList& filename, bool gba, QString& errorstr);
     void ejectCart(bool gba);
     int insertGBAAddon(int type, QString& errorstr);

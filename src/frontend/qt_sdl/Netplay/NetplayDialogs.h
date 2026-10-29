@@ -38,6 +38,9 @@ namespace Netplay
 {
 class Runner;
 
+// what stopping a netplay game in the middle can do to a save
+QString saveWarning();
+
 // Experimental → Host Netplay Game...
 class HostDialog : public QDialog
 {
@@ -130,6 +133,8 @@ private:
     QLabel* Game;
     QLabel* Status;
     QLabel* Note;
+    QWidget* AddressBox;
+    QWidget* PlayersBox;
     QTreeWidget* Players;
     QPushButton* RemoveBtn;
     QSpinBox* DelaySpin = nullptr;
@@ -137,6 +142,7 @@ private:
     QPushButton* UseSuggested = nullptr;
     QPlainTextEdit* ChatLog;
     QLineEdit* ChatInput;
+    QPushButton* SendBtn;
     QPushButton* StartBtn;
     QPushButton* LeaveBtn;
     bool Closing = false;

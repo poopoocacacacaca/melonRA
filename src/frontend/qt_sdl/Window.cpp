@@ -1135,6 +1135,19 @@ void MainWindow::closeEvent(QCloseEvent* event)
         }
 
         // a netplay session ends before the windows go away
+        if (Netplay::Runner* r = Netplay::Runner::current(); r && r->playing())
+        {
+            QMessageBox box(QMessageBox::Warning, "melonRA",
+                QString("A netplay game is running. Closing melonRA ends it for every player.\n\n%1\n\n"
+                        "Close melonRA anyway?").arg(Netplay::saveWarning()),
+                QMessageBox::Yes | QMessageBox::No, this);
+            box.setDefaultButton(QMessageBox::No);
+            if (box.exec() != QMessageBox::Yes)
+            {
+                event->ignore();
+                return;
+            }
+        }
         if (Netplay::Runner* r = Netplay::Runner::current())
         {
             r->leave();
@@ -3212,7 +3225,10 @@ void MainWindow::onUpdateVideoSettings(bool glchange)
     if (parentwin)
         return parentwin->onUpdateVideoSettings(glchange);
 
-    auto childwins = findChildren<MainWindow *>(nullptr);
+    // windows whose instance is gone (closed, waiting to be deleted) are left out
+    QList<MainWindow*> childwins;
+    for (MainWindow* child : findChildren<MainWindow *>(nullptr))
+        if (child->getEmuInstance()) childwins.append(child);
 
     bool hadOGL = hasOGL;
     if (glchange)

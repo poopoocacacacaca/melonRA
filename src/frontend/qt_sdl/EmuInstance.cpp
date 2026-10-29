@@ -260,7 +260,13 @@ void EmuInstance::deleteWindow(int id, bool close)
     if (close)
         win->close();
 
-    if (deleting) return;
+    // the window is deleted later; whatever else it gets until then must not
+    // reach this instance
+    if (deleting)
+    {
+        win->forgetEmuInstance();
+        return;
+    }
 
     if (numWindows == 0)
     {

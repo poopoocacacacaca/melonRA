@@ -59,6 +59,8 @@ public:
     ~MainWindow();
 
     EmuInstance* getEmuInstance() { return emuInstance; }
+    // the instance is being deleted: this window must not use it anymore
+    void forgetEmuInstance() { emuInstance = nullptr; }
     Config::Table& getWindowConfig() { return windowCfg; }
     int getWindowID() { return windowID; }
 

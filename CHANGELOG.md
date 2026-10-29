@@ -37,6 +37,9 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
     during the game, with a suggested value worked out from everyone's ping. While the game runs the
     room waits minimized (Experimental → Show Netplay Room brings it back, and closing it only hides
     it); it closes by itself when the session ends.
+  - If a player leaves or closes melonRA during the game, it stops for everyone and the room comes
+    back saying who left. Leaving or closing melonRA during a game asks first, with a warning that a
+    game stopped while it's saving can leave its save incomplete (as with switching a DS off then).
 - **Game title in the window title**, e.g. "LEGO Indiana Jones - melonRA 0.4.0 (abc1234)", with
   "[Netplay]" at the end during netplay.
 

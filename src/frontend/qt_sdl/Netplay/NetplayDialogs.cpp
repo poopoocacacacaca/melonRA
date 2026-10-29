@@ -21,6 +21,7 @@
 #include <QClipboard>
 #include <QCloseEvent>
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QDialogButtonBox>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -75,6 +76,13 @@ static void plainMessage(QWidget* parent, QMessageBox::Icon icon, const QString&
     box.setTextFormat(Qt::PlainText);
     box.setText(text);
     box.exec();
+}
+
+QString saveWarning()
+{
+    return QCoreApplication::translate("Netplay",
+        "If the game is saving at that moment, the save can be left incomplete or damaged, the same "
+        "as switching a DS off while it saves. Leave when the game isn't saving.");
 }
 
 // a wrapped explanation that keeps all of its lines at this width
@@ -379,12 +387,12 @@ RoomDialog::RoomDialog(MainWindow* win, Runner* runner) : QDialog(nullptr), Win(
     ChatInput = new QLineEdit(this);
     ChatInput->setMaxLength(kMaxChat);
     ChatInput->setPlaceholderText(tr("Message everyone in the room"));
-    QPushButton* sendBtn = new QPushButton(tr("Send"), this);
+    SendBtn = new QPushButton(tr("Send"), this);
     connect(ChatInput, &QLineEdit::returnPressed, this, &RoomDialog::sendChat);
-    connect(sendBtn, &QPushButton::clicked, this, &RoomDialog::sendChat);
+    connect(SendBtn, &QPushButton::clicked, this, &RoomDialog::sendChat);
     QHBoxLayout* chatRow = new QHBoxLayout();
     chatRow->addWidget(ChatInput, 1);
-    chatRow->addWidget(sendBtn);
+    chatRow->addWidget(SendBtn);
 
     StartBtn = new QPushButton(tr("Start Game"), this);
     LeaveBtn = new QPushButton(s->isHost() ? tr("Close Room") : tr("Leave"), this);
@@ -403,8 +411,8 @@ RoomDialog::RoomDialog(MainWindow* win, Runner* runner) : QDialog(nullptr), Win(
     buttons->addWidget(StartBtn);
     buttons->addWidget(LeaveBtn);
 
-    QGroupBox* playersBox = new QGroupBox(tr("Players"), this);
-    QVBoxLayout* pl = new QVBoxLayout(playersBox);
+    PlayersBox = new QGroupBox(tr("Players"), this);
+    QVBoxLayout* pl = new QVBoxLayout(PlayersBox);
     pl->addWidget(Players, 1);
     pl->addLayout(delayRow);
     pl->addWidget(delayHelp);
@@ -417,8 +425,9 @@ RoomDialog::RoomDialog(MainWindow* win, Runner* runner) : QDialog(nullptr), Win(
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->addWidget(Game);
     layout->addWidget(Status);
-    layout->addWidget(makeAddressBox());
-    layout->addWidget(playersBox);
+    AddressBox = makeAddressBox();
+    layout->addWidget(AddressBox);
+    layout->addWidget(PlayersBox);
     layout->addWidget(chatBox, 1);
     layout->addWidget(Note);
     layout->addLayout(buttons);
@@ -681,12 +690,37 @@ void RoomDialog::onDesync(int frame, int console)
 
 void RoomDialog::onFinished(const QString& reason)
 {
-    if (!reason.isEmpty())
-        plainMessage(Win, QMessageBox::Information, tr("Netplay"), reason);
-
-    Closing = true;
+    // the session is over and its consoles are gone
     if (Run) Run->deleteLater();
-    close();
+    Run = nullptr;
+    Closing = true;
+
+    if (reason.isEmpty())
+    {
+        close();
+        return;
+    }
+
+    // it ended without this player choosing to: say why, here in the room
+    Status->setText(tr("The session has ended."));
+    Note->setText(reason + " " + tr("The game was stopped."));
+    Note->setStyleSheet(QString());
+    Note->show();
+    addLine(reason, true);
+
+    StartBtn->hide();
+    RemoveBtn->hide();
+    AddressBox->hide();
+    PlayersBox->hide();
+    ChatInput->setEnabled(false);
+    ChatInput->setPlaceholderText(QString());
+    SendBtn->setEnabled(false);
+    LeaveBtn->setText(tr("Close"));
+    LeaveBtn->setDefault(true);
+
+    showNormal();
+    raise();
+    activateWindow();
 }
 
 void RoomDialog::leaveSession()
@@ -700,7 +734,7 @@ void RoomDialog::leaveSession()
     if (Run->playing())
     {
         auto res = QMessageBox::question(this, tr("Netplay"),
-            tr("Leave the game? It ends for every player."),
+            tr("Leave the game? It ends for every player.\n\n%1").arg(saveWarning()),
             QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
         if (res != QMessageBox::Yes)
             return;
