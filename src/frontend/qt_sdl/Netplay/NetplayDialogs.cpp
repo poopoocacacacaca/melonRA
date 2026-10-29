@@ -477,7 +477,6 @@ RoomDialog::RoomDialog(MainWindow* win, Runner* runner) : QDialog(nullptr), Win(
     connect(runner, &Runner::needROM, this, &RoomDialog::onNeedROM);
     connect(runner, &Runner::finished, this, &RoomDialog::onFinished);
     connect(runner, &Runner::addressChanged, this, &RoomDialog::refreshAddress);
-    connect(runner, &Runner::joinAsked, this, &RoomDialog::onJoinAsked);
     if (Discord::Presence* presence = Discord::Presence::get())
         connect(presence, &Discord::Presence::connectedChanged, this, &RoomDialog::refreshAddress);
 
@@ -519,7 +518,7 @@ QWidget* RoomDialog::makeAddressBox()
     form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
     const int textWidth = 340;
 
-    // Discord: friends press Join on the host's profile, or get an invite
+    // Discord: friends join by invitation from a chat
     QString discord;
     Discord::Presence* presence = Discord::Presence::get();
     if (!Discord::Presence::isEnabled() || !presence)
@@ -527,8 +526,8 @@ QWidget* RoomDialog::makeAddressBox()
     else if (!presence->isConnected())
         discord = tr("Open Discord on this computer to let friends join from there.");
     else
-        discord = tr("Friends can press Join on your Discord profile, or you can invite them from a chat "
-                     "with + → Invite to play.");
+        discord = tr("Invite friends from a Discord chat with + → Invite to play. Only people you invite "
+                     "can join this way.");
     QLabel* discordText = plainLabel(discord, box);
     reserveLines(discordText, textWidth);
     form->addRow(tr("Discord:"), discordText);
@@ -578,27 +577,6 @@ void RoomDialog::refreshAddress()
     AddressBox->hide();
     AddressBox->deleteLater();
     AddressBox = box;
-}
-
-// a Discord friend asks to join: the host says yes or no
-void RoomDialog::onJoinAsked(const QString& userId, const QString& name)
-{
-    QMessageBox* ask = new QMessageBox(QMessageBox::Question, tr("Netplay"),
-                                       tr("%1 wants to join your room on Discord.").arg(name),
-                                       QMessageBox::NoButton, this);
-    ask->setTextFormat(Qt::PlainText);
-    QPushButton* yes = ask->addButton(tr("Let them join"), QMessageBox::AcceptRole);
-    ask->addButton(tr("Decline"), QMessageBox::RejectRole);
-    ask->setAttribute(Qt::WA_DeleteOnClose);
-    ask->setModal(false);
-    connect(ask, &QMessageBox::finished, this, [ask, yes, userId]
-    {
-        if (Discord::Presence* p = Discord::Presence::get())
-            p->answerJoinRequest(userId, ask->clickedButton() == yes);
-    });
-    showNormal();
-    raise();
-    ask->show();
 }
 
 RoomDialog::~RoomDialog()

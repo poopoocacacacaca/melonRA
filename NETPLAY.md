@@ -149,14 +149,13 @@ any connection is made. `NetplayLink::ConnectAny` tries every address at once an
 that answers, so friends on the same network connect directly. The host also sends the party and
 secret to each player (`Msg_Invite`), so their Discord shows the same room with Join.
 
-Discord IPC: melonRA subscribes to `ACTIVITY_JOIN` (this player pressed Join, or accepted an
-invite: the secret is handed to `MainWindow::onDiscordJoin`) and `ACTIVITY_JOIN_REQUEST` (a friend
-asks to join: the host is asked, and the answer is `SEND_ACTIVITY_JOIN_INVITE` or
-`CLOSE_ACTIVITY_REQUEST`; requests outside an open lobby are declined without asking). The friend's
-name is shown as plain text with control and direction characters removed. So that Discord can start
-melonRA for a Join, it's registered as the handler for `discord-<application id>`: a per-user
-registry key on Windows, `~/Library/Application Support/discord/games/<id>.json` on macOS, and a
-hidden `.desktop` file on Linux.
+Discord IPC: rooms are joined only through invitations sent from a Discord chat (+ → Invite to
+play). melonRA subscribes to `ACTIVITY_JOIN` (this player accepted an invite: the secret is handed
+to `MainWindow::onDiscordJoin`) and to `ACTIVITY_JOIN_REQUEST`, which is always answered with
+`CLOSE_ACTIVITY_REQUEST`, so asking to join from a profile never gets anyone in. So that Discord can
+start melonRA for an accepted invite, it's registered as the handler for `discord-<application id>`:
+a per-user registry key on Windows, `~/Library/Application Support/discord/games/<id>.json` on
+macOS, and a hidden `.desktop` file on Linux.
 
 ## A lobby list later
 

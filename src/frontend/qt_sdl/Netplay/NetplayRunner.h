@@ -75,7 +75,6 @@ signals:
     void finished(const QString& reason);   // the session is over (reason empty: left on purpose)
     void needROM(const Netplay::RoomInfo& room);
     void addressChanged();                  // host: the public address or forwarding changed
-    void joinAsked(const QString& userId, const QString& name);  // a Discord friend asks to join
 
 private slots:
     void onStarted();

@@ -355,11 +355,13 @@ void Presence::clearNetplayRoom()
     refresh();
 }
 
-void Presence::answerJoinRequest(const QString& userId, bool accept)
+void Presence::declineJoinRequest(const QString& userId)
 {
     if (!ready || userId.isEmpty() || userId.size() > 32) return;
+    for (QChar c : userId)
+        if (c < '0' || c > '9') return;
     sendFrame(Op_Frame, QJsonObject{
-        {"cmd", accept ? "SEND_ACTIVITY_JOIN_INVITE" : "CLOSE_ACTIVITY_REQUEST"},
+        {"cmd", "CLOSE_ACTIVITY_REQUEST"},
         {"args", QJsonObject{{"user_id", userId}}},
         {"nonce", QString::number(++nonce)},
     });
@@ -582,30 +584,9 @@ void Presence::onReadyRead()
             }
             else if (evt == "ACTIVITY_JOIN_REQUEST")
             {
-                const QJsonObject user = data.value("user").toObject();
-                const QString id = user.value("id").toString();
-                QString name = user.value("global_name").toString();
-                if (name.isEmpty()) name = user.value("username").toString();
-
-                // the name is only shown: no line breaks, direction marks or other invisible characters
-                QString shown;
-                for (QChar c : name)
-                {
-                    const QChar::Category cat = c.category();
-                    if (cat == QChar::Other_Control || cat == QChar::Other_Format ||
-                        cat == QChar::Other_Surrogate || cat == QChar::Other_PrivateUse ||
-                        cat == QChar::Other_NotAssigned || cat == QChar::Separator_Line ||
-                        cat == QChar::Separator_Paragraph)
-                        continue;
-                    shown += c;
-                }
-                shown = shown.simplified().left(32);
-                if (shown.isEmpty()) shown = tr("A Discord friend");
-
-                bool digits = !id.isEmpty() && id.size() <= 32;
-                for (QChar c : id) digits = digits && c.isDigit() && c.unicode() < 0x80;
-                if (digits)
-                    emit joinAsked(id, shown);
+                // rooms are joined only by invitation from a Discord chat; asking is always declined
+                const QString id = data.value("user").toObject().value("id").toString();
+                declineJoinRequest(id);
             }
             break;
         }

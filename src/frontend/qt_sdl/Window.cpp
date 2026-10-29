@@ -3165,7 +3165,7 @@ void MainWindow::onNetplayJoin()
     actNetplayLeave->setEnabled(true);
 }
 
-// a friend's room, from Join on their Discord profile or an accepted invite
+// a friend's room, from an accepted Discord invite
 void MainWindow::onDiscordJoin(const QString& secret)
 {
     if (isMinimized()) showNormal();
@@ -3179,7 +3179,7 @@ void MainWindow::onDiscordJoin(const QString& secret)
         else
             QMessageBox::information(this, "Netplay",
                 "You're already in a netplay room. Leave it first (Experimental → Leave Netplay Session), "
-                "then press Join on Discord again.");
+                "then accept the Discord invite again.");
         return;
     }
 

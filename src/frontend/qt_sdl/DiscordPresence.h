@@ -79,15 +79,9 @@ public:
     // talking to the Discord app right now
     bool isConnected() const { return ready; }
 
-    // someone asked to join this player's room ("Ask to Join"): let them in
-    // or not
-    void answerJoinRequest(const QString& userId, bool accept);
-
 signals:
     // this player chose Join on a friend's room (or accepted an invite)
     void joinRequested(const QString& joinSecret);
-    // a friend asks to join this player's room; name is for showing only
-    void joinAsked(const QString& userId, const QString& name);
     // Discord was found or lost
     void connectedChanged();
 
@@ -131,6 +125,7 @@ private:
     qint64 roomSince = 0;
 
     void subscribe();
+    void declineJoinRequest(const QString& userId);
     void registerLaunchCommand();
 };
 

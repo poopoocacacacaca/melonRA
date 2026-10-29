@@ -65,16 +65,17 @@ playing, since when, and for games with achievements, the RetroAchievements Rich
 Presence text, your achievement progress and Hardcore or Casual mode. During netplay
 it also says you're in a room and how many players are in it (never their names).
 While you host a room that isn't full, it also gives Discord a join code with your
-public and home network IP addresses and port, so friends can press Join: Discord
-passes it to whoever joins, and they see your address as with any netplay
-connection. Discord shows this on your profile. melonRA talks only to the Discord app on your own computer,
+public and home network IP addresses and port, so you can invite friends from a
+Discord chat: Discord passes it only to friends who accept an invite, and they see
+your address as with any netplay connection. Requests to join that you didn't
+invite are declined automatically. Discord shows this on your profile. melonRA talks only to the Discord app on your own computer,
 never to Discord's servers. The images are links to the game's box art (GameTDB or
 libretro thumbnails), its RetroAchievements icon and the melonRA logo on GitHub,
 which Discord loads. If cover downloads are allowed and a game's cover wasn't
 downloaded yet, melonRA checks GameTDB for it. Turn this off in Config →
 Interface Settings.
 
-So that Discord can start melonRA when you press Join, melonRA registers itself
+So that Discord can start melonRA when you accept an invite, melonRA registers itself
 with your system as the program for its Discord invites (a registry entry under
 your user on Windows, a file in Discord's folder on macOS, and a hidden desktop
 entry on Linux).

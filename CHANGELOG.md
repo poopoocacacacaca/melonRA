@@ -25,10 +25,10 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
     the game runs, players connect inside it as on two real DS consoles: one creates a group in the
     game's wireless mode, the others join, whoever hosted the netplay room. The Host and Join windows
     and the room explain this.
-  - **Join from Discord.** While a room is open, friends can press Join on the host's Discord profile,
-    or the host can send an invite in a chat (+ → Invite to play). melonRA opens the room for them,
-    starting it first if needed. When a friend asks to join, the host gets a Let them join / Decline
-    prompt.
+  - **Invite from Discord.** While a room is open, the host (or anyone in it) can invite friends from
+    a Discord chat with + → Invite to play. Accepting opens the room in melonRA, starting it first if
+    needed. Only invited friends can join this way: requests to join from a profile are declined
+    automatically.
   - **No router setup needed on most home networks.** When hosting, melonRA asks the router to open
     the port (UPnP) for as long as the room is open, and finds the address the internet sees. The room
     says whether it worked; if the router refuses or the connection shares its address with others

@@ -131,7 +131,6 @@ private:
 
     QWidget* makeAddressBox();
     void refreshAddress();
-    void onJoinAsked(const QString& userId, const QString& name);
     void addLine(const QString& text, bool dim);
 
     static RoomDialog* Current;

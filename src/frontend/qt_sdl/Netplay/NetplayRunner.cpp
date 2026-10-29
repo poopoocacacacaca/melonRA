@@ -66,20 +66,6 @@ Runner::Runner(MainWindow* win) : QObject(win), Win(win), Inst(win->getEmuInstan
     connect(&Sess, &Session::inviteChanged, this, &Runner::updatePresence);
     connect(&Sess, &Session::started, this, &Runner::updatePresence);
 
-    // friends asking to join on Discord: only the host decides, and only
-    // while the room is open
-    if (Discord::Presence* presence = Discord::Presence::get())
-    {
-        connect(presence, &Discord::Presence::joinAsked, this, [this](const QString& id, const QString& name)
-        {
-            Discord::Presence* p = Discord::Presence::get();
-            if (Sess.isHost() && Sess.state() == Session::State::Lobby && Sess.players() < kMaxPlayers)
-                emit joinAsked(id, name);
-            else if (p)
-                p->answerJoinRequest(id, false);
-        });
-    }
-
     // while playing, the room is out of sight: chat and delay changes show
     // up on the game screen
     connect(&Sess, &Session::chat, this, [this](const QString& name, const QString& text)
