@@ -20,20 +20,15 @@ regular melonDS desktop app.
 
 - **RetroAchievements**
   - log in once with your password; only a login token is kept, never the password itself
-  - automatic game detection, hardcore mode (WIP), subsets, encore, spectator and unofficial achievements
+  - automatic game detection, hardcore mode **(WIP)**, subsets, encore, spectator and unofficial achievements
   - play offline, in Hardcore or Casual: games played online once keep their achievements, unlocks are sent later
-  - notifications, challenge and progress indicators, leaderboard trackers
-  - customizable overlay: position, style, size, colored or black and white
-  - achievements and leaderboards browser for every game in your list
-  - optional RAIntegration developer toolkit (Windows)
+  - notifications, challenge and progress indicators, leaderboard trackers in a customisable overlay
 - **Game list** with icons, region flags, search and sorting, a grid view with box art, and achievement progress bars with stars for mastered games
 - **Screen hotkeys** to cycle through layouts and sizings, and to rotate the screens, while playing
 - **Settings backup and restore** in one file, for moving to another computer
 - **Game Settings** per game (graphics, layout, Wi-Fi, emulation, cheats), from the game list
-- **Discord Rich Presence** with the game, play time and, for games with achievements, RetroAchievements status
 - **Online play server picker** (Wiimmfi, Kaeru WFC or a custom DNS) in Wi-Fi Settings
 - **Built-in updater** with Stable and Nightly channels
-- **Experimental: netplay** for games with local wireless play, with up to 4 players over the internet, joined by IP address
 
 ## Getting started
 
