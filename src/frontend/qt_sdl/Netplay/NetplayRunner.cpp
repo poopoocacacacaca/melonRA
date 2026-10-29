@@ -18,7 +18,9 @@
 
 #include <QCryptographicHash>
 #include <QDateTime>
+#include <QUuid>
 #include <QFile>
+#include <QHostAddress>
 
 #include "NetplayRunner.h"
 #include "NetplayConsole.h"
@@ -60,6 +62,23 @@ Runner::Runner(MainWindow* win) : QObject(win), Win(win), Inst(win->getEmuInstan
     connect(&Sess, &Session::ended, this, &Runner::onEnded);
     connect(&Sess, &Session::desync, this, &Runner::onDesync);
     connect(&Sess, &Session::roomReceived, this, &Runner::needROM);
+    connect(&Sess, &Session::rosterChanged, this, &Runner::updatePresence);
+    connect(&Sess, &Session::inviteChanged, this, &Runner::updatePresence);
+    connect(&Sess, &Session::started, this, &Runner::updatePresence);
+
+    // friends asking to join on Discord: only the host decides, and only
+    // while the room is open
+    if (Discord::Presence* presence = Discord::Presence::get())
+    {
+        connect(presence, &Discord::Presence::joinAsked, this, [this](const QString& id, const QString& name)
+        {
+            Discord::Presence* p = Discord::Presence::get();
+            if (Sess.isHost() && Sess.state() == Session::State::Lobby && Sess.players() < kMaxPlayers)
+                emit joinAsked(id, name);
+            else if (p)
+                p->answerJoinRequest(id, false);
+        });
+    }
 
     // while playing, the room is out of sight: chat and delay changes show
     // up on the game screen
@@ -177,7 +196,8 @@ QStringList Runner::findROM(const RoomInfo& room)
 
 // --- hosting and joining ---
 
-bool Runner::host(const QStringList& romPath, const QString& name, u16 port, int inputDelay, QString& error)
+bool Runner::host(const QStringList& romPath, const QString& name, u16 port, int inputDelay,
+                  bool openPort, QString& error)
 {
     std::vector<u8> rom;
     RoomInfo room;
@@ -199,13 +219,113 @@ bool Runner::host(const QStringList& romPath, const QString& name, u16 port, int
                 g.GetBool("JIT.LiteralOptimisations"), g.GetBool("JIT.BranchOptimisations"),
                 g.GetBool("JIT.FastMemory"));
 
-    return Sess.host(port, name, room, myConsoleInfo(name), std::move(save), error);
+    if (!Sess.host(port, name, room, myConsoleInfo(name), std::move(save), error))
+        return false;
+
+    // players on the internet: open the port on the router and find the
+    // public address; both go into the Discord invite
+    PartyId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    Mapper = new PortMapper(this);
+    connect(Mapper, &PortMapper::changed, this, &Runner::onAddressChanged);
+    Mapper->start(port, openPort);
+    onAddressChanged();
+    return true;
 }
 
 bool Runner::join(const QString& address, u16 port, const QString& name, QString& error)
 {
     MyName = name;
-    return Sess.join(address, port, name, error);
+    if (!Sess.join(address, port, name, error)) return false;
+    updatePresence();
+    return true;
+}
+
+// "mr1|<public address>:<port>|<home network address>:<port>", either part
+// may be empty; nothing but IPv4 addresses and ports is accepted
+bool Runner::parseJoinSecret(const QString& secret, std::vector<melonDS::NetplayLink::Target>& targets)
+{
+    std::vector<melonDS::NetplayLink::Target> found;
+    targets.clear();
+    if (secret.size() > kMaxJoinSecret) return false;
+    const QStringList parts = secret.split('|');
+    if (parts.size() != 3 || parts[0] != "mr1") return false;
+
+    for (int i = 1; i < 3; i++)
+    {
+        if (parts[i].isEmpty()) continue;
+        const int colon = parts[i].lastIndexOf(':');
+        if (colon <= 0) return false;
+        QHostAddress addr;
+        if (!addr.setAddress(parts[i].left(colon)) || addr.protocol() != QAbstractSocket::IPv4Protocol)
+            return false;
+        const QString digits = parts[i].mid(colon + 1);
+        if (digits.isEmpty() || digits.size() > 5) return false;
+        for (QChar c : digits)
+            if (c < '0' || c > '9') return false;
+        const uint port = digits.toUInt();
+        if (port == 0 || port > 65535) return false;
+        found.push_back({addr.toString().toStdString(), (u16)port});
+    }
+    targets = std::move(found);
+    return !targets.empty();
+}
+
+bool Runner::joinFromDiscord(const QString& secret, const QString& name, QString& error)
+{
+    std::vector<melonDS::NetplayLink::Target> targets;
+    if (!parseJoinSecret(secret, targets))
+    {
+        error = tr("That Discord invite isn't a melonRA netplay room.");
+        return false;
+    }
+    MyName = name;
+    if (!Sess.join(targets, name, error)) return false;
+    updatePresence();
+    return true;
+}
+
+QString Runner::buildJoinSecret() const
+{
+    if (!Mapper) return QString();
+    QString pub;
+    if (!Mapper->publicAddress().isEmpty() && !Mapper->behindSharedAddress())
+        pub = QString("%1:%2").arg(Mapper->publicAddress()).arg(Mapper->publicPort());
+    QString local;
+    if (!Mapper->localAddress().isEmpty())
+        local = QString("%1:%2").arg(Mapper->localAddress()).arg(Sess.port());
+    if (pub.isEmpty() && local.isEmpty()) return QString();
+    return QString("mr1|%1|%2").arg(pub, local);
+}
+
+void Runner::onAddressChanged()
+{
+    Sess.setInvite(PartyId, buildJoinSecret());
+    updatePresence();
+    emit addressChanged();
+}
+
+// what Discord shows: the room, with Join while there's space and the game
+// hasn't started
+void Runner::updatePresence()
+{
+    Discord::Presence* presence = Discord::Presence::get();
+    if (!presence || TornDown) return;
+
+    const QString party = Sess.isHost() ? PartyId : Sess.partyId();
+    if (party.isEmpty())
+    {
+        presence->clearNetplayRoom();
+        return;
+    }
+
+    Discord::Presence::Room room;
+    room.Title = QString::fromStdString(Sess.room().Title);
+    room.Players = std::max(Sess.players(), 1);
+    room.MaxPlayers = kMaxPlayers;
+    room.PartyId = party;
+    if (Sess.state() == Session::State::Lobby && room.Players < room.MaxPlayers)
+        room.JoinSecret = Sess.isHost() ? buildJoinSecret() : Sess.joinSecret();
+    presence->setNetplayRoom(room);
 }
 
 bool Runner::useROM(const QStringList& romPath, QString& error)
@@ -372,8 +492,7 @@ void Runner::onGo()
         if (EmuInstance* inst = emuInstanceAt(k))
             inst->getEmuThread()->emuRun();
 
-    if (Discord::Presence* presence = Discord::Presence::get())
-        presence->setNetplay((int)Sess.order().size(), kMaxPlayers);
+    updatePresence();
 
     Inst->osdAddMessage(0, "Netplay started. Open the game's wireless multiplayer mode:");
     Inst->osdAddMessage(0, "one player creates a group, the others join it.");
@@ -402,6 +521,7 @@ void Runner::tearDown()
 
     // nothing may wait on the network or the other consoles from here on
     Sess.leave();
+    if (Mapper) Mapper->stop();
     if (MPInterface::GetType() == MPInterface_Netplay)
         static_cast<LockstepMP&>(MPInterface::Get()).Shutdown();
 
@@ -422,7 +542,7 @@ void Runner::tearDown()
     Inst->getEmuThread()->netplayEnd();
 
     if (Discord::Presence* presence = Discord::Presence::get())
-        presence->setNetplay(0, 0);
+        presence->clearNetplayRoom();
 
     if (MPInterface::GetType() == MPInterface_Netplay)
         setMPInterface(MPInterface_Local);

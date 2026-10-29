@@ -63,13 +63,21 @@ View → Game Covers. The covers are kept in the `covers` folder.
 While the Discord app is open on your computer, melonRA tells it which game you're
 playing, since when, and for games with achievements, the RetroAchievements Rich
 Presence text, your achievement progress and Hardcore or Casual mode. During netplay
-it also says you're in a room and how many players are in it (never their names or
-addresses). Discord shows this on your profile. melonRA talks only to the Discord app on your own computer,
+it also says you're in a room and how many players are in it (never their names).
+While you host a room that isn't full, it also gives Discord a join code with your
+public and home network IP addresses and port, so friends can press Join: Discord
+passes it to whoever joins, and they see your address as with any netplay
+connection. Discord shows this on your profile. melonRA talks only to the Discord app on your own computer,
 never to Discord's servers. The images are links to the game's box art (GameTDB or
 libretro thumbnails), its RetroAchievements icon and the melonRA logo on GitHub,
 which Discord loads. If cover downloads are allowed and a game's cover wasn't
 downloaded yet, melonRA checks GameTDB for it. Turn this off in Config →
 Interface Settings.
+
+So that Discord can start melonRA when you press Join, melonRA registers itself
+with your system as the program for its Discord invites (a registry entry under
+your user on Windows, a file in Discord's folder on macOS, and a hidden desktop
+entry on Linux).
 
 Discord's handling of it is covered by the
 [Discord privacy policy](https://discord.com/privacy).
@@ -98,6 +106,13 @@ players in it, melonRA shares:
   the same one; the game itself is never sent
 - your button and touch inputs while playing, and checksums of the consoles'
   state to notice when they stop matching
+
+When you host, melonRA also asks your router (over UPnP, inside your home
+network) to forward the room's port to your computer until the room closes; this
+can be turned off in the Host window. To learn your public IP address when the
+router doesn't say, it asks a public STUN server (Google's `stun.l.google.com`
+or Cloudflare's `stun.cloudflare.com`), which sees your IP address and nothing
+else.
 
 Nothing about your RetroAchievements account is sent. The connection isn't
 encrypted. While a game runs, melonRA keeps the other players' saves in memory

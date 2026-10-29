@@ -57,6 +57,11 @@ public:
 
     bool Host(u16 port, int maxPeers, std::string& error);
     bool Connect(const std::string& address, u16 port, std::string& error);
+
+    // tries several addresses of the same host at once (its public and home
+    // network ones, say); the first that answers is kept as peer 0
+    struct Target { std::string Address; u16 Port; };
+    bool ConnectAny(const std::vector<Target>& targets, std::string& error);
     void Close(u32 reason = 0);
 
     bool IsOpen() const { return Handle != nullptr; }
@@ -89,6 +94,7 @@ private:
 
     void* Handle = nullptr;
     std::vector<void*> Peers;
+    std::vector<void*> Candidates;   // client, while connecting
 
     std::mutex OutLock;
     std::deque<Outgoing> Outbox;

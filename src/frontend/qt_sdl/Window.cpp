@@ -931,6 +931,13 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
         // if the window was closed in fullscreen do not restore this
         setWindowState(windowState() & ~Qt::WindowFullScreen);
     }
+    // friends' netplay rooms, joined from Discord
+    if (hasMenu && emuInstance->getInstanceID() == 0 && windowID == 0)
+    {
+        if (Discord::Presence* presence = Discord::Presence::get())
+            connect(presence, &Discord::Presence::joinRequested, this, &MainWindow::onDiscordJoin);
+    }
+
     // the first instance's main window lists the games while none is running
     if (hasMenu && emuInstance->getInstanceID() == 0 && windowID == 0)
     {
@@ -3115,7 +3122,7 @@ void MainWindow::hostNetplay(const QString& romPath)
 
     auto* runner = new Netplay::Runner(this);
     QString err;
-    if (!runner->host(dlg.romPath(), dlg.name(), dlg.port(), dlg.inputDelay(), err))
+    if (!runner->host(dlg.romPath(), dlg.name(), dlg.port(), dlg.inputDelay(), dlg.openPort(), err))
     {
         delete runner;
         QMessageBox::warning(this, "Netplay", err);
@@ -3145,6 +3152,58 @@ void MainWindow::onNetplayJoin()
     auto* runner = new Netplay::Runner(this);
     QString err;
     if (!runner->join(dlg.address(), dlg.port(), dlg.name(), err))
+    {
+        delete runner;
+        QMessageBox::warning(this, "Netplay", err);
+        return;
+    }
+
+    Netplay::RoomDialog::open(this, runner);
+    actNetplayHost->setEnabled(false);
+    actNetplayJoin->setEnabled(false);
+    actNetplayRoom->setEnabled(true);
+    actNetplayLeave->setEnabled(true);
+}
+
+// a friend's room, from Join on their Discord profile or an accepted invite
+void MainWindow::onDiscordJoin(const QString& secret)
+{
+    if (isMinimized()) showNormal();
+    raise();
+    activateWindow();
+
+    if (Netplay::Runner* current = Netplay::Runner::current())
+    {
+        if (current->session()->joinSecret() == secret)
+            Netplay::RoomDialog::open(this, current);
+        else
+            QMessageBox::information(this, "Netplay",
+                "You're already in a netplay room. Leave it first (Experimental → Leave Netplay Session), "
+                "then press Join on Discord again.");
+        return;
+    }
+
+    QString why = Netplay::Runner::cantStart(emuInstance);
+    if (!why.isEmpty())
+    {
+        QMessageBox::information(this, "Netplay", why);
+        return;
+    }
+    if (!verifySetup())
+        return;
+
+    if (emuThread->emuIsActive() &&
+        QMessageBox::question(this, "Netplay", "You're joining a friend's netplay room. The game that's running "
+                              "will stop when the netplay game starts. Continue?",
+                              QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes) != QMessageBox::Yes)
+        return;
+
+    QString name = Netplay::defaultPlayerName();
+    if (name.isEmpty()) name = "Player";
+
+    auto* runner = new Netplay::Runner(this);
+    QString err;
+    if (!runner->joinFromDiscord(secret, name, err))
     {
         delete runner;
         QMessageBox::warning(this, "Netplay", err);

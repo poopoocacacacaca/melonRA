@@ -39,7 +39,7 @@ using melonDS::u32;
 using melonDS::u64;
 
 constexpr u32 kMagic = 0x504E524D;  // "MRNP"
-constexpr u16 kProtocolVersion = 2;
+constexpr u16 kProtocolVersion = 3;
 constexpr u16 kDefaultPort = 7066;
 constexpr int kMaxPlayers = 4;
 
@@ -56,6 +56,8 @@ constexpr int kHashInterval = 60;     // frames between desync checks
 constexpr int kMaxChat = 200;         // bytes of UTF-8 per chat message
 constexpr int kChatBurst = 5;         // chat messages a player may send...
 constexpr int kChatWindowMs = 5000;   // ...within this time
+constexpr int kMaxPartyId = 64;
+constexpr int kMaxJoinSecret = 128;   // Discord's limit for a join secret
 
 enum MsgType : u8
 {
@@ -76,6 +78,7 @@ enum MsgType : u8
     Msg_Chat,           // player -> host: text; host -> all: sender's slot and text
     Msg_Delay,          // host -> all: the input delay, in frames
     Msg_Pings,          // host -> all: each player's round trip to the host, in ms
+    Msg_Invite,         // host -> all: the room's Discord party id and join secret
 };
 
 enum RejectReason : u8
@@ -254,6 +257,15 @@ inline std::string CleanText(const std::string& in, const std::string& fallback,
 inline std::string CleanName(const std::string& in, const std::string& fallback)
 {
     return CleanText(in, fallback, kMaxName);
+}
+
+// a Discord party id or join secret from a peer: short, printable ASCII only
+inline bool ValidInviteText(const std::string& s, size_t max)
+{
+    if (s.size() > max) return false;
+    for (char c : s)
+        if ((unsigned char)c < 0x21 || (unsigned char)c > 0x7E) return false;
+    return true;
 }
 
 // the input delay that covers a one-way trip of this many milliseconds, with

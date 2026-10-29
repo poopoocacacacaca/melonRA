@@ -25,9 +25,15 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
     the game runs, players connect inside it as on two real DS consoles: one creates a group in the
     game's wireless mode, the others join, whoever hosted the netplay room. The Host and Join windows
     and the room explain this.
-  - Hosting from outside your home network needs the port (UDP 7066 by default) forwarded on your
-    router.
-  - Discord shows "In a room (2 of 4)" under the game's title during a netplay game.
+  - **Join from Discord.** While a room is open, friends can press Join on the host's Discord profile,
+    or the host can send an invite in a chat (+ → Invite to play). melonRA opens the room for them,
+    starting it first if needed. When a friend asks to join, the host gets a Let them join / Decline
+    prompt.
+  - **No router setup needed on most home networks.** When hosting, melonRA asks the router to open
+    the port (UPnP) for as long as the room is open, and finds the address the internet sees. The room
+    says whether it worked; if the router refuses or the connection shares its address with others
+    (carrier-grade NAT), it says so and what to do instead. This can be turned off in the Host window.
+  - Discord shows the room's game with "In a room (2 of 4)", during the game and while waiting.
   - Every computer runs every player's console and only buttons and touches travel, so games behave
     as if the consoles were side by side. The input delay setting trades responsiveness for
     smoothness on slower connections.

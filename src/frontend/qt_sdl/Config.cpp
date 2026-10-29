@@ -119,6 +119,8 @@ DefaultList<bool> DefaultBools =
     {"DSi.DSP.HLE", true},
     {"Instance*.RTC.SyncToHost", true},
 
+    {"Netplay.UPnP", true},
+
     {"RetroAchievements.Enabled", true},
     {"RetroAchievements.Hardcore", true},
     {"RetroAchievements.Notifications", true},

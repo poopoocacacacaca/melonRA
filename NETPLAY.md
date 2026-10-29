@@ -69,7 +69,7 @@ ENet over UDP, default port 7066. The host relays everything, so players only co
 Channel 0 carries the session and is reliable and ordered; channel 1 carries inputs and hashes.
 Messages start with a type byte; numbers are little-endian.
 
-1. Client → host: `Hello` (magic, protocol version, melonRA build, name).
+1. Client → host: `Hello` (magic, protocol version (3), melonRA build, name).
 2. Host → client: `Room` (build, game code, title, ROM SHA-1, ROM size, input delay).
 3. Client finds the ROM (game list first, by game code and size, then by hand) and sends `HaveROM`.
 4. Host assigns a slot and sends everyone's `Console` (DS settings, save size) and `SaveChunk`s,
@@ -81,7 +81,8 @@ Messages start with a type byte; numbers are little-endian.
 
 At any time: `Chat` (to the host, which relays it with the sender's slot), `Delay` from the host
 when it changes the input delay, and `Pings` from the host every second with each player's round
-trip to it (ENet's measurement). The suggested delay covers half the two largest round trips (inputs
+trip to it (ENet's measurement), and `Invite` from the host with the room's Discord party id and join
+secret (to each player once their ROM is accepted, and to everyone when it changes). The suggested delay covers half the two largest round trips (inputs
 between two players pass through the host) plus 20 ms.
 
 **Changing the input delay during the game** needs no coordination. Only a console's owner decides
@@ -120,6 +121,42 @@ Tests to rerun after changes: the link determinism test (2–4 consoles, random 
 identical every run, also under ThreadSanitizer) and the session test (host and client over
 localhost, then malformed and truncated messages, also under AddressSanitizer and
 UndefinedBehaviorSanitizer).
+
+## Discord invites and the router
+
+Hosting starts a `PortMapper` (`Netplay/PortMapper.cpp`):
+
+1. **UPnP IGD.** An SSDP M-SEARCH goes out on every interface; the first Internet Gateway Device
+   that answers is used. Its description is fetched only from the address that answered discovery
+   (no redirects elsewhere, 256 KB cap, 3 s timeouts, no proxy). `AddPortMapping` maps the room's
+   UDP port to this computer with a one-hour lease, renewed at half time, and `DeletePortMapping`
+   removes it when the room closes. Error 725 retries with a permanent lease; 718 (port taken) tries
+   the next port, up to 8. `GetExternalIPAddress` gives the public address; a private or
+   100.64.0.0/10 answer means a second NAT, so the room says players outside can't get in.
+2. **STUN.** If the router doesn't say, a Binding Request to a public STUN server
+   (`stun.l.google.com`, `stun.cloudflare.com`) gives the public address.
+
+The host's Discord activity carries a party (random id, size) and, while the room is in the lobby
+and not full, a join secret:
+
+```
+mr1|<public address>:<port>|<home network address>:<port>
+```
+
+Either part may be empty. On the joining side `Runner::parseJoinSecret` accepts only that exact
+shape: IPv4 literals and decimal ports, at most 128 characters; anything else is refused before
+any connection is made. `NetplayLink::ConnectAny` tries every address at once and keeps the first
+that answers, so friends on the same network connect directly. The host also sends the party and
+secret to each player (`Msg_Invite`), so their Discord shows the same room with Join.
+
+Discord IPC: melonRA subscribes to `ACTIVITY_JOIN` (this player pressed Join, or accepted an
+invite: the secret is handed to `MainWindow::onDiscordJoin`) and `ACTIVITY_JOIN_REQUEST` (a friend
+asks to join: the host is asked, and the answer is `SEND_ACTIVITY_JOIN_INVITE` or
+`CLOSE_ACTIVITY_REQUEST`; requests outside an open lobby are declined without asking). The friend's
+name is shown as plain text with control and direction characters removed. So that Discord can start
+melonRA for a Join, it's registered as the handler for `discord-<application id>`: a per-user
+registry key on Windows, `~/Library/Application Support/discord/games/<id>.json` on macOS, and a
+hidden `.desktop` file on Linux.
 
 ## A lobby list later
 

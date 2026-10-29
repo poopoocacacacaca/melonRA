@@ -23,6 +23,7 @@
 #include <QStringList>
 
 #include "NetplaySession.h"
+#include "PortMapper.h"
 
 class MainWindow;
 class EmuInstance;
@@ -46,8 +47,17 @@ public:
     explicit Runner(MainWindow* win);
     ~Runner() override;
 
-    bool host(const QStringList& romPath, const QString& name, u16 port, int inputDelay, QString& error);
+    // openPort: ask the router to forward the port (UPnP)
+    bool host(const QStringList& romPath, const QString& name, u16 port, int inputDelay,
+              bool openPort, QString& error);
     bool join(const QString& address, u16 port, const QString& name, QString& error);
+
+    // joining from a Discord invite: the room's join secret, checked strictly
+    static bool parseJoinSecret(const QString& secret, std::vector<melonDS::NetplayLink::Target>& targets);
+    bool joinFromDiscord(const QString& secret, const QString& name, QString& error);
+
+    // host: the router forwarding and the public address
+    const PortMapper* portMapper() const { return Mapper; }
 
     // client, after roomReceived: use this ROM (false if it isn't the room's)
     bool useROM(const QStringList& romPath, QString& error);
@@ -64,6 +74,8 @@ public:
 signals:
     void finished(const QString& reason);   // the session is over (reason empty: left on purpose)
     void needROM(const Netplay::RoomInfo& room);
+    void addressChanged();                  // host: the public address or forwarding changed
+    void joinAsked(const QString& userId, const QString& name);  // a Discord friend asks to join
 
 private slots:
     void onStarted();
@@ -76,6 +88,9 @@ private:
     ConsoleInfo myConsoleInfo(const QString& name);
     std::vector<u8> mySave(const QStringList& romPath);
     void tearDown();
+    void updatePresence();
+    void onAddressChanged();
+    QString buildJoinSecret() const;
 
     static Runner* Current;
 
@@ -86,6 +101,8 @@ private:
     bool ConsolesUp = false;
     bool TornDown = false;
     QString MyName;
+    PortMapper* Mapper = nullptr;
+    QString PartyId;
 };
 
 }

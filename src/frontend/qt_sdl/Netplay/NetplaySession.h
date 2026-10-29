@@ -83,6 +83,15 @@ public:
     bool host(u16 port, const QString& name, const RoomInfo& room,
               const ConsoleInfo& console, std::vector<u8> save, QString& error);
     bool join(const QString& address, u16 port, const QString& name, QString& error);
+    // the same host at several addresses (public and home network): the first
+    // that answers is used
+    bool join(const std::vector<melonDS::NetplayLink::Target>& targets, const QString& name, QString& error);
+
+    // host: what Discord shows so friends can join (sent to everyone in the
+    // room, whose Discord shows the same party); clients: what the host sent
+    void setInvite(const QString& partyId, const QString& joinSecret);
+    QString partyId() const;
+    QString joinSecret() const;
 
     // after roomReceived: the ROM found for the room, with this player's DS
     // settings and save for it
@@ -162,6 +171,7 @@ signals:
     void chat(const QString& name, const QString& text);
     void delayChanged(int frames);
     void pingsChanged();
+    void inviteChanged();
 
 private:
     struct Player
@@ -215,6 +225,7 @@ private:
     void relayChat(int slot, const std::string& text);
     void sendPings();
     void applyDelay(int frames);
+    void sendInvite(int toPeer);
 
     melonDS::NetplayLink Link;
     std::thread NetThread;
@@ -239,6 +250,8 @@ private:
     int MyConsole = -1;
     u16 Port = 0;
     QString Address;
+    std::string PartyId;
+    std::string JoinSecret;
     int Delay = 3;                        // during the game: frames ahead this player sends
     std::chrono::steady_clock::time_point LastPings;
 

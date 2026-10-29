@@ -175,6 +175,7 @@ private slots:
     void onNetplayJoin();
     // host a room, with this game already chosen if one is given
     void hostNetplay(const QString& romPath);
+    void onDiscordJoin(const QString& secret);
     void onMPNewInstance();
     void onLANStartHost();
     void onLANStartClient();

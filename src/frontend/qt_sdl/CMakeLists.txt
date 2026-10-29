@@ -90,6 +90,8 @@ set(SOURCES_QT_SDL
     Netplay/NetplayProtocol.h
     Netplay/NetplayRunner.cpp
     Netplay/NetplayRunner.h
+    Netplay/PortMapper.cpp
+    Netplay/PortMapper.h
     Netplay/NetplaySession.cpp
     Netplay/NetplaySession.h
     RetroAchievements/resources/retroachievements.qrc

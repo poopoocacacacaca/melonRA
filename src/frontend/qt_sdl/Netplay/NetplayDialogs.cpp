@@ -18,6 +18,7 @@
 
 #include <algorithm>
 
+#include <QCheckBox>
 #include <QClipboard>
 #include <QCloseEvent>
 #include <QComboBox>
@@ -48,6 +49,7 @@
 #include "Config.h"
 #include "Window.h"
 #include "GameList/GameList.h"
+#include "DiscordPresence.h"
 
 namespace Netplay
 {
@@ -109,7 +111,7 @@ static QWidget* gameNotice(QWidget* parent, int width)
     return box;
 }
 
-static QString defaultName()
+QString defaultPlayerName()
 {
     QString name = netplayConfig().GetQString("Name");
     if (name.isEmpty())
@@ -126,7 +128,7 @@ HostDialog::HostDialog(MainWindow* parent) : QDialog(parent), Win(parent)
 
     Config::Table cfg = netplayConfig();
 
-    Name = new QLineEdit(defaultName(), this);
+    Name = new QLineEdit(defaultPlayerName(), this);
     Name->setMaxLength(kMaxName);
 
     Game = new QComboBox(this);
@@ -168,10 +170,15 @@ HostDialog::HostDialog(MainWindow* parent) : QDialog(parent), Win(parent)
     form->addRow(tr("Port (UDP):"), Port);
     form->addRow(tr("Input delay:"), Delay);
 
+    OpenPort = new QCheckBox(tr("Open the port on my router automatically (UPnP)"), this);
+    OpenPort->setChecked(cfg.GetBool("UPnP"));
+    OpenPort->setToolTip(tr("Asks your router to let players on the internet reach this computer while the room "
+                            "is open, and closes the port again afterwards."));
+    form->addRow(QString(), OpenPort);
+
     QLabel* help = plainLabel(tr(
-        "Players join with your IP address and this port. For players outside your home network, "
-        "forward this UDP port on your router to this computer. Your IP address is visible to "
-        "everyone who joins.\n\n"
+        "Friends can join from Discord, or with the address shown in the room. Your IP address is "
+        "visible to everyone who joins.\n\n"
         "Everyone needs the same melonRA version and an identical copy of the game. Each player "
         "brings their own save; yours stays on this computer and is updated as you play."), this);
     help->setStyleSheet("color: palette(placeholder-text);");
@@ -217,6 +224,7 @@ void HostDialog::selectGame(const QString& path)
 QString HostDialog::name() const { return Name->text().trimmed(); }
 u16 HostDialog::port() const { return (u16)Port->value(); }
 int HostDialog::inputDelay() const { return Delay->value(); }
+bool HostDialog::openPort() const { return OpenPort->isChecked(); }
 
 void HostDialog::accept()
 {
@@ -232,6 +240,7 @@ void HostDialog::accept()
     cfg.SetQString("Name", name());
     cfg.SetInt("Port", port());
     cfg.SetInt("InputDelay", inputDelay());
+    cfg.SetBool("UPnP", openPort());
     Config::Save();
 
     QDialog::accept();
@@ -245,7 +254,7 @@ JoinDialog::JoinDialog(QWidget* parent) : QDialog(parent)
 
     Config::Table cfg = netplayConfig();
 
-    Name = new QLineEdit(defaultName(), this);
+    Name = new QLineEdit(defaultPlayerName(), this);
     Name->setMaxLength(kMaxName);
 
     Address = new QLineEdit(cfg.GetQString("Address"), this);
@@ -455,7 +464,7 @@ RoomDialog::RoomDialog(MainWindow* win, Runner* runner) : QDialog(nullptr), Win(
     layout->addWidget(Note);
     layout->addLayout(buttons);
     setMinimumWidth(500);
-    resize(540, 620);
+    resize(580, 680);
 
     connect(s, &Session::rosterChanged, this, &RoomDialog::refresh);
     connect(s, &Session::pingsChanged, this, &RoomDialog::refresh);
@@ -467,9 +476,29 @@ RoomDialog::RoomDialog(MainWindow* win, Runner* runner) : QDialog(nullptr), Win(
     connect(s, &Session::desync, this, &RoomDialog::onDesync);
     connect(runner, &Runner::needROM, this, &RoomDialog::onNeedROM);
     connect(runner, &Runner::finished, this, &RoomDialog::onFinished);
+    connect(runner, &Runner::addressChanged, this, &RoomDialog::refreshAddress);
+    connect(runner, &Runner::joinAsked, this, &RoomDialog::onJoinAsked);
+    if (Discord::Presence* presence = Discord::Presence::get())
+        connect(presence, &Discord::Presence::connectedChanged, this, &RoomDialog::refreshAddress);
 
     refresh();
     refreshDelay();
+}
+
+// a read-only address with a Copy button
+static QWidget* addressField(const QString& addr, QWidget* box)
+{
+    QWidget* w = new QWidget(box);
+    QHBoxLayout* l = new QHBoxLayout(w);
+    l->setContentsMargins(0, 0, 0, 0);
+    QLineEdit* field = new QLineEdit(addr, w);
+    field->setReadOnly(true);
+    l->addWidget(field, 1);
+    QPushButton* copy = new QPushButton(QCoreApplication::translate("Netplay::RoomDialog", "Copy"), w);
+    copy->setAutoDefault(false);
+    QObject::connect(copy, &QPushButton::clicked, w, [addr] { QGuiApplication::clipboard()->setText(addr); });
+    l->addWidget(copy);
+    return w;
 }
 
 // where the others connect (host), or where this player is connected
@@ -477,45 +506,99 @@ QWidget* RoomDialog::makeAddressBox()
 {
     Session* s = Run->session();
     QGroupBox* box = new QGroupBox(s->isHost() ? tr("How players join") : tr("Connection"), this);
-    QGridLayout* g = new QGridLayout(box);
 
     if (!s->isHost())
     {
-        g->addWidget(plainLabel(tr("Connected to %1, port %2.").arg(s->address()).arg(s->port()), box), 0, 0);
+        QVBoxLayout* l = new QVBoxLayout(box);
+        l->addWidget(plainLabel(tr("Connected to %1, port %2.").arg(s->address()).arg(s->port()), box));
         return box;
     }
 
-    // the first private IPv4 address is usually the one on the home network
-    QString local;
-    for (const QHostAddress& a : QNetworkInterface::allAddresses())
-    {
-        if (a.protocol() != QAbstractSocket::IPv4Protocol || a.isLoopback()) continue;
-        quint32 ip = a.toIPv4Address();
-        bool priv = (ip >> 24) == 10 || (ip >> 20) == (172 << 4 | 1) || (ip >> 16) == (192 << 8 | 168);
-        if (priv) { local = a.toString(); break; }
-        if (local.isEmpty()) local = a.toString();
-    }
+    QFormLayout* form = new QFormLayout(box);
+    form->setRowWrapPolicy(QFormLayout::DontWrapRows);
+    form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+    const int textWidth = 340;
 
-    int row = 0;
+    // Discord: friends press Join on the host's profile, or get an invite
+    QString discord;
+    Discord::Presence* presence = Discord::Presence::get();
+    if (!Discord::Presence::isEnabled() || !presence)
+        discord = tr("Turn on Discord status in Settings → Interface to let friends join from Discord.");
+    else if (!presence->isConnected())
+        discord = tr("Open Discord on this computer to let friends join from there.");
+    else
+        discord = tr("Friends can press Join on your Discord profile, or you can invite them from a chat "
+                     "with + → Invite to play.");
+    QLabel* discordText = plainLabel(discord, box);
+    reserveLines(discordText, textWidth);
+    form->addRow(tr("Discord:"), discordText);
+
+    // the internet: the router forwarding, then the address the internet sees
+    const PortMapper* m = Run->portMapper();
+    QString status;
+    if (!m || m->state() == PortMapper::State::Working || m->state() == PortMapper::State::Idle)
+        status = tr("Getting your router ready for players on the internet…");
+    else if (m->behindSharedAddress())
+        status = tr("Your internet connection shares its address with others (your provider's network, or a "
+                    "second router), so players outside your home network can't connect to you. One of them "
+                    "can host instead.");
+    else if (m->state() == PortMapper::State::Opened)
+        status = tr("The port was opened on your router automatically. It closes again when the room does.");
+    else
+        status = tr("The port couldn't be opened automatically (%1). Players on the internet can only connect "
+                    "if UDP port %2 is forwarded to this computer in your router's settings.")
+                     .arg(m->problem().isEmpty() ? tr("no answer from the router") : m->problem())
+                     .arg(s->port());
+
+    QWidget* internet = new QWidget(box);
+    QVBoxLayout* il = new QVBoxLayout(internet);
+    il->setContentsMargins(0, 0, 0, 0);
+    if (m && !m->publicAddress().isEmpty() && !m->behindSharedAddress())
+        il->addWidget(addressField(QString("%1:%2").arg(m->publicAddress()).arg(m->publicPort()), internet));
+    QLabel* statusText = plainLabel(status, internet);
+    statusText->setStyleSheet("color: palette(placeholder-text);");
+    reserveLines(statusText, textWidth);
+    il->addWidget(statusText);
+    form->addRow(tr("Internet:"), internet);
+
+    // same network
+    const QString local = m ? m->localAddress() : QString();
     if (!local.isEmpty())
-    {
-        QString addr = QString("%1:%2").arg(local).arg(s->port());
-        g->addWidget(new QLabel(tr("Same network:"), box), row, 0);
-        QLineEdit* field = new QLineEdit(addr, box);
-        field->setReadOnly(true);
-        g->addWidget(field, row, 1);
-        QPushButton* copy = new QPushButton(tr("Copy"), box);
-        copy->setAutoDefault(false);
-        connect(copy, &QPushButton::clicked, this, [addr] { QGuiApplication::clipboard()->setText(addr); });
-        g->addWidget(copy, row, 2);
-        row++;
-    }
-    QLabel* internet = plainLabel(tr("Over the internet: players use your public IP address and port %1. "
-                                     "Forward UDP port %1 on your router to this computer first.").arg(s->port()), box);
-    internet->setStyleSheet("color: palette(placeholder-text);");
-    g->addWidget(internet, row, 0, 1, 3);
-    g->setColumnStretch(1, 1);
+        form->addRow(tr("Same network:"), addressField(QString("%1:%2").arg(local).arg(s->port()), box));
+
     return box;
+}
+
+void RoomDialog::refreshAddress()
+{
+    if (!Run || Closing) return;
+    QWidget* box = makeAddressBox();
+    box->setHidden(AddressBox->isHidden());
+    layout()->replaceWidget(AddressBox, box);
+    AddressBox->hide();
+    AddressBox->deleteLater();
+    AddressBox = box;
+}
+
+// a Discord friend asks to join: the host says yes or no
+void RoomDialog::onJoinAsked(const QString& userId, const QString& name)
+{
+    QMessageBox* ask = new QMessageBox(QMessageBox::Question, tr("Netplay"),
+                                       tr("%1 wants to join your room on Discord.").arg(name),
+                                       QMessageBox::NoButton, this);
+    ask->setTextFormat(Qt::PlainText);
+    QPushButton* yes = ask->addButton(tr("Let them join"), QMessageBox::AcceptRole);
+    ask->addButton(tr("Decline"), QMessageBox::RejectRole);
+    ask->setAttribute(Qt::WA_DeleteOnClose);
+    ask->setModal(false);
+    connect(ask, &QMessageBox::finished, this, [ask, yes, userId]
+    {
+        if (Discord::Presence* p = Discord::Presence::get())
+            p->answerJoinRequest(userId, ask->clickedButton() == yes);
+    });
+    showNormal();
+    raise();
+    ask->show();
 }
 
 RoomDialog::~RoomDialog()
@@ -567,7 +650,7 @@ void RoomDialog::refresh()
         if (s->isHost())
         {
             if (s->players() < 2)
-                Status->setText(tr("Step 1 of 2: give the other players your address (below), then wait for them to join."));
+                Status->setText(tr("Step 1 of 2: invite friends on Discord or give them an address below, then wait for them to join."));
             else if (!s->canStart())
                 Status->setText(tr("Waiting for everyone's save to arrive..."));
             else

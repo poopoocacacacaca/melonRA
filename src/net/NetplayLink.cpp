@@ -16,6 +16,7 @@
     with melonDS. If not, see http://www.gnu.org/licenses/.
 */
 
+#include <algorithm>
 #include <cstdio>
 #include <enet/enet.h>
 
@@ -67,17 +68,33 @@ bool NetplayLink::Host(u16 port, int maxPeers, std::string& error)
 
 bool NetplayLink::Connect(const std::string& address, u16 port, std::string& error)
 {
-    Close();
+    return ConnectAny({{address, port}}, error);
+}
 
-    ENetAddress addr;
-    if (enet_address_set_host(&addr, address.c_str()) != 0)
+bool NetplayLink::ConnectAny(const std::vector<Target>& targets, std::string& error)
+{
+    Close();
+    if (targets.empty() || targets.size() > 4)
     {
-        error = "Couldn't find \"" + address + "\".";
+        error = "Couldn't set up the network connection.";
         return false;
     }
-    addr.port = port;
 
-    ENetHost* host = enet_host_create(nullptr, 1, kChannels, 0, 0);
+    std::vector<ENetAddress> addrs;
+    for (const Target& t : targets)
+    {
+        ENetAddress addr;
+        if (enet_address_set_host(&addr, t.Address.c_str()) != 0) continue;
+        addr.port = t.Port;
+        addrs.push_back(addr);
+    }
+    if (addrs.empty())
+    {
+        error = "Couldn't find \"" + targets[0].Address + "\".";
+        return false;
+    }
+
+    ENetHost* host = enet_host_create(nullptr, addrs.size(), kChannels, 0, 0);
     if (!host)
     {
         error = "Couldn't set up the network connection.";
@@ -86,8 +103,16 @@ bool NetplayLink::Connect(const std::string& address, u16 port, std::string& err
     host->maximumPacketSize = kMaxMessage;
     host->maximumWaitingData = 4 * kMaxMessage;
 
-    ENetPeer* peer = enet_host_connect(host, &addr, kChannels, 0);
-    if (!peer)
+    Candidates.clear();
+    for (const ENetAddress& addr : addrs)
+    {
+        ENetPeer* peer = enet_host_connect(host, &addr, kChannels, 0);
+        if (!peer) continue;
+        // an address that doesn't answer is given up on sooner than usual
+        enet_peer_timeout(peer, 8, 3000, 5000);
+        Candidates.push_back(peer);
+    }
+    if (Candidates.empty())
     {
         enet_host_destroy(host);
         error = "Couldn't set up the network connection.";
@@ -95,7 +120,7 @@ bool NetplayLink::Connect(const std::string& address, u16 port, std::string& err
     }
 
     Handle = host;
-    Peers.assign(1, peer);
+    Peers.assign(1, nullptr);
     return true;
 }
 
@@ -105,6 +130,9 @@ void NetplayLink::Close(u32 reason)
 
     ENetHost* host = (ENetHost*)Handle;
     flushOutbox();
+    for (void* c : Candidates)
+        enet_peer_reset((ENetPeer*)c);
+    Candidates.clear();
     for (void* p : Peers)
         if (p) enet_peer_disconnect((ENetPeer*)p, reason);
 
@@ -190,6 +218,24 @@ bool NetplayLink::Service(Event& ev, int timeoutMs)
     {
     case ENET_EVENT_TYPE_CONNECT:
         {
+            if (!Candidates.empty())
+            {
+                // client: the first address to answer wins, the others are dropped
+                bool ours = false;
+                for (void* c : Candidates)
+                {
+                    if (c == e.peer) ours = true;
+                    else enet_peer_reset((ENetPeer*)c);
+                }
+                Candidates.clear();
+                if (!ours) return false;
+                enet_peer_timeout(e.peer, 0, 0, 0);
+                Peers.assign(1, e.peer);
+                ev.Kind = Event::Connected;
+                ev.Peer = 0;
+                return true;
+            }
+
             int idx = peerIndex(e.peer);
             if (idx < 0)
             {
@@ -210,6 +256,19 @@ bool NetplayLink::Service(Event& ev, int timeoutMs)
 
     case ENET_EVENT_TYPE_DISCONNECT:
         {
+            if (!Candidates.empty())
+            {
+                // client: one address didn't answer; only the last one failing counts
+                auto it = std::find(Candidates.begin(), Candidates.end(), (void*)e.peer);
+                if (it == Candidates.end()) return false;
+                Candidates.erase(it);
+                if (!Candidates.empty()) return false;
+                ev.Kind = Event::Disconnected;
+                ev.Peer = 0;
+                ev.Reason = 0;
+                return true;
+            }
+
             int idx = peerIndex(e.peer);
             if (idx < 0) return false;
             // the client keeps its single peer slot, so a later connect works

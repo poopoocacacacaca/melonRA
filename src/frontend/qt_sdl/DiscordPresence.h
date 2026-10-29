@@ -61,9 +61,37 @@ public:
     // something shown may have changed (achievements game loaded, ...)
     void refresh();
 
-    // the game is a netplay session with this many players (0: it isn't);
-    // shown as "In a room (2 of 4)" under the title
-    void setNetplay(int players, int maxPlayers);
+    // A netplay room: shown as "In a room (2 of 4)" under the title, also
+    // before the game starts. With a join secret, Discord offers Join to
+    // friends (and "Invite to play" in chats); joining hands the secret to
+    // the friend's melonRA (joinRequested).
+    struct Room
+    {
+        QString Title;
+        int Players = 0;
+        int MaxPlayers = 0;
+        QString PartyId;
+        QString JoinSecret;   // empty: no Join (game started, room full)
+    };
+    void setNetplayRoom(const Room& room);
+    void clearNetplayRoom();
+
+    // talking to the Discord app right now
+    bool isConnected() const { return ready; }
+
+    // someone asked to join this player's room ("Ask to Join"): let them in
+    // or not
+    void answerJoinRequest(const QString& userId, bool accept);
+
+signals:
+    // this player chose Join on a friend's room (or accepted an invite)
+    void joinRequested(const QString& joinSecret);
+    // a friend asks to join this player's room; name is for showing only
+    void joinAsked(const QString& userId, const QString& name);
+    // Discord was found or lost
+    void connectedChanged();
+
+public:
 
 private:
     Presence();
@@ -98,9 +126,12 @@ private:
     bool coverLooked = false;
     qint64 startTime = 0;        // seconds since the epoch
 
-    int netplayPlayers = 0;
-    int netplayMax = 0;
-    QString netplayParty;        // random, only so Discord groups the count
+    bool inRoom = false;
+    Room room;
+    qint64 roomSince = 0;
+
+    void subscribe();
+    void registerLaunchCommand();
 };
 
 }

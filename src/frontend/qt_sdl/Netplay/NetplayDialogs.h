@@ -25,6 +25,7 @@
 
 #include "NetplaySession.h"
 
+class QCheckBox;
 class QComboBox;
 class QLabel;
 class QLineEdit;
@@ -41,6 +42,9 @@ class Runner;
 // what stopping a netplay game in the middle can do to a save
 QString saveWarning();
 
+// the name last used, or the console's
+QString defaultPlayerName();
+
 // Experimental → Host Netplay Game...
 class HostDialog : public QDialog
 {
@@ -56,6 +60,7 @@ public:
     QString name() const;
     u16 port() const;
     int inputDelay() const;
+    bool openPort() const;
 
 private slots:
     void browse();
@@ -67,6 +72,7 @@ private:
     QComboBox* Game;
     QSpinBox* Port;
     QSpinBox* Delay;
+    QCheckBox* OpenPort;
     QStringList ROMPath;
     QStringList Paths;  // the game list's paths, by combo index
 };
@@ -124,6 +130,8 @@ private:
     ~RoomDialog() override;
 
     QWidget* makeAddressBox();
+    void refreshAddress();
+    void onJoinAsked(const QString& userId, const QString& name);
     void addLine(const QString& text, bool dim);
 
     static RoomDialog* Current;

@@ -105,10 +105,15 @@ bool Session::host(u16 port, const QString& name, const RoomInfo& room,
 
 bool Session::join(const QString& address, u16 port, const QString& name, QString& error)
 {
-    if (CurState != State::Idle) return false;
+    return join({{address.trimmed().toStdString(), port}}, name, error);
+}
+
+bool Session::join(const std::vector<NetplayLink::Target>& targets, const QString& name, QString& error)
+{
+    if (CurState != State::Idle || targets.empty()) return false;
 
     std::string err;
-    if (!Link.Connect(address.trimmed().toStdString(), port, err))
+    if (!Link.ConnectAny(targets, err))
     {
         error = QString::fromStdString(err);
         return false;
@@ -117,13 +122,47 @@ bool Session::join(const QString& address, u16 port, const QString& name, QStrin
     std::lock_guard<std::mutex> lk(Lock);
     IsHost = false;
     MySlot = -1;
-    Port = port;
-    Address = address.trimmed();
+    Port = targets[0].Port;
+    Address = QString::fromStdString(targets[0].Address);
     MyName = CleanName(name.toStdString(), "Player");
     CurState = State::Connecting;
     Quit = false;
     NetThread = std::thread(&Session::runNetwork, this);
     return true;
+}
+
+void Session::setInvite(const QString& partyId, const QString& joinSecret)
+{
+    std::lock_guard<std::mutex> lk(Lock);
+    if (!IsHost) return;
+    std::string id = partyId.toStdString(), secret = joinSecret.toStdString();
+    if (!ValidInviteText(id, kMaxPartyId) || !ValidInviteText(secret, kMaxJoinSecret)) return;
+    PartyId = id;
+    JoinSecret = secret;
+    if (CurState != State::Idle && CurState != State::Ended)
+        sendInvite(-1);
+}
+
+QString Session::partyId() const
+{
+    std::lock_guard<std::mutex> lk(Lock);
+    return QString::fromStdString(PartyId);
+}
+
+QString Session::joinSecret() const
+{
+    std::lock_guard<std::mutex> lk(Lock);
+    return QString::fromStdString(JoinSecret);
+}
+
+// with Lock held, host: the Discord invite to one client, or all (-1)
+void Session::sendInvite(int toPeer)
+{
+    if (PartyId.empty()) return;
+    Writer w(Msg_Invite);
+    w.Str(PartyId, kMaxPartyId).Str(JoinSecret, kMaxJoinSecret);
+    if (toPeer >= 0) sendTo(toPeer, kChanSession, w);
+    else sendAll(kChanSession, w);
 }
 
 void Session::provideROM(const std::array<u8, 20>& hash, const ConsoleInfo& console, std::vector<u8> save)
@@ -619,6 +658,16 @@ void Session::handle(const NetplayLink::Event& ev)
         else
         {
             CurState = State::Lobby;
+
+            // the address that answered (of the ones tried)
+            const std::string where = Link.PeerAddress(0);
+            const size_t colon = where.rfind(':');
+            if (colon != std::string::npos)
+            {
+                Address = QString::fromStdString(where.substr(0, colon));
+                Port = (u16)std::stoi(where.substr(colon + 1));
+            }
+
             Writer w(Msg_Hello);
             w.U32(kMagic).U16(kProtocolVersion).Str(BuildId(), kMaxBuild).Str(MyName, kMaxName);
             sendTo(0, kChanSession, w);
@@ -747,6 +796,7 @@ void Session::handleHost(int peer, const std::vector<u8>& data)
                     sendConsoleAndSave(peer, i);
 
             broadcastRoster();
+            sendInvite(peer);
             QString name = QString::fromStdString(p.Name);
             emitLater([this, name] { emit notice(tr("%1 joined.").arg(name)); emit rosterChanged(); });
             return;
@@ -1046,6 +1096,17 @@ void Session::handleClient(const std::vector<u8>& data)
             u8 d = r.U8();
             if (!r.AtEnd() || d < 1 || d > kMaxInputDelay) { bad(); return; }
             applyDelay(d);
+            return;
+        }
+
+    case Msg_Invite:
+        {
+            std::string id = r.Str(kMaxPartyId);
+            std::string secret = r.Str(kMaxJoinSecret);
+            if (!r.AtEnd() || !ValidInviteText(id, kMaxPartyId) || !ValidInviteText(secret, kMaxJoinSecret)) { bad(); return; }
+            PartyId = id;
+            JoinSecret = secret;
+            emitLater([this] { emit inviteChanged(); });
             return;
         }
 
