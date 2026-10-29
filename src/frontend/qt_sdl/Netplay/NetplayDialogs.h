@@ -133,6 +133,7 @@ private:
     QLabel* Game;
     QLabel* Status;
     QLabel* Note;
+    QLabel* GameHint;
     QWidget* AddressBox;
     QWidget* PlayersBox;
     QTreeWidget* Players;

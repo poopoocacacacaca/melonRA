@@ -371,6 +371,9 @@ void Runner::onGo()
         if (EmuInstance* inst = emuInstanceAt(k))
             inst->getEmuThread()->emuRun();
 
+    Inst->osdAddMessage(0, "Netplay started. Open the game's wireless multiplayer mode:");
+    Inst->osdAddMessage(0, "one player creates a group, the others join it.");
+
     Win->onNetplayStarted();
 }
 

@@ -20,6 +20,11 @@ melonRA versions are `MAJOR.MINOR.PATCH`:
   Everyone needs the same melonRA version and an identical copy of the game, which is found in their
   game list automatically. Each player plays with their own save and DS settings (nickname,
   birthday...), and their save is updated as they play.
+  - It works with games that have local wireless multiplayer where every player has the game; it
+    can't add multiplayer to other games, and Download Play (single-card play) isn't supported. Once
+    the game runs, players connect inside it as on two real DS consoles: one creates a group in the
+    game's wireless mode, the others join, whoever hosted the netplay room. The Host and Join windows
+    and the room explain this.
   - Hosting from outside your home network needs the port (UDP 7066 by default) forwarded on your
     router.
   - Every computer runs every player's console and only buttons and touches travel, so games behave

@@ -92,6 +92,23 @@ static void reserveLines(QLabel* l, int width)
     l->setMinimumHeight(l->heightForWidth(width));
 }
 
+// what netplay can and can't do for a game, shown before hosting or joining
+static QWidget* gameNotice(QWidget* parent, int width)
+{
+    QGroupBox* box = new QGroupBox(QCoreApplication::translate("Netplay", "Which games work"), parent);
+    QLabel* text = plainLabel(QCoreApplication::translate("Netplay",
+        "Netplay works with games that have local wireless multiplayer, where every player has the game. "
+        "It doesn't add multiplayer to games without it, and Download Play (single-card play) isn't "
+        "supported.\n\n"
+        "Once the game starts, connect inside the game as on two DS consoles side by side: one player "
+        "creates a group in the game's wireless mode and the others join it. Who does which doesn't "
+        "depend on who hosted the netplay room."), box);
+    reserveLines(text, width - 24);
+    QVBoxLayout* l = new QVBoxLayout(box);
+    l->addWidget(text);
+    return box;
+}
+
 static QString defaultName()
 {
     QString name = netplayConfig().GetQString("Name");
@@ -167,6 +184,7 @@ HostDialog::HostDialog(MainWindow* parent) : QDialog(parent), Win(parent)
 
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->setSizeConstraint(QLayout::SetMinimumSize);
+    layout->addWidget(gameNotice(this, 460));
     layout->addLayout(form);
     layout->addWidget(help);
     layout->addWidget(buttons);
@@ -247,7 +265,7 @@ JoinDialog::JoinDialog(QWidget* parent) : QDialog(parent)
         "Ask the host for their IP address and port. You need the same melonRA version and an "
         "identical copy of the game; melonRA looks for it in your game list."), this);
     help->setStyleSheet("color: palette(placeholder-text);");
-    reserveLines(help, 400);
+    reserveLines(help, 460);
 
     QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons->button(QDialogButtonBox::Ok)->setText(tr("Join"));
@@ -256,10 +274,11 @@ JoinDialog::JoinDialog(QWidget* parent) : QDialog(parent)
 
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->setSizeConstraint(QLayout::SetMinimumSize);
+    layout->addWidget(gameNotice(this, 460));
     layout->addLayout(form);
     layout->addWidget(help);
     layout->addWidget(buttons);
-    setMinimumWidth(420);
+    setMinimumWidth(480);
 }
 
 QString JoinDialog::name() const { return Name->text().trimmed(); }
@@ -321,6 +340,9 @@ RoomDialog::RoomDialog(MainWindow* win, Runner* runner) : QDialog(nullptr), Win(
     Note = plainLabel(QString(), this);
     Note->setStyleSheet("color: palette(placeholder-text);");
     Note->hide();
+    GameHint = plainLabel(tr("In the game, open its wireless multiplayer mode: one player creates a group "
+                             "and the others join it, whoever hosted here."), this);
+    GameHint->setStyleSheet("color: palette(placeholder-text);");
 
     // players
     Players = new QTreeWidget(this);
@@ -425,6 +447,7 @@ RoomDialog::RoomDialog(MainWindow* win, Runner* runner) : QDialog(nullptr), Win(
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->addWidget(Game);
     layout->addWidget(Status);
+    layout->addWidget(GameHint);
     AddressBox = makeAddressBox();
     layout->addWidget(AddressBox);
     layout->addWidget(PlayersBox);
@@ -710,6 +733,7 @@ void RoomDialog::onFinished(const QString& reason)
 
     StartBtn->hide();
     RemoveBtn->hide();
+    GameHint->hide();
     AddressBox->hide();
     PlayersBox->hide();
     ChatInput->setEnabled(false);
