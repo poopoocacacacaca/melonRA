@@ -30,6 +30,8 @@ regular melonDS desktop app.
 - **Online play server picker** (Wiimmfi, Kaeru WFC or a custom DNS) in Wi-Fi Settings
 - **Built-in updater** with Stable and Nightly channels
 
+<p align="center"><img src="res/melonRA-showcase.png" alt="melonRA's game list and achievements window"></p>
+
 ## Getting started
 
 1. Download the [latest release](https://github.com/ppkkkkk/melonRA/releases/latest):
